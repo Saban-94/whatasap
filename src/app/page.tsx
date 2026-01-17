@@ -216,4 +216,184 @@ const profileAreaStyle: React.CSSProperties = {
   gap: '10px',
 };
 
-const profilePicStyle: React.CSSProperties
+const profilePicStyle: React.CSSProperties = {
+  width: '40px',
+  height: '40px',
+  borderRadius: '50%', // תמונה עגולה
+  objectFit: 'cover',
+  border: '2px solid #25D366', // גבול ירוק כמו בוואטסאפ
+};
+
+const profileNameStyle: React.CSSProperties = {
+  fontWeight: 'bold',
+  color: '#075E54', // ירוק כהה
+};
+
+const welcomeMessageStyle: React.CSSProperties = {
+  backgroundColor: '#dcf8c6', // רקע ירקרק להודעה
+  borderRadius: '15px',
+  padding: '15px',
+  marginBottom: '25px',
+  textAlign: 'center',
+  color: '#075E54',
+  lineHeight: '1.6',
+  boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
+};
+
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '12px 15px',
+  marginBottom: '15px',
+  borderRadius: '8px',
+  border: '1px solid #ddd',
+  boxSizing: 'border-box',
+  fontSize: '16px',
+};
+
+const textAreaStyle: React.CSSProperties = {
+  ...inputStyle, // יורש את העיצוב מה-input
+  minHeight: '80px',
+  resize: 'vertical',
+};
+
+const searchStyle: React.CSSProperties = {
+  ...inputStyle,
+  borderColor: '#075E54', // גבול ירוק לשדה החיפוש
+  fontWeight: 'bold',
+};
+
+const searchResultsStyle: React.CSSProperties = {
+  position: 'absolute',
+  width: '100%',
+  backgroundColor: '#fff',
+  zIndex: 10,
+  border: '1px solid #eee',
+  borderRadius: '8px',
+  overflow: 'hidden',
+  boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
+  marginTop: '-10px', // להצמיד לתיבת החיפוש
+};
+
+const searchItemStyle: React.CSSProperties = {
+  padding: '12px 15px',
+  cursor: 'pointer',
+  borderBottom: '1px solid #eee',
+  transition: 'background-color 0.2s ease',
+};
+
+// הוספת אפקט ריחוף לתוצאות החיפוש
+searchItemStyle[':hover'] = {
+  backgroundColor: '#f0f0f0',
+};
+
+const containerActionModalStyle: React.CSSProperties = {
+  backgroundColor: '#f9f9f9',
+  padding: '20px',
+  borderRadius: '12px',
+  border: '2px solid #075E54',
+  margin: '20px 0',
+  textAlign: 'center',
+  boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+};
+
+const actionButtonsGroupStyle: React.CSSProperties = {
+  display: 'flex',
+  gap: '10px',
+  flexWrap: 'wrap',
+  justifyContent: 'center',
+  marginTop: '15px',
+};
+
+const actionButtonStyle: React.CSSProperties = {
+  flex: '1',
+  padding: '12px',
+  backgroundColor: '#075E54',
+  color: '#fff',
+  border: 'none',
+  borderRadius: '8px',
+  cursor: 'pointer',
+  fontWeight: 'bold',
+  fontSize: '16px',
+  transition: 'background-color 0.2s ease',
+  minWidth: '100px',
+};
+
+actionButtonStyle[':hover'] = {
+  backgroundColor: '#054d44',
+};
+
+const cancelButtonStyle: React.CSSProperties = {
+  marginTop: '15px',
+  border: 'none',
+  background: 'none',
+  color: 'red',
+  cursor: 'pointer',
+  fontSize: '14px',
+};
+
+const cartContainerStyle: React.CSSProperties = {
+  margin: '25px 0',
+  borderTop: '1px solid #eee',
+  paddingTop: '20px',
+  borderBottom: '1px solid #eee',
+  paddingBottom: '20px',
+};
+
+const cartItemStyle: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  backgroundColor: '#f5f5f5',
+  padding: '10px 15px',
+  borderRadius: '8px',
+  marginBottom: '8px',
+  fontWeight: '600',
+  color: '#333',
+};
+
+const removeCartItemStyle: React.CSSProperties = {
+  backgroundColor: '#ff4d4f',
+  color: '#fff',
+  border: 'none',
+  borderRadius: '50%',
+  width: '25px',
+  height: '25px',
+  fontSize: '14px',
+  cursor: 'pointer',
+  transition: 'background-color 0.2s ease',
+};
+
+removeCartItemStyle[':hover'] = {
+  backgroundColor: '#cc0000',
+};
+
+const sendOrderButtonStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '18px',
+  backgroundColor: '#25D366', // ירוק וואטסאפ
+  color: '#fff',
+  border: 'none',
+  borderRadius: '12px',
+  fontWeight: 'bold',
+  cursor: 'pointer',
+  fontSize: '20px',
+  marginTop: '25px',
+  boxShadow: '0 4px 10px rgba(37,211,102,0.4)',
+  transition: 'background-color 0.2s ease',
+};
+
+sendOrderButtonStyle[':hover'] = {
+  backgroundColor: '#1da852',
+};
+
+const trackOrderLinkContainerStyle: React.CSSProperties = {
+  marginTop: '20px',
+  textAlign: 'center',
+};
+
+const trackOrderLinkStyle: React.CSSProperties = {
+  color: '#075E54', // ירוק כהה
+  textDecoration: 'underline',
+  fontSize: '16px',
+  fontWeight: '600',
+};
