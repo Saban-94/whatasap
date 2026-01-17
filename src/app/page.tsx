@@ -1,6 +1,6 @@
 'use client';
 import { initializeApp, getApps } from "firebase/app";
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } from "firebase/firestore";
+import { getFirestore, initializeFirestore, memoryLocalCache } from "firebase/firestore";
 import { useState, useEffect } from 'react';
 
 const firebaseConfig = {
@@ -13,49 +13,70 @@ const firebaseConfig = {
 };
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-const db = getFirestore(app);
+const db = initializeFirestore(app, { localCache: memoryLocalCache() });
 
-export default function ProductStudio() {
-  const [products, setProducts] = useState<any[]>([]);
-  const [newProd, setNewProd] = useState({ sku: '', name: '' });
+export default function OrderPage() {
+  const [status, setStatus] = useState<string>('ממתין לפעולה');
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => { loadProducts(); }, []);
+  const flowUrl = "https://defaultae1f0547569d471693f95b9524aa2b.31.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/0828f74ee7e44228b96c93eab728f280/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=lgdg1Hw--Z35PWOK6per2K02fql76m_WslheLXJL-eA";
 
-  const loadProducts = async () => {
-    const snap = await getDocs(collection(db, "products"));
-    setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-  };
+  const testFlow = async () => {
+    setLoading(true);
+    setStatus("🚀 השליחה התחילה...");
+    
+    try {
+      console.log("מנסה לשלוח לכתובת:", flowUrl);
+      
+      const response = await fetch(flowUrl, {
+        method: 'POST',
+        mode: 'cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer: "בדיקת מערכת סבן",
+          phone: "0500000000",
+          items: "בדיקה טכנית",
+          address: "כתובת בדיקה"
+        })
+      });
 
-  const saveProduct = async () => {
-    if (!newProd.sku || !newProd.name) return alert("מלא פרטים");
-    await addDoc(collection(db, "products"), newProd);
-    setNewProd({ sku: '', name: '' });
-    loadProducts();
-  };
-
-  const removeProduct = async (id: string) => {
-    await deleteDoc(doc(db, "products", id));
-    loadProducts();
+      console.log("Response received:", response);
+      setStatus(`תגובת שרת: ${response.status} ${response.statusText}`);
+      
+      if (response.ok) {
+        alert("הצלחה! ה-Flow הופעל.");
+      } else {
+        const text = await response.text();
+        console.error("Server Error Detail:", text);
+        setStatus(`שגיאת שרת: ${response.status}. פרטים בקונסולה.`);
+      }
+    } catch (err: any) {
+      console.error("Fetch Error:", err);
+      setStatus(`🚨 כשל טכני: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <main dir="rtl" style={{ padding: '20px', fontFamily: 'sans-serif', backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
-      <h1 style={{ color: '#075E54' }}>🛠️ סטודיו מוצרים - סבן 94</h1>
-      <div style={{ background: 'white', padding: '20px', borderRadius: '12px', marginBottom: '20px' }}>
-        <input type="text" placeholder="מקט מוצר" style={sInput} value={newProd.sku} onChange={e => setNewProd({...newProd, sku: e.target.value})} />
-        <input type="text" placeholder="שם מוצר" style={sInput} value={newProd.name} onChange={e => setNewProd({...newProd, name: e.target.value})} />
-        <button onClick={saveProduct} style={{ padding: '10px 20px', background: '#075E54', color: 'white', border: 'none', borderRadius: '8px' }}>הוסף למאגר</button>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '15px' }}>
-        {products.map(p => (
-          <div key={p.id} style={{ background: 'white', padding: '15px', borderRadius: '10px', border: '1px solid #eee' }}>
-            <strong>{p.name}</strong><br/>
-            <small>מקט: {p.sku}</small><br/>
-            <button onClick={() => removeProduct(p.id)} style={{ color: 'red', border: 'none', background: 'none', cursor: 'pointer', marginTop: '10px' }}>מחק</button>
-          </div>
-        ))}
+    <main dir="rtl" style={{ padding: '40px', textAlign: 'center', fontFamily: 'sans-serif' }}>
+      <div style={{ maxWidth: '400px', margin: '0 auto', border: '2px solid #075E54', padding: '20px', borderRadius: '15px' }}>
+        <h2>בדיקת זרימה ל-365</h2>
+        <p>גרסת קוד: 1.0.4 (עדכון אחרון)</p>
+        
+        <button 
+          onClick={testFlow} 
+          disabled={loading}
+          style={{ width: '100%', padding: '15px', background: '#25D366', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer' }}
+        >
+          {loading ? "שולח..." : "לחץ כאן לבדיקת חיבור"}
+        </button>
+
+        <div style={{ marginTop: '20px', padding: '10px', background: '#eee', borderRadius: '5px' }}>
+          <strong>סטטוס נוכחי:</strong>
+          <p>{status}</p>
+        </div>
       </div>
     </main>
   );
 }
-const sInput = { padding: '10px', marginLeft: '10px', borderRadius: '5px', border: '1px solid #ddd' };
