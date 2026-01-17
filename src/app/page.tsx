@@ -83,7 +83,23 @@ export default function OrderPage() {
           <div style={modalS}>
             <h4>איזו פעולה לבצע ב{pendingContainer.name}?</h4>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              <button onClick={() => addToCart(pendingContainer, 'הצבה')} style={actionBtn}>הצבה</button>
+              <button {/* תוצאות החיפוש - כאן קורה הקסם */}
+{allProducts.filter(p => p.name.includes(search)).map(p => (
+  <div 
+    key={p.id} 
+    onClick={() => {
+      // כאן הבדיקה הקריטית: אם זה מכולה - תפתח את הפופ-אפ, אם לא - תכניס ישר לסל
+      if (p.type === 'container') {
+        setPendingContainer(p); 
+      } else {
+        addToCart(p);
+      }
+    }} 
+    style={{ padding: '12px', cursor: 'pointer', borderBottom: '1px solid #eee' }}
+  >
+    {p.name}
+  </div>
+))}art(pendingContainer, 'הצבה')} style={actionBtn}>הצבה</button>
               <button onClick={() => addToCart(pendingContainer, 'החלפה')} style={actionBtn}>החלפה</button>
               <button onClick={() => addToCart(pendingContainer, 'הוצאה')} style={actionBtn}>הוצאה</button>
             </div>
