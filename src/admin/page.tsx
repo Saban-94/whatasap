@@ -1,60 +1,78 @@
 'use client';
-import { initializeApp, getApps } from "firebase/app";
-import { getFirestore, collection, query, orderBy, onSnapshot, doc, updateDoc } from "firebase/firestore";
+import { db } from "../firebase";
+import { collection, addDoc, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { useState, useEffect } from 'react';
 
-const firebaseConfig = {
-  apiKey: "AIzaSyC2QjUvjfALcuoM1xZMVDIXcNpwCG1-tE8",
-  authDomain: "saban-system-v2.firebaseapp.com",
-  projectId: "saban-system-v2",
-  storageBucket: "saban-system-v2.firebasestorage.app",
-  messagingSenderId: "670637185194",
-  appId: "1:670637185194:web:e897482997e75c110898d3",
-};
+export default function AdminPage() {
+  const [products, setProducts] = useState<any[]>([]);
+  const [form, setForm] = useState({ name: '', price: '', type: 'product' });
+  const [loading, setLoading] = useState(false);
 
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-const db = getFirestore(app);
+  // טעינת המוצרים הקיימים
+  const loadProducts = async () => {
+    const snap = await getDocs(collection(db, "products"));
+    setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  };
 
-export default function AdminDashboard() {
-  const [orders, setOrders] = useState<any[]>([]);
+  useEffect(() => { loadProducts(); }, []);
 
-  useEffect(() => {
-    const q = query(collection(db, "orders"), orderBy("timestamp", "desc"));
-    const unsub = onSnapshot(q, (snapshot) => {
-      setOrders(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
-      snapshot.docChanges().forEach(change => {
-        if (change.type === "added" && !snapshot.metadata.hasPendingWrites) {
-          const audio = new Audio('/notification.mp3');
-          audio.play().catch(() => console.log("Sound blocked"));
-        }
-      });
-    });
-    return () => unsub();
-  }, []);
+  // הוספת מוצר חדש
+  const addProduct = async () => {
+    if (!form.name) return alert("חובה להזין שם מוצר");
+    setLoading(true);
+    try {
+      await addDoc(collection(db, "products"), form);
+      alert("המוצר נוסף בהצלחה!");
+      setForm({ name: '', price: '', type: 'product' });
+      loadProducts();
+    } catch (e) { alert("שגיאה בהוספה"); }
+    finally { setLoading(false); }
+  };
 
-  const updateStatus = async (id: string, status: string) => {
-    await updateDoc(doc(db, "orders", id), { status });
+  // מחיקת מוצר
+  const deleteProduct = async (id: string) => {
+    if (confirm("בטוח שברצונך למחוק?")) {
+      await deleteDoc(doc(db, "products", id));
+      loadProducts();
+    }
   };
 
   return (
-    <main dir="rtl" style={{ padding: '20px', backgroundColor: '#f0f2f5', minHeight: '100vh', fontFamily: 'sans-serif' }}>
-      <h1 style={{ color: '#075E54' }}>📦 מחלקת הזמנות - סבן 94</h1>
-      <div style={{ display: 'grid', gap: '15px' }}>
-        {orders.map(order => (
-          <div key={order.id} style={{ background: 'white', padding: '15px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <strong>{order.customerName}</strong>
-              <span style={{ fontSize: '12px', color: '#666' }}>{order.status}</span>
-            </div>
-            <p><strong>פריטים:</strong> {order.items}</p>
-            <p><strong>כתובת:</strong> {order.address}</p>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => updateStatus(order.id, "בטיפול 🚛")} style={{ flex: 1, padding: '10px', background: '#34b7f1', color: 'white', border: 'none', borderRadius: '8px' }}>בטיפול</button>
-              <button onClick={() => updateStatus(order.id, "סופק ✅")} style={{ flex: 1, padding: '10px', background: '#25D366', color: 'white', border: 'none', borderRadius: '8px' }}>סופק</button>
-            </div>
+    <main dir="rtl" style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '800px', margin: '0 auto' }}>
+      <h1 style={{ textAlign: 'center', color: '#075E54' }}>לוח בקרה - סבן 94</h1>
+
+      {/* קישורים מהירים לניהול לוגיסטי */}
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '30px' }}>
+        <a href="https://saban94.sharepoint.com/lists/InventoryManagement" target="_blank" style={linkBtn}>ניהול מלאי ב-SharePoint</a>
+        <a href="https://make.powerautomate.com/" target="_blank" style={linkBtn}>ניהול אוטומציות (Flow)</a>
+      </div>
+
+      <div style={{ background: '#f4f4f4', padding: '20px', borderRadius: '15px' }}>
+        <h3>הוספת מוצר חדש לקטלוג</h3>
+        <input type="text" placeholder="שם המוצר (למשל: מכולה 8 קוב)" style={iS} value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
+        <select style={iS} value={form.type} onChange={e => setForm({...form, type: e.target.value})}>
+          <option value="product">חומר בניין (רגיל)</option>
+          <option value="container">מכולה (שירות הצבה/החלפה)</option>
+        </select>
+        <button onClick={addProduct} disabled={loading} style={btnS}>
+          {loading ? "מוסיף..." : "הוסף מוצר"}
+        </button>
+      </div>
+
+      <div style={{ marginTop: '30px' }}>
+        <h3>מוצרים קיימים בקטלוג:</h3>
+        {products.map(p => (
+          <div key={p.id} style={cardS}>
+            <span>{p.name} ({p.type === 'container' ? 'מכולה' : 'חומר'})</span>
+            <button onClick={() => deleteProduct(p.id)} style={{ color: 'red', border: 'none', background: 'none', cursor: 'pointer' }}>מחק</button>
           </div>
         ))}
       </div>
     </main>
   );
 }
+
+const iS = { width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '5px', border: '1px solid #ccc' };
+const btnS = { width: '100%', padding: '12px', background: '#075E54', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer' };
+const linkBtn = { flex: 1, padding: '15px', background: '#25D366', color: '#fff', textAlign: 'center' as 'center', textDecoration: 'none', borderRadius: '10px', fontWeight: 'bold' };
+const cardS = { display: 'flex', justifyContent: 'space-between', padding: '10px', borderBottom: '1px solid #ddd', background: '#fff' };
