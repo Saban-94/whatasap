@@ -10,6 +10,6 @@ const firebaseConfig = {
   appId: "1:670637185194:web:e897482997e75c110898d3",
 };
 
+// אתחול בטוח שמונע שגיאות Client-side
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-// יצירת ה-DB עם זיכרון מטמון מנוהל שמונע שגיאות פריסה
 export const db = initializeFirestore(app, { localCache: memoryLocalCache() });
