@@ -1,89 +1,55 @@
 'use client';
+import { db } from "../firebase";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import { useState } from 'react';
-import { initializeApp, getApps } from "firebase/app";
-import { getFirestore, collection, query, where, getDocs, orderBy } from "firebase/firestore";
+import Link from 'next/link';
 
-const firebaseConfig = {
-  apiKey: "AIzaSyC2QjUvjfALcuoM1xZMVDIXcNpwCG1-tE8",
-  authDomain: "saban-system-v2.firebaseapp.com",
-  projectId: "saban-system-v2",
-  storageBucket: "saban-system-v2.firebasestorage.app",
-  messagingSenderId: "670637185194",
-  appId: "1:670637185194:web:e897482997e75c110898d3",
-};
-
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-const db = getFirestore(app);
-
-export default function TrackOrder() {
+export default function TrackPage() {
   const [phone, setPhone] = useState('');
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const track = async () => {
-    if (!phone) return alert("נא להזין מספר טלפון");
+  const searchOrders = async () => {
+    if (!phone) return alert("הכנס טלפון");
     setLoading(true);
     try {
-      const q = query(
-        collection(db, "orders"), 
-        where("phone", "==", phone),
-        orderBy("timestamp", "desc")
-      );
+      const q = query(collection(db, "orders"), where("phone", "==", phone));
       const snap = await getDocs(q);
       setOrders(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    } catch (e) {
-      console.error(e);
-      alert("תקלה בחיפוש ההזמנות");
-    } finally {
-      setLoading(false);
-    }
+    } catch (e) { alert("שגיאה בחיפוש"); }
+    finally { setLoading(false); }
   };
 
   return (
-    <main dir="rtl" style={{ padding: '20px', fontFamily: 'sans-serif', backgroundColor: '#f4f7f6', minHeight: '100vh' }}>
-      <div style={{ maxWidth: '500px', margin: '0 auto', background: '#fff', padding: '25px', borderRadius: '20px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
-        <h2 style={{ textAlign: 'center', color: '#075E54' }}>מעקב הזמנות - סבן 94</h2>
+    <main dir="rtl" style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '450px', margin: '0 auto' }}>
+      <div style={{ background: '#fff', padding: '25px', borderRadius: '15px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
+        <h2 style={{ textAlign: 'center', color: '#075E54' }}>מעקב הזמנות</h2>
         
-        <input 
-          type="tel" 
-          placeholder="הכנס מספר טלפון למעקב..." 
-          style={sInput} 
-          value={phone}
-          onChange={e => setPhone(e.target.value)}
-        />
-        
-        <button onClick={track} disabled={loading} style={sButton}>
-          {loading ? "מחפש..." : "בדוק סטטוס הזמנות"}
+        <input type="tel" placeholder="הכנס טלפון למעקב" style={iS} onChange={e => setPhone(e.target.value)} />
+        <button onClick={searchOrders} disabled={loading} style={btnS}>
+          {loading ? "מחפש..." : "בדוק סטטוס"}
         </button>
 
-        <div style={{ marginTop: '30px' }}>
-          {orders.map((order, i) => (
-            <div key={i} style={orderCard}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                <span style={{ color: '#888', fontSize: '12px' }}>{new Date(order.timestamp?.seconds * 1000).toLocaleDateString('he-IL')}</span>
-                <span style={{ ...statusBadge, backgroundColor: getStatusColor(order.status) }}>{order.status || 'בטיפול'}</span>
+        <div style={{ marginTop: '20px' }}>
+          {orders.map((o, i) => (
+            <div key={i} style={{ padding: '10px', borderBottom: '1px solid #eee', marginBottom: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <strong>סטטוס: {o.status || 'בטיפול'}</strong>
+                <span style={{ fontSize: '12px', color: '#888' }}>{o.timestamp?.seconds ? new Date(o.timestamp.seconds * 1000).toLocaleDateString() : 'היום'}</span>
               </div>
-              <div style={{ fontWeight: 'bold' }}>{order.items}</div>
-              <div style={{ fontSize: '14px', color: '#555', marginTop: '5px' }}>📍 {order.address}</div>
+              <div style={{ fontSize: '14px' }}>{o.items}</div>
             </div>
           ))}
-          {orders.length === 0 && !loading && phone && <p style={{ textAlign: 'center', color: '#888' }}>לא נמצאו הזמנות למספר זה</p>}
+          {orders.length === 0 && !loading && phone && <p style={{textAlign:'center', color:'#999'}}>לא נמצאו הזמנות</p>}
+        </div>
+
+        <div style={{ marginTop: '20px', textAlign: 'center' }}>
+          <Link href="/" style={{ color: '#075E54' }}>חזור לביצוע הזמנה</Link>
         </div>
       </div>
     </main>
   );
 }
 
-const getStatusColor = (status: string) => {
-  switch(status) {
-    case 'מוכן': return '#25D366';
-    case 'בטיפול': return '#FFD700';
-    case 'הושלם': return '#34B7F1';
-    default: return '#ccc';
-  }
-};
-
-const sInput = { width: '100%', padding: '15px', marginBottom: '15px', borderRadius: '12px', border: '1px solid #ddd', boxSizing: 'border-box' as 'border-box', fontSize: '18px' };
-const sButton = { width: '100%', padding: '15px', background: '#075E54', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 'bold', fontSize: '18px', cursor: 'pointer' };
-const orderCard = { padding: '15px', border: '1px solid #eee', borderRadius: '12px', marginBottom: '15px', background: '#fcfcfc' };
-const statusBadge = { padding: '5px 12px', borderRadius: '20px', color: '#fff', fontSize: '12px', fontWeight: 'bold' };
+const iS = { width: '100%', padding: '12px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #ddd', boxSizing: 'border-box' as 'border-box' };
+const btnS = { width: '100%', padding: '15px', background: '#075E54', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer' };
