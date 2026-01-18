@@ -1,27 +1,21 @@
 import { NextResponse } from 'next/server';
 import { analyzeIturanCSV } from '@/lib/ituran-parser';
+import { analyzeDelivery } from '@/lib/saban-brain';
 import { analyzePDFWithGemini } from '@/lib/gemini';
 
 export async function POST(req: Request) {
   try {
     const { csvContent, pdfBuffer } = await req.json();
-    const ituranData = await analyzeIturanCSV(csvContent);
+    
+    // 1. קריאת איתורן (ממאגר ituran)
+    const ituranResults = await analyzeIturanCSV(csvContent);
+    // 2. קריאת תעודות (ממאגר ituran/whatasap)
     const pdfResults = await analyzePDFWithGemini(pdfBuffer);
-
-    const report = pdfResults.map(ticket => {
-      const actualPto = ituranData.find(e => e.address.includes(ticket.address));
-      const gearError = (ticket.items.includes('שק גדול') && ticket.gear_quantity < ticket.item_quantity);
-      
-      return {
-        ticketId: ticket.id,
-        driver: ticket.driver,
-        isAnomaly: actualPto ? (ticket.manualTime - actualPto.duration > 15) : true,
-        missingGear: gearError ? 'חסר פיקדון בלה' : null
-      };
-    });
-
-    return NextResponse.json({ report });
-  } catch (e) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    // 3. הצלבה (ממאגר whatasap)
+    const finalReport = analyzeDelivery(ituranResults, pdfResults);
+    
+    return NextResponse.json(finalReport);
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
