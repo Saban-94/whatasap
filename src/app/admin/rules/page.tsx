@@ -1,53 +1,45 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { db } from '../../firebase';
+import { db } from '@/firebase'; 
 import { collection, addDoc, getDocs, deleteDoc, doc } from 'firebase/firestore';
 
-export default function RulesManager() {
+export default function RulesPage() {
   const [rules, setRules] = useState([]);
   const [newRule, setNewRule] = useState({ item: '', required: '', ratio: 1 });
 
-  // משיכת החוקים מהמוח (Firebase)
   const fetchRules = async () => {
     const querySnapshot = await getDocs(collection(db, "business_rules"));
-    setRules(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    setRules(querySnapshot.docs.map(d => ({ id: d.id, ...d.data() })));
   };
 
   useEffect(() => { fetchRules(); }, []);
 
-  const saveRule = async () => {
+  const handleAdd = async () => {
+    if (!newRule.item || !newRule.required) return;
     await addDoc(collection(db, "business_rules"), newRule);
     setNewRule({ item: '', required: '', ratio: 1 });
     fetchRules();
   };
 
   return (
-    <div dir="rtl" className="p-6 bg-gray-50 min-h-screen font-sans">
-      <h1 className="text-2xl font-bold mb-6 text-blue-900">🧠 ניהול חוקי המוח - ח.סבן</h1>
-      
-      {/* טופס הוספת חוק */}
-      <div className="bg-white p-4 rounded-xl shadow-sm mb-6 border border-blue-100">
-        <h2 className="font-semibold mb-3">הוסף חוק חדש (למשל: על כל שק גדול -> חובה בלה)</h2>
-        <div className="grid grid-cols-1 gap-3">
-          <input className="border p-2 rounded" placeholder="שם הפריט (למשל: טיט שק גדול)" 
+    <div className="max-w-md mx-auto p-4 bg-gray-50 min-h-screen rtl" dir="rtl">
+      <div className="bg-white rounded-[30px] shadow-xl p-6 border-t-8 border-blue-600">
+        <h1 className="text-xl font-bold text-blue-900 mb-4">🧠 הגדרות המוח - ח.סבן</h1>
+        <div className="space-y-3 mb-6">
+          <input className="w-full p-3 rounded-xl border" placeholder="שם פריט (למשל: טיט שק גדול)" 
                  value={newRule.item} onChange={e => setNewRule({...newRule, item: e.target.value})} />
-          <input className="border p-2 rounded" placeholder="מה חייב להתווסף (למשל: פיקדון בלה)" 
+          <input className="w-full p-3 rounded-xl border" placeholder="חיוב חובה (למשל: פיקדון בלה)" 
                  value={newRule.required} onChange={e => setNewRule({...newRule, required: e.target.value})} />
-          <button onClick={saveRule} className="bg-blue-600 text-white p-2 rounded-lg font-bold">שמור חוק בזיכרון 💾</button>
+          <button onClick={handleAdd} className="w-full bg-blue-600 text-white p-3 rounded-xl font-bold">שמור חוק</button>
         </div>
-      </div>
-
-      {/* רשימת חוקים קיימת */}
-      <div className="space-y-3">
-        {rules.map(rule => (
-          <div key={rule.id} className="bg-white p-3 rounded-lg shadow-sm flex justify-between items-center border-r-4 border-blue-500">
-            <div>
-              <span className="font-bold text-blue-700">{rule.item}</span> ⬅️ {rule.required}
+        <div className="space-y-2">
+          {rules.map(rule => (
+            <div key={rule.id} className="flex justify-between p-3 bg-gray-50 rounded-lg border">
+              <span>{rule.item} ⬅️ {rule.required}</span>
+              <button onClick={async () => { await deleteDoc(doc(db, "business_rules", rule.id)); fetchRules(); }} className="text-red-500 text-xs">מחק</button>
             </div>
-            <button onClick={async () => { await deleteDoc(doc(db, "business_rules", rule.id)); fetchRules(); }} 
-                    className="text-red-500 text-sm">מחק</button>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );
