@@ -1,8 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  typescript: {
-    ignoreBuildErrors: true,
-  },
+  // אם יש לך הגדרות Rewrites או Redirects שמובילות ל-404, תמחק אותן
 };
-
 export default nextConfig;
