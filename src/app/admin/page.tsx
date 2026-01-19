@@ -1,115 +1,158 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
-
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { db } from "@/lib/firebase";
-import { collection, getDocs, addDoc } from "firebase/firestore";
+import { collection, getDocs, addDoc, query, where } from "firebase/firestore";
 
-export default function AdminPage() {
-  const [team, setTeam] = useState<any[]>([]);
-  const [formMember, setFormMember] = useState({ name: '', project: '', phone: '' });
-  const [loading, setLoading] = useState(true);
+// --- קטלוג מוצרים ומשקלים (המוח של סבן) ---
+const SABAN_CATALOG = {
+  "חומרי מחצבה": [
+    { name: "חול ים (בלה)", weight: 1000, type: "בלה", crane: true },
+    { name: "סומסום (בלה)", weight: 1000, type: "בלה", crane: true },
+    { name: "טיט (בלה)", weight: 1000, type: "בלה", crane: true },
+  ],
+  "מלט ודבקים": [
+    { name: "מלט אפור", weight: 50, type: "שק", crane: false },
+    { name: "מלט לבן", weight: 25, type: "שק", crane: false },
+    { name: "פלסטומר 603", weight: 25, type: "שק", crane: false },
+    { name: "פלסטומר 255", weight: 25, type: "שק", crane: false },
+    { name: "סיקה (Sika)", weight: 20, type: "גאלון", crane: false },
+  ]
+};
 
-  const fetchData = async () => {
-    try {
-      const snap = await getDocs(collection(db, "team"));
-      setTeam(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
+export default function SabanAdvancedStudio() {
+  const [messages, setMessages] = useState<any[]>([]);
+  const [inputText, setInputText] = useState("");
+  const [isStaffView, setIsStaffView] = useState(true);
+  const [analyzedOrder, setAnalyzedOrder] = useState<any>(null);
 
+  // טעינת רכיב האקסל מה-CDN
   useEffect(() => {
-    fetchData();
+    const script = document.createElement('script');
+    script.src = "https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js";
+    script.async = true;
+    document.body.appendChild(script);
   }, []);
 
-  const addNewMember = async () => {
-    if (!formMember.name || !formMember.phone) return alert("נא למלא שם וטלפון");
-    try {
-      await addDoc(collection(db, "team"), formMember);
-      setFormMember({ name: '', project: '', phone: '' });
-      fetchData();
-      alert("לקוח/חבר צוות נוסף בהצלחה! ✅");
-    } catch (e) {
-      alert("שגיאה בהוספה");
-    }
+  // --- מנוע הניתוח של Gemini (טקסט חופשי) ---
+  const handleSendMessage = () => {
+    if (!inputText) return;
+
+    const newMsg = {
+      id: Date.now(),
+      text: inputText,
+      sender: "לקוח: נישה אדריכלות",
+      type: "public",
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    setMessages([...messages, newMsg]);
+    processAIOrder(inputText);
+    setInputText("");
+  };
+
+  const processAIOrder = (text: string) => {
+    // סימולציה של זיהוי כמויות ומוצרים (המוח של Gemini)
+    let qty = parseInt(text.match(/\d+/)?.[0] || "0");
+    let isHeavy = text.includes("בלה") || text.includes("חול") || text.includes("סומסום");
+    
+    // חוק ה-40 שקים של רמי
+    const needsCrane = isHeavy || qty > 40;
+
+    const aiResponse = {
+      id: Date.now() + 1,
+      sender: "Saban AI Brain",
+      text: `ניתוח הזמנה: ${qty} יחידות. ${needsCrane ? "⚠️ דורש מנוף (PTO)" : "✅ פריקה ידנית (עובדים בשטח)"}.`,
+      type: "internal",
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    setTimeout(() => {
+      setMessages(prev => [...prev, aiResponse]);
+      setAnalyzedOrder({ qty, needsCrane });
+    }, 1000);
   };
 
   return (
-    <main dir="rtl" style={{ padding: '20px', backgroundColor: '#f0f2f5', minHeight: '100vh', fontFamily: 'sans-serif' }}>
-      <div style={{ maxWidth: '600px', margin: '0 auto', backgroundColor: '#fff', padding: '20px', borderRadius: '15px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
-        <h2 style={{ textAlign: 'center', color: '#075E54' }}>ניהול לקוחות וצוות - ח. סבן</h2>
+    <div dir="rtl" style={styles.appContainer}>
+      {/* תפריט עליון - בורר מצבים (צוות/לקוח) */}
+      <nav style={styles.topNav}>
+        <div style={styles.userInfo}>
+          <div style={styles.avatar}>👤</div>
+          <div>
+            <h4 style={{margin:0}}>נישה אדריכלות נוף</h4>
+            <small style={{color:'#2ecc71'}}>מחובר • תצוגת {isStaffView ? 'צוות' : 'לקוח'}</small>
+          </div>
+        </div>
+        <button onClick={() => setIsStaffView(!isStaffView)} style={styles.toggleBtn}>
+          {isStaffView ? '👁️ עין עיוורת' : '👨‍💼 מצב ניהול'}
+        </button>
+      </nav>
+
+      {/* אזור הצ'אט */}
+      <section style={styles.chatArea}>
+        <div style={styles.dateDivider}>היום, 19 בינואר</div>
         
-        <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <input 
-            style={inputStyle} 
-            placeholder="שם מלא" 
-            value={formMember.name}
-            onChange={e => setFormMember({...formMember, name: e.target.value})} 
-          />
-          <input 
-            style={inputStyle} 
-            placeholder="פרויקט (למשל: תל אביב / אתר בניה)" 
-            value={formMember.project}
-            onChange={e => setFormMember({...formMember, project: e.target.value})} 
-          />
-          <input 
-            style={inputStyle} 
-            placeholder="מספר טלפון (וואטסאפ)" 
-            value={formMember.phone}
-            onChange={e => setFormMember({...formMember, phone: e.target.value})} 
-          />
-          
-          <button 
-            style={buttonStyle}
-            onClick={addNewMember}
-          >
-            צור לקוח/חבר צוות במערכת
-          </button>
-        </div>
-
-        <hr />
-
-        <div style={{ marginTop: '20px' }}>
-          <h3 style={{ fontSize: '18px', marginBottom: '10px' }}>רשימת אנשי קשר קיימים:</h3>
-          {team.map(m => (
-            <div key={m.id} style={rowStyle}>
-              <div style={{ flex: 1 }}>
-                <strong>{m.name}</strong>
-                <div style={{ fontSize: '12px', color: '#666' }}>{m.project}</div>
-              </div>
-              <button 
-                onClick={() => window.open(`https://wa.me/${m.phone}`, '_blank')}
-                style={waBtnStyle}
-              >
-                WhatsApp
-              </button>
+        {messages.map((msg) => (
+          // עין עיוורת: אם המצב הוא לקוח, אל תציג הודעות internal
+          (!isStaffView && msg.type === 'internal') ? null : (
+            <div key={msg.id} style={msg.type === 'internal' ? styles.internalMsg : styles.publicMsg}>
+              <div style={styles.msgHeader}>{msg.sender}</div>
+              <div style={styles.msgBody}>{msg.text}</div>
+              <div style={styles.msgTime}>{msg.time}</div>
             </div>
-          ))}
+          )
+        ))}
+      </section>
+
+      {/* הצגת ניתוח הזמנה לצוות בלבד */}
+      {isStaffView && analyzedOrder && (
+        <div style={styles.orderSummary}>
+          <strong>📋 טיוטת הזמנה לגליה:</strong>
+          <span>כמות: {analyzedOrder.qty} | מנוף: {analyzedOrder.needsCrane ? 'כן' : 'לא'}</span>
+          <button style={styles.galiaBtn}>שגר לגליה ב-365 🚀</button>
         </div>
-      </div>
-    </main>
+      )}
+
+      {/* Footer שליחת הודעה */}
+      <footer style={styles.inputArea}>
+        <button style={styles.plusBtn}>+</button>
+        <input 
+          style={styles.input} 
+          placeholder="כתוב הודעה ללקוח או הזמנה..." 
+          value={inputText}
+          onChange={(e) => setInputText(e.target.value)}
+          onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+        />
+        <button onClick={handleSendMessage} style={styles.sendBtn}>➤</button>
+      </footer>
+    </div>
   );
 }
 
-// Styles
-const inputStyle = { width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #ddd', boxSizing: 'border-box' as 'border-box' };
+// --- עיצוב משודרג (WhatsApp Enterprise) ---
+const styles: any = {
+  appContainer: { display: 'flex', flexDirection: 'column', height: '100vh', background: '#e5ddd5', fontFamily: 'system-ui' },
+  topNav: { background: '#075E54', color: '#fff', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.2)' },
+  userInfo: { display: 'flex', alignItems: 'center', gap: '12px' },
+  avatar: { width: '40px', height: '40px', background: '#fff', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#075E54', fontWeight: 'bold' },
+  toggleBtn: { background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', padding: '8px 12px', borderRadius: '20px', cursor: 'pointer', fontSize: '12px' },
+  
+  chatArea: { flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' },
+  dateDivider: { alignSelf: 'center', background: '#dcf8c6', padding: '5px 15px', borderRadius: '10px', fontSize: '12px', color: '#555', marginBottom: '15px' },
+  
+  publicMsg: { alignSelf: 'flex-start', background: '#fff', padding: '10px 15px', borderRadius: '15px 15px 15px 0', maxWidth: '80%', boxShadow: '0 1px 2px rgba(0,0,0,0.1)', position: 'relative' },
+  internalMsg: { alignSelf: 'center', background: '#fff3e0', border: '1px solid #ffe0b2', color: '#e65100', padding: '12px', borderRadius: '15px', maxWidth: '90%', fontSize: '14px', textAlign: 'center' },
+  
+  msgHeader: { fontSize: '11px', fontWeight: 'bold', marginBottom: '4px', color: '#075E54' },
+  msgBody: { fontSize: '15px', color: '#333' },
+  msgTime: { fontSize: '10px', color: '#999', textAlign: 'left', marginTop: '4px' },
 
-const buttonStyle = { 
-  width: '100%', padding: '15px', backgroundColor: '#25D366', color: '#fff', 
-  border: 'none', borderRadius: '10px', fontWeight: 'bold' as 'bold', 
-  cursor: 'pointer', position: 'relative' as 'relative', zIndex: 999 
-};
+  orderSummary: { background: '#fff', borderTop: '2px solid #2ecc71', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '14px' },
+  galiaBtn: { background: '#2ecc71', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' },
 
-const rowStyle = { 
-  display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-  padding: '10px', borderBottom: '1px solid #eee' 
-};
-
-const waBtnStyle = { 
-  backgroundColor: '#075E54', color: '#fff', border: 'none', 
-  padding: '8px 12px', borderRadius: '5px', cursor: 'pointer' 
+  inputArea: { background: '#f0f0f0', padding: '10px 15px', display: 'flex', alignItems: 'center', gap: '10px' },
+  input: { flex: 1, background: '#fff', border: 'none', padding: '12px 18px', borderRadius: '25px', outline: 'none' },
+  plusBtn: { fontSize: '24px', color: '#075E54', background: 'none', border: 'none', cursor: 'pointer' },
+  sendBtn: { background: '#075E54', color: '#fff', width: '45px', height: '45px', borderRadius: '50%', border: 'none', cursor: 'pointer' }
 };
