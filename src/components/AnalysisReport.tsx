@@ -5,8 +5,8 @@ export const AnalysisReport = ({ report }: { report: any }) => (
    <div className="w-32 h-6 bg-black mx-auto rounded-b-3xl mb-6"></div>
     <h1 className="text-2xl font-bold text-center mb-6 text-gray-800">דוח בקרה - ח.סבן</h1>
     
-    {report.map(item => (
-      <div key={item.ticketId} className={`mb-4 p-5 rounded-3xl shadow-sm border-r-8 ${item.isAnomalous ? 'bg-red-50 border-red-500' : 'bg-white border-green-500'}`}>
+   {report.map((item: any) => (
+  <div key={item.ticketId} className={`mb-4 p-5 rounded-3xl shadow-sm border-r-8 ${item.isAnomalous ? 'bg-red-50 border-red-500' : 'bg-white border-green-500'}`}>
         <div className="flex justify-between items-start mb-2">
           <span className="font-bold text-lg">{item.driver}</span>
           <span className="text-xs text-gray-500">{item.ticketId}</span>
