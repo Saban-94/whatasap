@@ -53,7 +53,7 @@ export default function AdminStudio() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '15px', marginTop: '20px' }}>
             {products.map(p => (
               <div key={p.id} style={pCard}>
-                <img src={p.imageUrl || 'https://via.placeholder.com/80'} style={{ width:'100%', height:'80px', objectFit:'cover', borderRadius:'8px' }} />
+                <img src={p.imageUrl || '/images/gravel.jpg/80'} style={{ width:'100%', height:'80px', objectFit:'cover', borderRadius:'8px' }} />
                 <div style={{ fontWeight:'bold', fontSize:'13px', marginTop:'5px' }}>{p.name}</div>
                 <button onClick={async () => { await deleteDoc(doc(db, "products", p.id)); fetchData(); }} style={{ border:'none', color:'red', background:'none', cursor:'pointer', fontSize:'11px' }}>מחק</button>
               </div>
@@ -75,7 +75,7 @@ export default function AdminStudio() {
           <div style={{ marginTop: '20px' }}>
             {team.map(m => (
               <div key={m.id} style={memberRow}>
-                <img src={m.profileImg || 'https://via.placeholder.com/50'} style={{ width:'50px', height:'50px', borderRadius:'50%', border:'2px solid #25D366' }} />
+                <img src={m.profileImg || '/images/gravel.jpg/50'} style={{ width:'50px', height:'50px', borderRadius:'50%', border:'2px solid #25D366' }} />
                 <div style={{ flex: 1, marginRight: '15px' }}>
                   <strong>{m.name}</strong><br/><small>{m.project}</small>
                 </div>
