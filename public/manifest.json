@@ -1,0 +1,16 @@
+{
+  "name": "ח. סבן 94 - מערכת ניהול",
+  "short_name": "סבן 94",
+  "description": "מערכת ניהול הזמנות ובקרה לוגיסטית",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#25D366",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}
