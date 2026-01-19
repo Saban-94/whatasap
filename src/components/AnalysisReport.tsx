@@ -1,7 +1,8 @@
 // src/components/AnalysisReport.tsx
+
 export const AnalysisReport = ({ report }: { report: any }) => (
   <div className="max-w-md mx-auto bg-gray-50 p-4 rounded-[40px] shadow-2xl border-[8px] border-black min-h-[600px] font-sans rtl">
-    <div className="w-32 h-6 bg-black mx-auto rounded-b-3xl mb-6"></div>
+   <div className="w-32 h-6 bg-black mx-auto rounded-b-3xl mb-6"></div>
     <h1 className="text-2xl font-bold text-center mb-6 text-gray-800">דוח בקרה - ח.סבן</h1>
     
     {report.map(item => (
