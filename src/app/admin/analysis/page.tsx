@@ -1,15 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
-import * as XLSX from 'xlsx';
 
-export default function SabanBrainAnalysis() {
+export default function SabanLogicAnalyzer() {
   const [analyzedDrivers, setAnalyzedDrivers] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // פונקציה לקריאת אקסל ללא ג'יבריש
+  // טעינת ספריית האקסל באופן דינמי ללא טרמינל
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = "https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js";
+    script.async = true;
+    document.body.appendChild(script);
+  }, []);
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -19,6 +25,8 @@ export default function SabanBrainAnalysis() {
 
     reader.onload = async (event) => {
       try {
+        // @ts-ignore - XLSX נטען מה-CDN
+        const XLSX = window.XLSX;
         const data = new Uint8Array(event.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -26,7 +34,8 @@ export default function SabanBrainAnalysis() {
 
         await processLogistics(jsonData);
       } catch (err) {
-        alert("שגיאה בפענוח הקובץ - וודא שזה אקסל תקין");
+        console.error(err);
+        alert("שגיאה בפענוח. וודא שזה קובץ אקסל תקין.");
       } finally {
         setIsProcessing(false);
       }
@@ -41,24 +50,24 @@ export default function SabanBrainAnalysis() {
     const driverMap: any = {};
 
     rows.forEach((row, index) => {
-      if (index === 0 || !row[0]) return; // דילוג על כותרות
+      if (index === 0 || !row[0]) return;
 
-      const vId = row[0]?.toString(); // מספר משאית
-      const time = row[1]?.toString(); // שעת פעילות
-      const location = row[2]?.toString(); // מיקום
-      const duration = parseInt(row[4]) || 0; // זמן מנוף PTO
+      const vId = row[0]?.toString(); 
+      const time = row[1]?.toString(); 
+      const location = row[2]?.toString(); 
+      const duration = parseInt(row[4]) || 0; 
 
       if (!driverMap[vId]) {
-        driverMap[vId] = { id: vId, logs: [], efficiency: 100, loss: 0 };
+        driverMap[vId] = { id: vId, logs: [], score: 100, loss: 0 };
       }
 
-      const rule = rules.find(r => location.includes(r.item));
+      const rule = rules.find(r => location?.includes(r.item));
       const limit = rule?.maxTime || 30;
       const isAnomaly = duration > limit;
 
       if (isAnomaly) {
-        driverMap[vId].efficiency -= 12;
-        driverMap[vId].loss += (duration - limit) * 8.5; // חישוב הפסד משוער
+        driverMap[vId].score -= 10;
+        driverMap[vId].loss += (duration - limit) * 8.5;
       }
 
       driverMap[vId].logs.push({ time, location, duration, isAnomaly });
@@ -71,11 +80,11 @@ export default function SabanBrainAnalysis() {
     <main dir="rtl" style={pageStyle}>
       <header style={headerStyle}>
         <div>
-          <h1 style={titleStyle}>SABAN <span style={{color:'#25D366'}}>LOGISTICS</span> BRAIN</h1>
-          <p style={{color:'#666', margin:0}}>ניתוח חריגות והצלבת נתוני איתורן בזמן אמת</p>
+          <h1 style={logoStyle}>SABAN <span style={{color:'#25D366'}}>AI</span> LOGISTICS</h1>
+          <p style={{color:'#666', margin:0}}>ניתוח חריגות והצלבת נתוני איתורן (גרסת ענן)</p>
         </div>
         <label style={uploadBtn}>
-          {isProcessing ? 'מעבד נתונים...' : '📂 העלה דוח אקסל'}
+          {isProcessing ? 'מעבד...' : '📂 העלאת דוח אקסל'}
           <input type="file" accept=".xlsx, .xls" onChange={handleFileUpload} style={{display:'none'}} />
         </label>
       </header>
@@ -85,36 +94,32 @@ export default function SabanBrainAnalysis() {
           <div key={driver.id} style={driverCard}>
             <div style={cardTop}>
               <h2 style={{margin:0, fontSize:'1.4rem'}}>🚚 משאית: {driver.id}</h2>
-              <div style={scoreStyle(driver.efficiency)}>
-                יעילות: {driver.efficiency < 0 ? 0 : driver.efficiency}%
-              </div>
+              <div style={scoreBadge(driver.score)}>יעילות: {driver.score}%</div>
             </div>
 
-            <div style={statsRow}>
-              <div style={statBox}>
-                <small>הפסד כספי משוער</small>
-                <div style={{color: driver.loss > 0 ? '#d32f2f' : '#2ecc71', fontWeight:'900', fontSize:'1.3rem'}}>
-                   ₪{driver.loss.toFixed(0)}
-                </div>
+            <div style={statsBox}>
+              <div style={statItem}>
+                <small>הפסד משוער</small>
+                <div style={lossStyle(driver.loss)}>₪{driver.loss.toFixed(0)}</div>
               </div>
-              <div style={statBox}>
-                <small>סטטוס ביצוע</small>
-                <div style={{fontWeight:'bold'}}>{driver.efficiency > 75 ? '🟢 תקין' : '🔴 חריג'}</div>
+              <div style={statItem}>
+                <small>סטטוס</small>
+                <div style={{fontWeight:'bold'}}>{driver.score > 75 ? '🟢 תקין' : '🔴 חריג'}</div>
               </div>
             </div>
 
             <div style={logTable}>
               {driver.logs.map((log: any, i: number) => (
                 <div key={i} style={rowStyle(log.isAnomaly)}>
-                  <span style={timeStyle}>{log.time}</span>
-                  <span style={{flex:1}}>{log.location}</span>
-                  <span style={{fontWeight:'700'}}>{log.duration} דק'</span>
+                  <span style={timeText}>{log.time}</span>
+                  <span style={{flex:1, marginRight:'10px'}}>{log.location}</span>
+                  <span style={{fontWeight:'bold'}}>{log.duration} דק'</span>
                 </div>
               ))}
             </div>
 
-            <button style={waBtn} onClick={() => window.open(`https://wa.me/97250XXXXXXX?text=דוח חריגות משאית ${driver.id}`)}>
-              דווח חריגות לראמי
+            <button style={waBtn} onClick={() => window.open(`https://wa.me/97250XXXXXXX?text=נמצאו חריגות למשאית ${driver.id}`)}>
+              דווח לראמי בוואטסאפ 📱
             </button>
           </div>
         ))}
@@ -123,21 +128,19 @@ export default function SabanBrainAnalysis() {
   );
 }
 
-// --- Styles ---
-const pageStyle: any = { background: '#f0f2f5', minHeight: '100vh', padding: '40px 20px', fontFamily: "'Heebo', sans-serif" };
-const headerStyle: any = { background: '#fff', padding: '25px 40px', borderRadius: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', marginBottom: '40px' };
-const titleStyle: any = { margin: 0, fontSize: '1.8rem', fontWeight: '900', letterSpacing: '-1px' };
-const uploadBtn: any = { background: '#075E54', color: '#fff', padding: '15px 30px', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem', transition: '0.3s' };
-
-const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '30px' };
-const driverCard: any = { background: '#fff', borderRadius: '25px', padding: '30px', boxShadow: '0 15px 35px rgba(0,0,0,0.05)', border: '1px solid #eef0f2' };
-const cardTop = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' };
-const scoreStyle = (s: number) => ({ background: s > 75 ? '#e8f5e9' : '#ffebee', color: s > 75 ? '#2e7d32' : '#d32f2f', padding: '8px 15px', borderRadius: '12px', fontWeight: 'bold' });
-
-const statsRow = { display: 'flex', gap: '15px', marginBottom: '25px' };
-const statBox = { flex: 1, background: '#f8fafc', padding: '15px', borderRadius: '15px', textAlign: 'center' as 'center', border: '1px solid #f1f5f9' };
-
-const logTable = { maxHeight: '200px', overflowY: 'auto' as 'auto', borderRadius: '15px', border: '1px solid #f1f5f9', padding: '10px' };
-const rowStyle = (anomaly: boolean) => ({ display: 'flex', gap: '10px', padding: '12px', borderRadius: '10px', marginBottom: '5px', background: anomaly ? '#fff5f5' : 'transparent', color: anomaly ? '#d32f2f' : '#475569', fontSize: '14px' });
-const timeStyle = { fontSize: '12px', color: '#94a3b8', width: '60px' };
-const waBtn: any = { width: '100%', marginTop: '25px', padding: '15px', background: '#25D366', color: '#fff', border: 'none', borderRadius: '15px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem' };
+// --- Styles (Clean & Light) ---
+const pageStyle: any = { background: '#f8f9fa', minHeight: '100vh', padding: '30px', fontFamily: 'system-ui, sans-serif' };
+const headerStyle: any = { background: '#fff', padding: '25px 40px', borderRadius: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', marginBottom: '30px' };
+const logoStyle = { margin: 0, fontWeight: 900, fontSize: '1.8rem', letterSpacing: '-1px' };
+const uploadBtn: any = { background: '#075E54', color: '#fff', padding: '15px 30px', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold' };
+const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '25px' };
+const driverCard: any = { background: '#fff', borderRadius: '25px', padding: '25px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', border: '1px solid #edf2f7' };
+const cardTop = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' };
+const scoreBadge = (s: number) => ({ background: s > 75 ? '#e8f5e9' : '#ffebee', color: s > 75 ? '#2e7d32' : '#d32f2f', padding: '6px 15px', borderRadius: '10px', fontWeight: 'bold' });
+const statsBox = { display: 'flex', background: '#f1f3f5', borderRadius: '15px', padding: '15px', marginBottom: '20px' };
+const statItem = { flex: 1, textAlign: 'center' as 'center' };
+const lossStyle = (l: number) => ({ color: l > 0 ? '#d32f2f' : '#2ecc71', fontWeight: 900, fontSize: '1.4rem' });
+const logTable = { maxHeight: '200px', overflowY: 'auto' as 'auto', padding: '5px' };
+const rowStyle = (anom: boolean) => ({ display: 'flex', padding: '10px', borderRadius: '10px', marginBottom: '5px', background: anom ? '#fff5f5' : '#f8f9fa', color: anom ? '#d32f2f' : '#333', fontSize: '14px' });
+const timeText = { fontSize: '12px', color: '#999', width: '50px' };
+const waBtn: any = { width: '100%', marginTop: '20px', padding: '15px', background: '#25D366', color: '#fff', border: 'none', borderRadius: '15px', fontWeight: 'bold', cursor: 'pointer' };
