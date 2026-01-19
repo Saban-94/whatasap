@@ -1,47 +1,60 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
 
-export default function SabanAIProcessor() {
-  const [rawData, setRawData] = useState('');
+export default function SabanAdvancedAnalysis() {
   const [analyzedDrivers, setAnalyzedDrivers] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // פונקציית פענוח וניתוח נתוני אמת
-  const processLogisticsData = async () => {
+  // פונקציה לטיפול בהעלאת קובץ
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
     setIsProcessing(true);
-    
-    // 1. שליפת חוקי העסק מ-Firebase להצלבה
+    const reader = new FileReader();
+
+    reader.onload = async (event) => {
+      const content = event.target?.result as string;
+      await processData(content);
+    };
+
+    reader.readAsText(file); // קורא קבצי CSV או טקסט מאקסל
+  };
+
+  const processData = async (data: string) => {
     const rulesSnap = await getDocs(collection(db, "business_rules"));
     const rules = rulesSnap.docs.map(d => d.data());
 
-    // 2. פענוח הטקסט הגולמי מהקובץ (Parsing)
-    // אנחנו מניחים פורמט של איתורן: רכב, שעה, מיקום, PTO
-    const rows = rawData.split('\n').filter(row => row.trim() !== '');
-    
+    const rows = data.split('\n').filter(row => row.trim() !== '');
     const driverStats: any = {};
 
-    rows.forEach(row => {
-      const [vId, time, location, ptoStatus, duration] = row.split('\t'); // הפרדה לפי טאבים/אקסל
+    rows.forEach((row, index) => {
+      if (index === 0) return; // דילוג על כותרות הטבלה
+      
+      const columns = row.split(/,|\t/); // תמיכה ב-CSV או העתקה מאקסל
+      const [vId, time, location, ptoStatus, duration] = columns;
+
+      if (!vId) return;
+
       if (!driverStats[vId]) {
-        driverStats[vId] = { id: vId, actions: [], totalAnomalies: 0, efficiency: 100 };
+        driverStats[vId] = { id: vId, actions: [], score: 100, costLoss: 0 };
       }
 
-      // הצלבה מול חוקי העסק
-      const rule = rules.find(r => location.includes(r.item) || r.item.includes("כללי"));
-      const isAnomaly = parseInt(duration) > (rule?.maxTime || 30);
-      
+      const durInt = parseInt(duration) || 0;
+      const rule = rules.find(r => location?.includes(r.item));
+      const isAnomaly = durInt > (rule?.maxTime || 30);
+
       if (isAnomaly) {
-        driverStats[vId].totalAnomalies++;
-        driverStats[vId].efficiency -= 10;
+        driverStats[vId].score -= 15;
+        driverStats[vId].costLoss += (durInt - 30) * 8; // חישוב הפסד משוער ב₪
       }
 
       driverStats[vId].actions.push({
-        time, location, ptoStatus, duration, 
-        status: isAnomaly ? 'חריגה' : 'תקין',
-        costImpact: isAnomaly ? (parseInt(duration) * 5) : 0 // חישוב הפסד משוער
+        time, location, durInt, isAnomaly,
+        status: isAnomaly ? 'חריגת זמן' : 'תקין'
       });
     });
 
@@ -50,50 +63,56 @@ export default function SabanAIProcessor() {
   };
 
   return (
-    <main dir="rtl" style={pageStyle}>
-      {/* אזור העלאת קובץ */}
-      <section style={uploadSection}>
-        <h2 style={titleStyle}>🧩 מנתח נתוני איתורן & Gemini AI</h2>
-        <textarea 
-          style={inputArea} 
-          placeholder="הדבק כאן את נתוני דוח התנועות הגולמי מאיתורן..."
-          value={rawData}
-          onChange={(e) => setRawData(e.target.value)}
-        />
-        <button style={processBtn} onClick={processLogisticsData} disabled={isProcessing}>
-          {isProcessing ? 'Gemini מעבד נתונים...' : 'הרץ ניתוח עומק לוגיסטי'}
-        </button>
-      </section>
+    <main dir="rtl" style={containerStyle}>
+      {/* Header & Upload */}
+      <header style={headerCard}>
+        <div style={{textAlign:'right'}}>
+          <h1 style={{margin:0, color:'#075E54'}}>המוח של סבן - ניתוח ביצועים</h1>
+          <p style={{color:'#666'}}>העלאת דוח איתורן והצלבה מול חוקי עסק</p>
+        </div>
+        
+        <div style={uploadContainer}>
+          <label htmlFor="file-upload" style={uploadBtn}>
+            📁 בחר קובץ אקסל / CSV
+          </label>
+          <input id="file-upload" type="file" accept=".csv, .txt, .xlsx" onChange={handleFileUpload} style={{display:'none'}} />
+        </div>
+      </header>
 
-      {/* Dashboard נהגים */}
-      <div style={gridContainer}>
+      {isProcessing && <div style={loaderStyle}>Gemini מנתח את נתוני הנהגים...</div>}
+
+      {/* Drivers Results Grid */}
+      <div style={gridStyle}>
         {analyzedDrivers.map(driver => (
           <div key={driver.id} style={driverCard}>
-            <div style={cardHeader}>
-              <span style={vIdBadge}>🚚 {driver.id}</span>
-              <span style={effScore(driver.efficiency)}>יעילות: {driver.efficiency}%</span>
+            <div style={driverHeader}>
+              <h2 style={{margin:0}}>משאית: {driver.id}</h2>
+              <div style={scoreBadge(driver.score)}>יעילות: {driver.score}%</div>
             </div>
 
-            <div style={statsRow}>
-              <div style={statBox}><span>חריגות</span><strong>{driver.totalAnomalies}</strong></div>
-              <div style={statBox}><span>סטטוס</span><strong style={{color: driver.efficiency > 80 ? '#2ecc71' : '#e74c3c'}}>
-                {driver.efficiency > 80 ? 'רווחי' : 'הפסד'}
-              </strong></div>
+            <div style={statsBox}>
+              <div style={statItem}>
+                <small>הפסד משוער</small>
+                <div style={{color:'#d32f2f', fontWeight:'bold'}}>₪ {driver.costLoss}</div>
+              </div>
+              <div style={statItem}>
+                <small>סטטוס יומי</small>
+                <div style={{color: driver.score > 70 ? '#2e7d32' : '#d32f2f'}}>{driver.score > 70 ? 'רווחי' : 'דורש בדיקה'}</div>
+              </div>
             </div>
 
-            <div style={logTable}>
-              {driver.actions.map((action: any, idx: number) => (
-                <div key={idx} style={logRow(action.status === 'חריגה')}>
-                  <span>{action.time}</span>
-                  <span style={{flex: 1, marginRight: '10px'}}>{action.location}</span>
-                  <span>{action.duration} דק'</span>
-                  <span style={statusBadge(action.status)}>{action.status}</span>
+            <div style={logContainer}>
+              {driver.actions.map((a: any, i: number) => (
+                <div key={i} style={logRow(a.isAnomaly)}>
+                  <span>{a.time}</span>
+                  <span style={{flex:1, marginRight:'10px'}}>{a.location}</span>
+                  <span style={{fontWeight:'bold'}}>{a.durInt} דק'</span>
                 </div>
               ))}
             </div>
 
-            <button style={waReportBtn} onClick={() => window.open(`https://wa.me/97250XXXXXXX?text=דוח חריגות למשאית ${driver.id}`)}>
-              שלח דוח לנהג / ראמי
+            <button style={reportBtn} onClick={() => window.open(`https://wa.me/97250XXXXXXX?text=דוח חריגות משאית ${driver.id}`)}>
+              דווח לראמי / נהג
             </button>
           </div>
         ))}
@@ -102,31 +121,39 @@ export default function SabanAIProcessor() {
   );
 }
 
-// --- עיצוב מקצועי (Saban UI/UX) ---
-const pageStyle = { background: '#1a1c1e', minHeight: '100vh', padding: '30px', color: '#fff', fontFamily: 'system-ui' };
-const uploadSection = { background: '#2c2e33', padding: '25px', borderRadius: '15px', marginBottom: '30px', border: '1px solid #3e4249' };
-const titleStyle = { margin: '0 0 20px 0', fontSize: '24px', color: '#00d1b2' };
-const inputArea = { width: '100%', height: '120px', background: '#1a1c1e', border: '1px solid #444', color: '#00d1b2', padding: '15px', borderRadius: '10px', fontSize: '14px' };
-const processBtn = { marginTop: '15px', width: '100%', padding: '18px', background: '#00d1b2', color: '#1a1c1e', border: 'none', borderRadius: '10px', fontWeight: 'bold' as 'bold', cursor: 'pointer', fontSize: '16px' };
+// --- Styles (Mixed Light Design) ---
+const containerStyle: any = { background: '#f8f9fa', minHeight: '100vh', padding: '30px', fontFamily: 'sans-serif' };
+const headerCard: any = { 
+  background: '#fff', padding: '30px', borderRadius: '20px', display: 'flex', 
+  justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', marginBottom: '30px' 
+};
+const uploadContainer: any = { textAlign: 'center' };
+const uploadBtn: any = { 
+  background: '#075E54', color: '#fff', padding: '12px 25px', borderRadius: '12px', 
+  cursor: 'pointer', fontWeight: 'bold', display: 'inline-block', transition: '0.3s' 
+};
 
-const gridContainer = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' };
-const driverCard = { background: '#2c2e33', borderRadius: '15px', padding: '20px', border: '1px solid #3e4249', boxShadow: '0 10px 20px rgba(0,0,0,0.2)' };
-const cardHeader = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' };
-const vIdBadge = { background: '#00d1b2', color: '#1a1c1e', padding: '5px 12px', borderRadius: '20px', fontWeight: 'bold' };
-const effScore = (val: number) => ({ color: val > 80 ? '#2ecc71' : '#e74c3c', fontWeight: 'bold' });
+const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '25px' };
+const driverCard: any = { background: '#fff', borderRadius: '20px', padding: '25px', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', border: '1px solid #edf2f7' };
+const driverHeader = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' };
+const scoreBadge = (score: number) => ({
+  background: score > 70 ? '#e8f5e9' : '#ffebee', color: score > 70 ? '#2e7d32' : '#d32f2f',
+  padding: '6px 15px', borderRadius: '10px', fontWeight: 'bold', fontSize: '14px'
+});
 
-const statsRow = { display: 'flex', gap: '15px', marginBottom: '20px' };
-const statBox = { flex: 1, background: '#1a1c1e', padding: '10px', borderRadius: '10px', textAlign: 'center' as 'center' };
+const statsBox = { display: 'flex', background: '#f1f3f5', borderRadius: '15px', padding: '15px', marginBottom: '20px' };
+const statItem = { flex: 1, textAlign: 'center' as 'center' };
 
-const logTable = { maxHeight: '200px', overflowY: 'auto' as 'auto', background: '#1a1c1e', borderRadius: '10px', padding: '10px' };
+const logContainer = { maxHeight: '180px', overflowY: 'auto' as 'auto', padding: '5px' };
 const logRow = (isAnomaly: boolean) => ({
-  display: 'flex', justifyContent: 'space-between', padding: '8px 5px', fontSize: '13px',
-  borderBottom: '1px solid #333', color: isAnomaly ? '#e74c3c' : '#bbb'
+  display: 'flex', padding: '10px', borderRadius: '8px', marginBottom: '5px',
+  background: isAnomaly ? '#fff5f5' : '#f8f9fa',
+  borderRight: isAnomaly ? '4px solid #f8d7da' : '4px solid #e9ecef',
+  fontSize: '13px', color: isAnomaly ? '#d32f2f' : '#495057'
 });
 
-const statusBadge = (status: string) => ({
-  padding: '2px 6px', borderRadius: '4px', fontSize: '11px', 
-  background: status === 'חריגה' ? '#e74c3c' : '#2ecc71', color: '#fff', marginLeft: '5px'
-});
-
-const waReportBtn = { width: '100%', marginTop: '15px', padding: '12px', background: 'transparent', border: '1px solid #25D366', color: '#25D366', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' };
+const reportBtn = { 
+  width: '100%', marginTop: '20px', padding: '12px', background: '#25D366', 
+  color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' 
+};
+const loaderStyle = { textAlign: 'center' as 'center', padding: '20px', color: '#075E54', fontWeight: 'bold' };
