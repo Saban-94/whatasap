@@ -96,7 +96,28 @@ ${link}
     </main>
   );
 }
-
+<button 
+  style={{
+    ...magicBtn, 
+    cursor: 'pointer', 
+    position: 'relative', 
+    zIndex: 999, 
+    pointerEvents: 'auto'
+  }} 
+  onClick={async (e) => {
+    e.preventDefault(); // מונע מהדף להתרענן או לקפוץ
+    try {
+      console.log("Adding member...");
+      await addDoc(collection(db, "team"), formMember);
+      await fetchData(); // וודא שזה await
+      alert("לקוח נוסף!");
+    } catch (err) {
+      console.error("שגיאה בהוספה:", err);
+    }
+  }}
+>
+  צור לקוח במערכת
+</button>
 // עיצובים
 const containerStyle = { background: '#f0f2f5', minHeight: '100vh', fontFamily: 'sans-serif', padding: '20px' };
 const headerStyle = { background: '#075E54', color: '#fff', padding: '20px', borderRadius: '15px', textAlign: 'center' as 'center', marginBottom: '20px' };
