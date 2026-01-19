@@ -30,22 +30,29 @@ export default function BusinessRules() {
 
   useEffect(() => { fetchRules(); }, []);
 
-  const addRule = async () => {
-    if (!newRule.item || !newRule.required) return alert("נא למלא את כל השדות");
+const addRule = async () => {
+  if (!newRule.item || !newRule.required) return alert("נא למלא שדות");
+  
+  try {
+    console.log("🚀 שולח... בודק חיבור ל-DB");
     
-    try {
-      console.log("🚀 שולח חוק חדש...");
-      // שימוש ב-AddDoc עם טיפול בשגיאה
-      await addDoc(collection(db, "business_rules"), newRule);
-      
-      setNewRule({ item: '', required: '', maxTime: '' });
-      await fetchRules();
-      alert("✅ החוק נוסף בהצלחה!");
-    } catch (e: any) {
-      console.error("❌ שגיאה בהוספה:", e);
-      alert("שגיאת Firebase: " + e.message);
-    }
-  };
+    // ניסיון כתיבה עם Timeout ידני
+    const addPromise = addDoc(collection(db, "business_rules"), newRule);
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error("Firebase Timeout - השרת לא מגיב")), 8000)
+    );
+
+    await Promise.race([addPromise, timeoutPromise]);
+
+    console.log("✅ נשמר!");
+    alert("החוק נשמר במערכת!");
+    setNewRule({ item: '', required: '', maxTime: '' });
+    fetchRules();
+  } catch (e: any) {
+    console.error("❌ טעות קריטית:", e.message);
+    alert("לא מצליח לשמור: " + (e.message.includes("permissions") ? "חסימת הרשאות ב-Firebase" : e.message));
+  }
+};
 
   if (loading) return (
     <div style={{textAlign:'center', padding:'50px'}}>
