@@ -12,111 +12,71 @@ export default function BusinessRules() {
   const [loading, setLoading] = useState(true);
 
   const fetchRules = async () => {
+    console.log("🔍 מנסה למשוך חוקים...");
     try {
+      // הוספת מנגנון בטיחות: אם אחרי 5 שניות אין תשובה, שחרר טעינה
+      const timeout = setTimeout(() => setLoading(false), 5000);
+      
       const snap = await getDocs(collection(db, "business_rules"));
+      clearTimeout(timeout);
+      
       setRules(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     } catch (e) {
-      console.error("Error fetching rules:", e);
+      console.error("❌ שגיאת טעינה:", e);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchRules();
-  }, []);
+  useEffect(() => { fetchRules(); }, []);
 
-const addRule = async () => {
-  if (!newRule.item || !newRule.required) return alert("נא למלא את כל השדות");
-  
-  try {
-    console.log("🚀 מנסה לשלוח ל-Firebase:", newRule);
+  const addRule = async () => {
+    if (!newRule.item || !newRule.required) return alert("נא למלא את כל השדות");
     
-    // הוספת Timeout כדי שלא יחכה לנצח
-    const docRef = await addDoc(collection(db, "business_rules"), newRule);
-    
-    console.log("✅ נשמר בהצלחה! ID:", docRef.id);
-    setNewRule({ item: '', required: '', maxTime: '' });
-    await fetchRules(); // ריענון הרשימה
-    alert("החוק נוסף בהצלחה!");
-    
-  } catch (e: any) {
-    console.error("❌ שגיאת Firebase מפורטת:", e);
-    alert("שגיאה בשמירה: " + e.message);
-  }
-};
-
-  const deleteRule = async (id: string) => {
-    await deleteDoc(doc(db, "business_rules", id));
-    fetchRules();
+    try {
+      console.log("🚀 שולח חוק חדש...");
+      // שימוש ב-AddDoc עם טיפול בשגיאה
+      await addDoc(collection(db, "business_rules"), newRule);
+      
+      setNewRule({ item: '', required: '', maxTime: '' });
+      await fetchRules();
+      alert("✅ החוק נוסף בהצלחה!");
+    } catch (e: any) {
+      console.error("❌ שגיאה בהוספה:", e);
+      alert("שגיאת Firebase: " + e.message);
+    }
   };
 
-  if (loading) return <div style={{textAlign:'center', padding:'50px'}}>טוען חוקי עסק...</div>;
+  if (loading) return (
+    <div style={{textAlign:'center', padding:'50px'}}>
+      <p>טוען חוקי עסק מול Firebase...</p>
+      <button onClick={() => setLoading(false)} style={{color:'blue', textDecoration:'underline', background:'none', border:'none', cursor:'pointer'}}>
+        לחיצה לשחרור טעינה ידני
+      </button>
+    </div>
+  );
 
   return (
-    <main dir="rtl" style={containerStyle}>
-      <header style={headerStyle}>
-        <h2>🧠 הגדרות המוח של סבן</h2>
-        <p>כאן מגדירים ל-Gemini מה נחשב חריגה</p>
-      </header>
+    <main dir="rtl" style={{padding:'20px', fontFamily:'sans-serif'}}>
+      <h2 style={{color:'#075E54'}}>🧠 המוח של סבן - הגדרת חוקים</h2>
+      
+      <div style={{background:'#fff', padding:'20px', borderRadius:'10px', boxShadow:'0 2px 10px rgba(0,0,0,0.1)'}}>
+        <input style={iS} placeholder="שם המוצר" value={newRule.item} onChange={e=>setNewRule({...newRule, item:e.target.value})} />
+        <input style={iS} placeholder="ציוד חובה" value={newRule.required} onChange={e=>setNewRule({...newRule, required:e.target.value})} />
+        <input style={iS} placeholder="זמן מקסימלי (דקות)" type="number" value={newRule.maxTime} onChange={e=>setNewRule({...newRule, maxTime:e.target.value})} />
+        <button onClick={addRule} style={btnStyle}>הוסף חוק</button>
+      </div>
 
-      <section style={cardStyle}>
-        <h3>הוספת חוק לוגיסטי חדש</h3>
-        <div style={formStyle}>
-          <input 
-            style={iS} 
-            placeholder="שם המוצר (למשל: חול / מכולה)" 
-            value={newRule.item} 
-            onChange={e => setNewRule({...newRule, item: e.target.value})} 
-          />
-          <input 
-            style={iS} 
-            placeholder="ציוד חובה (למשל: מנוף 15)" 
-            value={newRule.required} 
-            onChange={e => setNewRule({...newRule, required: e.target.value})} 
-          />
-          <input 
-            style={iS} 
-            placeholder="זמן פריקה מקסימלי (בדקות)" 
-            type="number"
-            value={newRule.maxTime} 
-            onChange={e => setNewRule({...newRule, maxTime: e.target.value})} 
-          />
-          <button 
-            style={addBtnStyle} 
-            onClick={addRule}
-          >
-            הוסף חוק למערכת
-          </button>
-        </div>
-      </section>
-
-      <section style={{marginTop: '20px'}}>
-        <h3>חוקים פעילים</h3>
+      <div style={{marginTop:'20px'}}>
         {rules.map(r => (
-          <div key={r.id} style={ruleRow}>
-            <span><b>{r.item}</b> מחייב <b>{r.required}</b> (עד {r.maxTime} דק')</span>
-            <button onClick={() => deleteRule(r.id)} style={delBtn}>מחק</button>
+          <div key={r.id} style={{padding:'10px', borderBottom:'1px solid #ddd', display:'flex', justifyContent:'space-between'}}>
+            <span>{r.item} - {r.required} ({r.maxTime} דק')</span>
           </div>
         ))}
-      </section>
+      </div>
     </main>
   );
 }
 
-// Styles
-const containerStyle: any = { padding: '20px', backgroundColor: '#f4f7f6', minHeight: '100vh', fontFamily: 'sans-serif' };
-const headerStyle: any = { textAlign: 'center', marginBottom: '20px', color: '#075E54' };
-const cardStyle: any = { background: '#fff', padding: '20px', borderRadius: '15px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' };
-const formStyle = { display: 'flex', flexDirection: 'column' as 'column', gap: '10px' };
-const iS = { padding: '12px', borderRadius: '8px', border: '1px solid #ddd' };
-const addBtnStyle = { 
-  padding: '15px', background: '#075E54', color: '#fff', border: 'none', 
-  borderRadius: '8px', fontWeight: 'bold' as 'bold', cursor: 'pointer',
-  position: 'relative' as 'relative', zIndex: 10, pointerEvents: 'auto' as 'auto'
-};
-const ruleRow = { 
-  display: 'flex', justifyContent: 'space-between', background: '#fff', 
-  padding: '15px', borderRadius: '10px', marginBottom: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' 
-};
-const delBtn = { background: 'none', border: 'none', color: 'red', cursor: 'pointer' };
+const iS = { width:'100%', padding:'10px', marginBottom:'10px', borderRadius:'5px', border:'1px solid #ccc', boxSizing:'border-box' as 'border-box' };
+const btnStyle = { width:'100%', padding:'15px', background:'#25D366', color:'#fff', border:'none', borderRadius:'5px', fontWeight:'bold' as 'bold', cursor:'pointer' };
