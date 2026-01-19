@@ -71,29 +71,28 @@ export default function AdminStudio() {
             <input placeholder="שם פרויקט" style={iS} onChange={e => setFormMember({...formMember, project: e.target.value})} />
             <input placeholder="לינק לתמונת פרופיל" style={iS} onChange={e => setFormMember({...formMember, profileImg: e.target.value})} />
           </div>
-          <button style={magicBtn} onClick={async () => { await addDoc(collection(db, "team"), formMember); fetchData(); alert("לקוח נוסף!"); }}>צור לקוח במערכת</button>
-          <div style={{ marginTop: '20px' }}>
-            {team.map(m => (
-              <div key={m.id} style={memberRow}>
-                <img src={m.profileImg || '/images/gravel.jpg/50'} style={{ width:'50px', height:'50px', borderRadius:'50%', border:'2px solid #25D366' }} />
-                <div style={{ flex: 1, marginRight: '15px' }}>
-                  <strong>{m.name}</strong><br/><small>{m.project}</small>
-                </div>
-                <button onClick={() => sendMagicLink(m)} style={waBtn}>שלח לינק קסם 💬</button>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {activeTab === 'internal' && (
-        <section style={cardStyle}>
-          <h3 style={titleStyle}>קשר סמוי (ראמי - נתנאל - גליה)</h3>
-          <div style={{ background: '#fff9c4', padding: '15px', borderRadius: '10px', marginBottom: '15px' }}>
-            💡 השתמשו בערוץ זה לתיאום מלאי והזמנות חסרות מבלי שהלקוח יראה.
-          </div>
-          <textarea placeholder="הודעה דחופה לצוות..." style={{ ...iS, height:'120px' }}></textarea>
-          <button style={{ ...saveBtn, background: '#fb8c00' }}>שלח הודעה פנימית</button>
+<button 
+  style={{
+    ...magicBtn, 
+    cursor: 'pointer', 
+    position: 'relative', 
+    zIndex: 999, 
+    pointerEvents: 'auto'
+  }} 
+  onClick={async (e) => {
+    e.preventDefault(); // מונע מהדף להתרענן או לקפוץ
+    try {
+      console.log("Adding member...");
+      await addDoc(collection(db, "team"), formMember);
+      await fetchData(); // וודא שזה await
+      alert("לקוח נוסף!");
+    } catch (err) {
+      console.error("שגיאה בהוספה:", err);
+    }
+  }}
+>
+  צור לקוח במערכת
+</button>
         </section>
       )}
     </main>
