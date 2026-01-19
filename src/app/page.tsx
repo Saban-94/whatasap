@@ -1,6 +1,6 @@
 'use client';
 export const dynamic = 'force-dynamic';
-import { db } from "./firebase";
+import { db } from "@/lib/firebase";
 import { collection, addDoc, getDocs } from "firebase/firestore";
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
