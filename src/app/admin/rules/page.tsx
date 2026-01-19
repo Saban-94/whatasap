@@ -26,19 +26,25 @@ export default function BusinessRules() {
     fetchRules();
   }, []);
 
-  const addRule = async () => {
-    if (!newRule.item || !newRule.required) return alert("נא למלא את כל השדות");
-    try {
-      console.log("Adding rule...");
-      await addDoc(collection(db, "business_rules"), newRule);
-      setNewRule({ item: '', required: '', maxTime: '' });
-      fetchRules();
-      alert("החוק נוסף בהצלחה! ה-Brain מעודכן ✅");
-    } catch (e) {
-      alert("שגיאה בהוספת החוק");
-      console.error(e);
-    }
-  };
+const addRule = async () => {
+  if (!newRule.item || !newRule.required) return alert("נא למלא את כל השדות");
+  
+  try {
+    console.log("🚀 מנסה לשלוח ל-Firebase:", newRule);
+    
+    // הוספת Timeout כדי שלא יחכה לנצח
+    const docRef = await addDoc(collection(db, "business_rules"), newRule);
+    
+    console.log("✅ נשמר בהצלחה! ID:", docRef.id);
+    setNewRule({ item: '', required: '', maxTime: '' });
+    await fetchRules(); // ריענון הרשימה
+    alert("החוק נוסף בהצלחה!");
+    
+  } catch (e: any) {
+    console.error("❌ שגיאת Firebase מפורטת:", e);
+    alert("שגיאה בשמירה: " + e.message);
+  }
+};
 
   const deleteRule = async (id: string) => {
     await deleteDoc(doc(db, "business_rules", id));
