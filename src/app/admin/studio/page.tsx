@@ -5,32 +5,28 @@ export const dynamic = 'force-dynamic';
 import { useState, useEffect } from 'react';
 import { db } from "@/lib/firebase";
 import { 
-  collection, 
-  getDocs, 
-  addDoc, 
-  query, 
-  orderBy, 
-  serverTimestamp 
+  collection, getDocs, addDoc, query, orderBy, serverTimestamp 
 } from "firebase/firestore";
 
-export default function SabanStudio() {
-  const [activeTab, setActiveTab] = useState('products');
+export default function SabanStudioCenter() {
+  const [activeTab, setActiveTab] = useState('catalog'); // catalog, team, internal
   const [products, setProducts] = useState<any[]>([]);
   const [team, setTeam] = useState<any[]>([]);
-  const [internalMsg, setInternalMsg] = useState('');
   const [loading, setLoading] = useState(true);
+  
+  // States לטפסים
+  const [newProduct, setNewProduct] = useState({ name: '', price: '', type: 'product', image: '' });
+  const [internalMsg, setInternalMsg] = useState('');
 
-  // פונקציה למשיכת נתונים מה-Firebase
   const fetchData = async () => {
-    setLoading(true);
     try {
-      const prodSnap = await getDocs(query(collection(db, "products"), orderBy("name")));
-      setProducts(prodSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-
-      const teamSnap = await getDocs(collection(db, "team"));
-      setTeam(teamSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-    } catch (error) {
-      console.error("Error fetching studio data:", error);
+      const pSnap = await getDocs(query(collection(db, "products"), orderBy("name")));
+      setProducts(pSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      
+      const tSnap = await getDocs(collection(db, "team"));
+      setTeam(tSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+    } catch (e) {
+      console.error("Firebase fetch error:", e);
     } finally {
       setLoading(false);
     }
@@ -40,140 +36,94 @@ export default function SabanStudio() {
     fetchData();
   }, []);
 
-  // פונקציה לשליחת הודעה פנימית
-  const sendInternalMessage = async () => {
-    if (!internalMsg.trim()) return alert("נא לכתוב הודעה");
-    try {
-      await addDoc(collection(db, "internal_messages"), {
-        text: internalMsg,
-        sender: "ניהול סטודיו",
-        timestamp: serverTimestamp()
-      });
-      setInternalMsg('');
-      alert("הודעה נשלחה לצוות (ראמי, נתנאל וגליה) ✅");
-    } catch (e) {
-      alert("שגיאה בשליחת ההודעה");
-    }
+  const saveProduct = async () => {
+    if (!newProduct.name) return alert("שם מוצר חובה");
+    await addDoc(collection(db, "products"), newProduct);
+    alert("מוצר נשמר!");
+    setNewProduct({ name: '', price: '', type: 'product', image: '' });
+    fetchData();
   };
 
-  if (loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>טוען סטודיו סבן 94...</div>;
+  if (loading) return <div style={{textAlign:'center', padding:'50px'}}>טוען מרכז בקרה סבן...</div>;
 
   return (
-    <main dir="rtl" style={mainWrapper}>
+    <main dir="rtl" style={mainStyle}>
+      {/* Header */}
       <header style={headerStyle}>
-        <h1 style={logoStyle}>SABAN 94 <span style={{ color: '#25D366' }}>STUDIO</span></h1>
-        <p style={{ color: '#666' }}>ניהול מלאי ותקשורת צוות</p>
+        <h2 style={{margin:0}}>SABAN 94 - STUDIO CENTER</h2>
+        <nav style={navStyle}>
+          <button style={tabBtn(activeTab==='catalog')} onClick={()=>setActiveTab('catalog')}>ניהול קטלוג</button>
+          <button style={tabBtn(activeTab==='team')} onClick={()=>setActiveTab('team')}>לקוחות וצוות</button>
+          <button style={tabBtn(activeTab==='internal')} onClick={()=>setActiveTab('internal')}>קשר סמוי</button>
+        </nav>
       </header>
 
-      {/* ניווט טאבים */}
-      <nav style={navStyle}>
-        <button style={tabStyle(activeTab === 'products')} onClick={() => setActiveTab('products')}>📦 מוצרים</button>
-        <button style={tabStyle(activeTab === 'team')} onClick={() => setActiveTab('team')}>👥 לקוחות וצוות</button>
-        <button style={tabStyle(activeTab === 'internal')} onClick={() => setActiveTab('internal')}>💬 הודעה לצוות</button>
-      </nav>
-
-      <div style={contentWrapper}>
-        
-        {/* טאב מוצרים */}
-        {activeTab === 'products' && (
+      {/* Tab: Catalog */}
+      {activeTab === 'catalog' && (
+        <section style={sectionStyle}>
+          <h3>הוספת מוצר/מכולה</h3>
+          <input style={iS} placeholder="שם המוצר" value={newProduct.name} onChange={e=>setNewProduct({...newProduct, name:e.target.value})} />
+          <input style={iS} placeholder="מחיר" value={newProduct.price} onChange={e=>setNewProduct({...newProduct, price:e.target.value})} />
+          <select style={iS} value={newProduct.type} onChange={e=>setNewProduct({...newProduct, type:e.target.value})}>
+             <option value="product">חומר בניין</option>
+             <option value="container">מכולה</option>
+          </select>
+          <button style={saveBtn} onClick={saveProduct}>שמור מוצר בקטלוג</button>
+          
           <div style={gridStyle}>
             {products.map(p => (
-              <div key={p.id} style={cardStyle}>
-                <div style={imgPlaceholder}>{p.name[0]}</div>
-                <div style={{ padding: '15px' }}>
-                  <h3 style={{ margin: '0' }}>{p.name}</h3>
-                  <p style={{ color: '#25D366', fontWeight: 'bold' }}>₪ {p.price || '0'}</p>
-                </div>
+              <div key={p.id} style={itemCard}>
+                <strong>{p.name}</strong>
+                <div>₪ {p.price}</div>
               </div>
             ))}
           </div>
-        )}
+        </section>
+      )}
 
-        {/* טאב לקוחות וצוות */}
-        {activeTab === 'team' && (
-          <div style={cardStyle}>
-            <div style={{ padding: '20px' }}>
-              <h3 style={{ marginBottom: '15px' }}>אנשי קשר במערכת</h3>
-              {team.map(m => (
-                <div key={m.id} style={memberRow}>
-                  <div style={avatarStyle}>{m.name?.substring(0,2)}</div>
-                  <div style={{ flex: 1, marginRight: '15px' }}>
-                    <strong>{m.name}</strong>
-                    <div style={{ fontSize: '12px', color: '#888' }}>{m.project || 'פרויקט כללי'}</div>
-                  </div>
-                  <button 
-                    style={waBtn}
-                    onClick={() => window.open(`https://wa.me/${m.phone}`, '_blank')}
-                  >
-                    WhatsApp
-                  </button>
-                </div>
-              ))}
+      {/* Tab: Team */}
+      {activeTab === 'team' && (
+        <section style={sectionStyle}>
+          <h3>רשימת לקוחות וצוות</h3>
+          {team.map(m => (
+            <div key={m.id} style={memberRow}>
+              <span>{m.name} - <small>{m.project}</small></span>
+              <button style={waBtn} onClick={()=>window.open(`https://wa.me/${m.phone}`)}>WhatsApp</button>
             </div>
-          </div>
-        )}
+          ))}
+        </section>
+      )}
 
-        {/* טאב הודעה פנימית לצוות (הוחזר!) */}
-        {activeTab === 'internal' && (
-          <div style={cardStyle}>
-            <div style={alertBox}>
-              <strong>💡 ערוץ קשר סמוי (ראמי - נתנאל - גליה)</strong>
-              <p>השתמשו בתיבה זו לתיאומים דחופים, הודעה על חוסרים או עדכוני נהגים.</p>
-            </div>
-            <div style={{ padding: '20px' }}>
-              <textarea 
-                placeholder="הקלד הודעה לצוות הניהול..." 
-                style={textareaStyle}
-                value={internalMsg}
-                onChange={(e) => setInternalMsg(e.target.value)}
-              />
-              <button 
-                style={magicBtn}
-                onClick={sendInternalMessage}
-              >
-                שלח הודעה פנימית לצוות
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Tab: Internal Messages */}
+      {activeTab === 'internal' && (
+        <section style={sectionStyle}>
+          <h3 style={{color:'#f57c00'}}>הודעות פנימיות (ראמי/נתנאל/גליה)</h3>
+          <textarea 
+            style={{...iS, height:'100px'}} 
+            placeholder="כתוב הודעה שתופיע רק לצוות הניהול..."
+            value={internalMsg}
+            onChange={e=>setInternalMsg(e.target.value)}
+          ></textarea>
+          <button style={{...saveBtn, background:'#f57c00'}} onClick={async()=>{
+            await addDoc(collection(db, "internal_messages"), { text: internalMsg, time: serverTimestamp() });
+            alert("הודעה נשלחה!");
+            setInternalMsg('');
+          }}>שלח הודעה חסויה</button>
+        </section>
+      )}
     </main>
   );
 }
 
-// --- הגדרות עיצוב (Styles) - הכל מוגדר כאן כדי למנוע שגיאות Build ---
-const mainWrapper: any = { backgroundColor: '#F0F2F5', minHeight: '100vh', padding: '20px', fontFamily: 'sans-serif' };
-const headerStyle: any = { textAlign: 'center', marginBottom: '30px' };
-const logoStyle: any = { fontSize: '2.2rem', fontWeight: '900', color: '#1C1E21', margin: 0 };
-const navStyle: any = { display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '30px' };
-const contentWrapper: any = { maxWidth: '800px', margin: '0 auto' };
-
-const tabStyle = (active: boolean) => ({
-  padding: '10px 20px',
-  borderRadius: '25px',
-  border: 'none',
-  backgroundColor: active ? '#25D366' : '#fff',
-  color: active ? '#fff' : '#555',
-  fontWeight: 'bold',
-  cursor: 'pointer',
-  boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
-  zIndex: 5
-});
-
-const cardStyle: any = { backgroundColor: '#fff', borderRadius: '15px', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' };
-const gridStyle: any = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '15px' };
-const imgPlaceholder: any = { height: '120px', backgroundColor: '#e9ecef', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', color: '#adb5bd' };
-
-const memberRow: any = { display: 'flex', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #eee' };
-const avatarStyle: any = { width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#075E54', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' };
-
-const waBtn: any = { 
-  backgroundColor: '#25D366', color: '#fff', border: 'none', padding: '8px 15px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', pointerEvents: 'auto', position: 'relative', zIndex: 10 
-};
-
-const alertBox: any = { backgroundColor: '#FFF9C4', padding: '15px', borderRight: '5px solid #FBC02D', color: '#856404', fontSize: '14px' };
-const textareaStyle: any = { width: '100%', height: '120px', padding: '15px', borderRadius: '10px', border: '1px solid #ddd', boxSizing: 'border-box', marginBottom: '15px', fontSize: '16px', outline: 'none' };
-
-const magicBtn: any = { 
-  width: '100%', padding: '15px', backgroundColor: '#FB8C00', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer', pointerEvents: 'auto', position: 'relative', zIndex: 20 
-};
+// --- Styles ---
+const mainStyle: any = { background: '#f0f2f5', minHeight: '100vh', padding: '20px', fontFamily: 'sans-serif' };
+const headerStyle: any = { background: '#075E54', color: '#fff', padding: '20px', borderRadius: '15px', textAlign: 'center', marginBottom: '20px' };
+const navStyle: any = { display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '15px' };
+const sectionStyle: any = { background: '#fff', padding: '20px', borderRadius: '15px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' };
+const iS = { width: '100%', padding: '12px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #ddd', boxSizing: 'border-box' as 'border-box' };
+const saveBtn = { width: '100%', padding: '15px', background: '#075E54', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' };
+const tabBtn = (active: boolean) => ({ padding: '10px 20px', borderRadius: '20px', border: 'none', background: active ? '#25D366' : '#054d44', color: '#fff', cursor: 'pointer', fontWeight: 'bold' });
+const gridStyle = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '20px' };
+const itemCard = { padding: '15px', border: '1px solid #eee', borderRadius: '10px', textAlign: 'center' as 'center' };
+const memberRow = { display: 'flex', justifyContent: 'space-between', padding: '10px', borderBottom: '1px solid #eee' };
+const waBtn = { background: '#25D366', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: '5px', cursor: 'pointer' };
