@@ -4,27 +4,22 @@ import React, { useState, useEffect, useRef } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, addDoc, query, onSnapshot, orderBy } from "firebase/firestore";
 
-// --- קטלוג המוצרים והמוח הלוגיסטי של ח. סבן ---
-const CATALOG: any = {
-  "חול ים בלה": { weight: 1000, type: "בלה", crane: true },
-  "סומסום בלה": { weight: 1000, type: "בלה", crane: true },
-  "טיט בלה": { weight: 1000, type: "בלה", crane: true },
-  "מלט אפור": { weight: 50, type: "שק", crane: false },
-  "מלט לבן": { weight: 25, type: "שק", crane: false },
-  "פלסטומר 603": { weight: 25, type: "שק", crane: false },
-  "פלסטומר 255": { weight: 25, type: "שק", crane: false },
-  "סיקה": { weight: 20, type: "גאלון", crane: false }
+// --- המוח של סבן: הגדרות מוצרים ומשקלים ---
+const SABAN_RULES = {
+  MAX_MANUAL_BAGS: 40, // מעל 40 שקים = מנוף
+  HEAVY_ITEMS: ['בלה', 'חול', 'סומסום', 'טיט', 'בלוק'], // מוצרים שמחייבים מנוף
+  PRICE_PER_WAIT_MIN: 7.5 // עלות דקת המתנה
 };
 
-export default function SabanConnectApp() {
+export default function ChatPage() {
   const [messages, setMessages] = useState<any[]>([]);
   const [inputText, setInputText] = useState("");
-  const [isStaff, setIsStaff] = useState(true); // עין עיוורת: צוות/לקוח
+  const [isStaff, setIsStaff] = useState(true); // מצב עין עיוורת
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // האזנה להודעות מה-Cloud
+  // האזנה להודעות ב-Firebase
   useEffect(() => {
-    const q = query(collection(db, "chat_messages"), orderBy("timestamp", "asc"));
+    const q = query(collection(db, "saban_chat"), orderBy("timestamp", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setMessages(msgs);
@@ -33,52 +28,40 @@ export default function SabanConnectApp() {
     return () => unsubscribe();
   }, []);
 
-  // מנוע הניתוח: הפיכת טקסט להזמנה חכמה
-  const analyzeOrder = (text: string) => {
-    const qtyMatch = text.match(/\d+/);
-    const qty = qtyMatch ? parseInt(qtyMatch[0]) : 0;
+  // מנוע Gemini: זיהוי טקסט חופשי והפיכתו להזמנה
+  const parseOrder = (text: string) => {
+    const qty = parseInt(text.match(/\d+/)?.[0] || "0");
+    const needsCrane = SABAN_RULES.HEAVY_ITEMS.some(item => text.includes(item)) || qty > SABAN_RULES.MAX_MANUAL_BAGS;
     
-    let needsCrane = false;
-    let productFound = "";
-
-    for (const item in CATALOG) {
-      if (text.includes(item)) {
-        productFound = item;
-        if (CATALOG[item].crane || (CATALOG[item].type === "שק" && qty > 40)) {
-          needsCrane = true;
-        }
-        break;
-      }
-    }
-
-    if (qty > 0 && productFound) {
+    if (qty > 0) {
       return {
-        summary: `${qty} יח' ${productFound}`,
-        instruction: needsCrane ? "⚠️ דורש מנוף (PTO)" : "👷 פריקה ידנית (עובדים בשטח)"
+        valid: true,
+        summary: `הזמנה מזוהה: ${qty} יח'`,
+        logistics: needsCrane ? "🏗️ משאית מנוף דרושה" : "👷 פריקה ידנית בשטח"
       };
     }
     return null;
   };
 
-  const handleSend = async () => {
+  const onSend = async () => {
     if (!inputText.trim()) return;
 
-    const analysis = analyzeOrder(inputText);
+    const analysis = parseOrder(inputText);
 
-    // 1. הודעה גלויה (Public)
-    await addDoc(collection(db, "chat_messages"), {
+    // 1. הודעה גלויה ללקוח
+    await addDoc(collection(db, "saban_chat"), {
       text: inputText,
-      sender: isStaff ? "רמי (מנהל)" : "לקוח: נישה אדריכלות",
+      sender: isStaff ? "רמי" : "נישה אדריכלות",
+      role: isStaff ? "staff" : "client",
       type: "public",
-      timestamp: new Date(),
-      avatar: isStaff ? "R" : "N"
+      timestamp: new Date()
     });
 
-    // 2. שכבת צוות (Internal - עין עיוורת)
+    // 2. שכבת הניהול (עין עיוורת)
     if (analysis) {
-      await addDoc(collection(db, "chat_messages"), {
-        text: `🤖 מנתח הזמנה: ${analysis.summary}. סטטוס: ${analysis.instruction}`,
-        sender: "Gemini Logistics",
+      await addDoc(collection(db, "saban_chat"), {
+        text: `📊 ניתוח לוגיסטי: ${analysis.summary}. ${analysis.logistics}`,
+        sender: "Saban AI",
         type: "internal",
         timestamp: new Date()
       });
@@ -88,33 +71,33 @@ export default function SabanConnectApp() {
   };
 
   return (
-    <div dir="rtl" style={s.container}>
-      {/* Header WhatsApp UI */}
-      <header style={s.header}>
-        <div style={s.headerContent}>
-          <div style={s.avatar}>📦</div>
+    <div dir="rtl" style={styles.app}>
+      {/* Header WhatsApp Look */}
+      <header style={styles.header}>
+        <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+          <div style={styles.avatar}>📦</div>
           <div>
-            <div style={s.name}>הזמנות ח. סבן</div>
-            <div style={s.online}>מחובר • {isStaff ? "מצב ניהול" : "מצב לקוח"}</div>
+            <div style={{fontWeight:'bold'}}>Saban Connect</div>
+            <div style={{fontSize:'12px', opacity:0.8}}>{isStaff ? 'מצב מנהל' : 'מצב לקוח'}</div>
           </div>
         </div>
-        <button onClick={() => setIsStaff(!isStaff)} style={s.toggle}>
-           {isStaff ? "👁️ עין עיוורת" : "👨‍💼 נהל צוות"}
+        <button onClick={() => setIsStaff(!isStaff)} style={styles.eyeBtn}>
+          {isStaff ? '👁️ עין עיוורת' : '👨‍💼 כניסת צוות'}
         </button>
       </header>
 
-      {/* Chat Messages Area */}
-      <div style={s.chatBody}>
+      {/* Chat Area */}
+      <div style={styles.chatWindow}>
         {messages.map((m) => (
           (!isStaff && m.type === 'internal') ? null : (
-            <div key={m.id} style={m.type === 'internal' ? s.internalRow : s.msgRow(m.avatar === 'N')}>
-               <div style={m.type === 'internal' ? s.internalBubble : s.bubble(m.avatar === 'N')}>
-                  {isStaff && <small style={s.senderLabel}>{m.sender}</small>}
-                  <div>{m.text}</div>
-                  <div style={s.time}>
-                    {m.timestamp?.seconds ? new Date(m.timestamp.seconds * 1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '--:--'}
-                  </div>
-               </div>
+            <div key={m.id} style={m.type === 'internal' ? styles.internalRow : styles.msgRow(m.role === 'client')}>
+              <div style={m.type === 'internal' ? styles.internalBubble : styles.bubble(m.role === 'client')}>
+                {isStaff && <div style={styles.senderName}>{m.sender}</div>}
+                <div>{m.text}</div>
+                <div style={styles.time}>
+                   {m.timestamp?.seconds ? new Date(m.timestamp.seconds * 1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : ''}
+                </div>
+              </div>
             </div>
           )
         ))}
@@ -122,49 +105,45 @@ export default function SabanConnectApp() {
       </div>
 
       {/* Input Area */}
-      <footer style={s.footer}>
-        <div style={s.inputWrapper}>
-          <button style={s.plus}>+</button>
+      <footer style={styles.footer}>
+        <div style={styles.inputBox}>
+          <button style={styles.plus}>+</button>
           <input 
-            style={s.input} 
-            placeholder="כתוב הודעה או הזמנה..." 
+            style={styles.input} 
+            placeholder="כתוב הזמנה חופשית..." 
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+            onKeyPress={(e) => e.key === 'Enter' && onSend()}
           />
         </div>
-        <button onClick={handleSend} style={s.sendBtn}>➤</button>
+        <button onClick={onSend} style={styles.sendBtn}>➤</button>
       </footer>
     </div>
   );
 }
 
-// --- עיצוב וואטסאפ אולטרה-מקצועי ---
-const s: any = {
-  container: { height: '100vh', display: 'flex', flexDirection: 'column', background: '#e5ddd5', fontFamily: 'system-ui' },
-  header: { background: '#075E54', color: '#fff', padding: '10px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' },
-  headerContent: { display: 'flex', alignItems: 'center', gap: '15px' },
-  avatar: { width: '40px', height: '40px', background: '#fff', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '20px' },
-  name: { fontWeight: 'bold', fontSize: '16px' },
-  online: { fontSize: '12px', opacity: 0.8 },
-  toggle: { background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', padding: '6px 12px', borderRadius: '20px', cursor: 'pointer', fontSize: '11px' },
-  chatBody: { flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' },
-  msgRow: (isClient: boolean) => ({ display: 'flex', justifyContent: isClient ? 'flex-start' : 'flex-end', width: '100%' }),
+// --- עיצוב וואטסאפ נקי ---
+const styles: any = {
+  app: { height: '100vh', display: 'flex', flexDirection: 'column', background: '#e5ddd5', fontFamily: 'system-ui' },
+  header: { background: '#075E54', color: '#fff', padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  avatar: { width: '35px', height: '35px', background: '#fff', borderRadius: '50%', color: '#075E54', display: 'flex', justifyContent: 'center', alignItems: 'center' },
+  eyeBtn: { background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', padding: '5px 12px', borderRadius: '20px', cursor: 'pointer', fontSize: '11px' },
+  chatWindow: { flex: 1, overflowY: 'auto', padding: '15px', display: 'flex', flexDirection: 'column', gap: '8px' },
+  msgRow: (isClient: boolean) => ({ display: 'flex', justifyContent: isClient ? 'flex-start' : 'flex-end' }),
   bubble: (isClient: boolean) => ({
     background: isClient ? '#fff' : '#dcf8c6',
-    padding: '8px 15px',
-    borderRadius: isClient ? '0 15px 15px 15px' : '15px 0 15px 15px',
+    padding: '8px 12px',
+    borderRadius: isClient ? '0 12px 12px 12px' : '12px 0 12px 12px',
     maxWidth: '85%',
-    boxShadow: '0 1px 1px rgba(0,0,0,0.1)',
-    position: 'relative'
+    boxShadow: '0 1px 1px rgba(0,0,0,0.1)'
   }),
-  internalRow: { display: 'flex', justifyContent: 'center', width: '100%' },
-  internalBubble: { background: '#fff3e0', border: '1px solid #ffe0b2', color: '#e65100', padding: '10px 20px', borderRadius: '15px', fontSize: '13px', textAlign: 'center', maxWidth: '90%' },
-  senderLabel: { display: 'block', fontSize: '11px', fontWeight: 'bold', color: '#075E54', marginBottom: '3px' },
-  time: { fontSize: '10px', color: '#999', textAlign: 'left', marginTop: '4px' },
-  footer: { background: '#f0f0f0', padding: '10px 15px', display: 'flex', alignItems: 'center', gap: '10px' },
-  inputWrapper: { flex: 1, background: '#fff', borderRadius: '25px', display: 'flex', alignItems: 'center', padding: '0 15px' },
-  input: { flex: 1, border: 'none', padding: '12px', outline: 'none', fontSize: '16px' },
-  plus: { background: 'none', border: 'none', fontSize: '24px', color: '#888', cursor: 'pointer' },
-  sendBtn: { background: '#075E54', color: '#fff', width: '45px', height: '45px', borderRadius: '50%', border: 'none', cursor: 'pointer', fontSize: '20px' }
+  internalRow: { display: 'flex', justifyContent: 'center', margin: '10px 0' },
+  internalBubble: { background: '#fff3e0', border: '1px solid #ffe0b2', color: '#e65100', padding: '10px 15px', borderRadius: '12px', fontSize: '13px', textAlign: 'center' },
+  senderName: { fontSize: '10px', fontWeight: 'bold', color: '#075E54', marginBottom: '3px' },
+  time: { fontSize: '9px', color: '#999', textAlign: 'left', marginTop: '3px' },
+  footer: { background: '#f0f0f0', padding: '10px', display: 'flex', alignItems: 'center', gap: '8px' },
+  inputBox: { flex: 1, background: '#fff', borderRadius: '25px', display: 'flex', alignItems: 'center', padding: '0 10px' },
+  input: { flex: 1, border: 'none', padding: '10px', outline: 'none' },
+  plus: { background: 'none', border: 'none', fontSize: '20px', color: '#888', cursor: 'pointer' },
+  sendBtn: { background: '#075E54', color: '#fff', width: '40px', height: '40px', borderRadius: '50%', border: 'none', cursor: 'pointer' }
 };
