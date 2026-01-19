@@ -13,5 +13,5 @@ const firebaseConfig = {
 // אתחול האפליקציה רק אם היא לא קיימת
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// ייצוא ה-db בצורה הכי בסיסית - Next.js ינהל את האינסטנסים
+// ייצוא ה-db בצורה הכי בטוחה שיש ל-Next.js
 export const db = getFirestore(app);
