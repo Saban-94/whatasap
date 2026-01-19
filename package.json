@@ -1,3 +1,10 @@
+"dependencies": {
+    "next": "16.1.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "firebase": "^11.2.0",
+    "@supabase/supabase-js": "^2.39.8"
+  },
 {
   "name": "saban-next-app",
   "version": "0.1.0",
