@@ -1,63 +1,116 @@
 'use client';
-export const dynamic = 'force-dynamic';
-import { useState, useEffect } from 'react';
-import { db } from '@/lib/firebase'; 
-import { collection, addDoc, getDocs, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
 
-export default function RulesPage() {
+export const dynamic = 'force-dynamic';
+
+import { useState, useEffect } from 'react';
+import { db } from "@/lib/firebase";
+import { collection, getDocs, addDoc, deleteDoc, doc } from "firebase/firestore";
+
+export default function BusinessRules() {
   const [rules, setRules] = useState<any[]>([]);
-  const [newRule, setNewRule] = useState({ item: '', required: '' });
+  const [newRule, setNewRule] = useState({ item: '', required: '', maxTime: '' });
+  const [loading, setLoading] = useState(true);
 
   const fetchRules = async () => {
-    const q = query(collection(db, "business_rules"), orderBy("item", "asc"));
-    const querySnapshot = await getDocs(q);
-    setRules(querySnapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    try {
+      const snap = await getDocs(collection(db, "business_rules"));
+      setRules(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    } catch (e) {
+      console.error("Error fetching rules:", e);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => { fetchRules(); }, []);
+  useEffect(() => {
+    fetchRules();
+  }, []);
 
-  const handleAdd = async () => {
-    if (!newRule.item || !newRule.required) return;
-    await addDoc(collection(db, "business_rules"), newRule);
-    setNewRule({ item: '', required: '' });
+  const addRule = async () => {
+    if (!newRule.item || !newRule.required) return alert("נא למלא את כל השדות");
+    try {
+      console.log("Adding rule...");
+      await addDoc(collection(db, "business_rules"), newRule);
+      setNewRule({ item: '', required: '', maxTime: '' });
+      fetchRules();
+      alert("החוק נוסף בהצלחה! ה-Brain מעודכן ✅");
+    } catch (e) {
+      alert("שגיאה בהוספת החוק");
+      console.error(e);
+    }
+  };
+
+  const deleteRule = async (id: string) => {
+    await deleteDoc(doc(db, "business_rules", id));
     fetchRules();
   };
 
+  if (loading) return <div style={{textAlign:'center', padding:'50px'}}>טוען חוקי עסק...</div>;
+
   return (
-    <div className="max-w-md mx-auto p-6 bg-gray-50 min-h-screen rtl" dir="rtl">
-      <div className="bg-white rounded-[30px] shadow-2xl p-6 border-t-8 border-blue-600">
-        <h1 className="text-2xl font-black text-blue-900 mb-6 text-center">🧠 המוח של סבן</h1>
-        
-        <div className="space-y-4 mb-8">
-          <div className="space-y-1">
-            <label className="text-sm font-bold text-gray-600 mr-2">פריט בתעודה:</label>
-            <input className="w-full p-3 rounded-2xl border bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none" 
-                   placeholder="למשל: טיט שק גדול" 
-                   value={newRule.item} onChange={e => setNewRule({...newRule, item: e.target.value})} />
-          </div>
-          <div className="space-y-1">
-            <label className="text-sm font-bold text-gray-600 mr-2">מה חייב להתווסף (פיקדון):</label>
-            <input className="w-full p-3 rounded-2xl border bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none" 
-                   placeholder="למשל: פיקדון בלה" 
-                   value={newRule.required} onChange={e => setNewRule({...newRule, required: e.target.value})} />
-          </div>
-          <button onClick={handleAdd} className="w-full bg-blue-600 text-white p-4 rounded-2xl font-bold shadow-lg hover:bg-blue-700 transition-all active:scale-95">
-            שמור חוק בזיכרון 💾
+    <main dir="rtl" style={containerStyle}>
+      <header style={headerStyle}>
+        <h2>🧠 הגדרות המוח של סבן</h2>
+        <p>כאן מגדירים ל-Gemini מה נחשב חריגה</p>
+      </header>
+
+      <section style={cardStyle}>
+        <h3>הוספת חוק לוגיסטי חדש</h3>
+        <div style={formStyle}>
+          <input 
+            style={iS} 
+            placeholder="שם המוצר (למשל: חול / מכולה)" 
+            value={newRule.item} 
+            onChange={e => setNewRule({...newRule, item: e.target.value})} 
+          />
+          <input 
+            style={iS} 
+            placeholder="ציוד חובה (למשל: מנוף 15)" 
+            value={newRule.required} 
+            onChange={e => setNewRule({...newRule, required: e.target.value})} 
+          />
+          <input 
+            style={iS} 
+            placeholder="זמן פריקה מקסימלי (בדקות)" 
+            type="number"
+            value={newRule.maxTime} 
+            onChange={e => setNewRule({...newRule, maxTime: e.target.value})} 
+          />
+          <button 
+            style={addBtnStyle} 
+            onClick={addRule}
+          >
+            הוסף חוק למערכת
           </button>
         </div>
+      </section>
 
-        <div className="space-y-3">
-          <h2 className="font-bold text-gray-700 mr-2">חוקים פעילים:</h2>
-          {rules.length === 0 ? <p className="text-center text-gray-400 text-sm italic">אין חוקים מוגדרים עדיין</p> : null}
-          {rules.map(rule => (
-            <div key={rule.id} className="flex justify-between items-center bg-white border border-gray-100 p-4 rounded-2xl shadow-sm">
-              <span className="text-sm font-medium">{rule.item} ⬅️ {rule.required}</span>
-              <button onClick={async () => { await deleteDoc(doc(db, "business_rules", rule.id)); fetchRules(); }} 
-                      className="text-red-500 text-xs font-bold hover:underline">מחק</button>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
+      <section style={{marginTop: '20px'}}>
+        <h3>חוקים פעילים</h3>
+        {rules.map(r => (
+          <div key={r.id} style={ruleRow}>
+            <span><b>{r.item}</b> מחייב <b>{r.required}</b> (עד {r.maxTime} דק')</span>
+            <button onClick={() => deleteRule(r.id)} style={delBtn}>מחק</button>
+          </div>
+        ))}
+      </section>
+    </main>
   );
 }
+
+// Styles
+const containerStyle: any = { padding: '20px', backgroundColor: '#f4f7f6', minHeight: '100vh', fontFamily: 'sans-serif' };
+const headerStyle: any = { textAlign: 'center', marginBottom: '20px', color: '#075E54' };
+const cardStyle: any = { background: '#fff', padding: '20px', borderRadius: '15px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' };
+const formStyle = { display: 'flex', flexDirection: 'column' as 'column', gap: '10px' };
+const iS = { padding: '12px', borderRadius: '8px', border: '1px solid #ddd' };
+const addBtnStyle = { 
+  padding: '15px', background: '#075E54', color: '#fff', border: 'none', 
+  borderRadius: '8px', fontWeight: 'bold' as 'bold', cursor: 'pointer',
+  position: 'relative' as 'relative', zIndex: 10, pointerEvents: 'auto' as 'auto'
+};
+const ruleRow = { 
+  display: 'flex', justifyContent: 'space-between', background: '#fff', 
+  padding: '15px', borderRadius: '10px', marginBottom: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' 
+};
+const delBtn = { background: 'none', border: 'none', color: 'red', cursor: 'pointer' };
