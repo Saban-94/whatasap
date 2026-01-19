@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, initializeFirestore, persistentLocalCache } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -10,8 +10,12 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
-// אתחול האפליקציה בזהירות
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+// אתחול חכם למניעת כפילויות
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-// ייצוא ה-DB - זו הדרך היחידה שמונעת את השגיאה ב-Build
-export const db = getFirestore(app);
+// שימוש ב-initializeFirestore כדי לוודא שאין בעיות זיכרון בדפדפן
+const db = initializeFirestore(app, {
+  localCache: persistentLocalCache()
+});
+
+export { db };
