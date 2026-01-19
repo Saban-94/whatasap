@@ -1,6 +1,6 @@
 'use client';
-import { db } from "../../../firebase";
-import { collection, addDoc, getDocs, doc, deleteDoc, query, orderBy, limit } from "firebase/firestore";
+src/app/admin/studio/page.tsx
+  import { collection, addDoc, getDocs, doc, deleteDoc, query, orderBy, limit } from "firebase/firestore";
 import { useState, useEffect } from 'react';
 
 export default function AdminStudio() {
