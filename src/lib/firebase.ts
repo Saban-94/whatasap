@@ -10,8 +10,8 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
-// אתחול האפליקציה בזהירות
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+// אתחול האפליקציה רק אם היא לא קיימת
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// ייצוא ה-DB בצורה שמונעת אתחול כפול של Firestore
+// ייצוא ה-db בצורה ישירה - getFirestore יודע להחזיר אינסטנס קיים אם יש כזה
 export const db = getFirestore(app);
