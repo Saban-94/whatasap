@@ -1,7 +1,9 @@
 // src/lib/saban-brain.ts
 
 export const analyzeDelivery = (ituranData: any[], pdfData: any[], rules: any[]) => {
-  return pdfData.map((ticket: any) => {
+  // הפונקציה מתחילה כאן
+  const analysis = pdfData.map((ticket: any) => {
+    // 1. בדיקת PTO (מנוף)
     const ptoEvent = ituranData.find((event: any) => 
       event.address && ticket.address && 
       (event.address.includes(ticket.address) || ticket.address.includes(event.address))
@@ -13,6 +15,7 @@ export const analyzeDelivery = (ituranData: any[], pdfData: any[], rules: any[])
     let loss = 0;
     let anomalyType = "";
 
+    // 2. בדיקת חוקי העסק
     if (ticket.items) {
       ticket.items.forEach((item: any) => {
         const rule = rules.find((r: any) => r.item === item.name);
@@ -23,6 +26,10 @@ export const analyzeDelivery = (ituranData: any[], pdfData: any[], rules: any[])
       });
     }
 
+    if (!ptoEvent) {
+      anomalyType = "לא נמצא אירוע פריקה באיתורן";
+    }
+
     return {
       ticketId: ticket.id,
       driver: ticket.driver,
@@ -31,8 +38,7 @@ export const analyzeDelivery = (ituranData: any[], pdfData: any[], rules: any[])
       anomalyType: anomalyType || (timeGap > 15 ? "חריגת זמן פריקה" : ""),
       loss: isAnomalous ? (loss || 100) : 0
     };
-  });
-};
+  }); // כאן נסגר ה-map
 
-  return analysis;
-};
+  return analysis; // עכשיו ה-return נמצא בתוך הפונקציה הראשית
+}; // וכאן נסגרת הפונקציה analyzeDelivery
