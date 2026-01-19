@@ -1,5 +1,5 @@
 // src/app/admin/studio/analysis-card.tsx
-
+export const dynamic = 'force-dynamic';
 export const AnalysisCard = ({ data }: { data: any }) => (
       <div className="bg-white rounded-3xl p-5 shadow-xl border border-gray-100 mb-4 font-sans rtl">    <div className="flex justify-between items-center mb-4">
       <span className="text-gray-400 text-sm font-medium">{data.ticketId}</span>
