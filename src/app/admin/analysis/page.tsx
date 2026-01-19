@@ -3,12 +3,12 @@
 import { useState } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
+import * as XLSX from 'xlsx'; // ספריה לקריאת אקסל
 
-export default function SabanAdvancedAnalysis() {
+export default function SabanFinalAnalysis() {
   const [analyzedDrivers, setAnalyzedDrivers] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // פונקציה לטיפול בהעלאת קובץ
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -17,43 +17,59 @@ export default function SabanAdvancedAnalysis() {
     const reader = new FileReader();
 
     reader.onload = async (event) => {
-      const content = event.target?.result as string;
-      await processData(content);
+      try {
+        const data = new Uint8Array(event.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        
+        // לוקחים את הגיליון הראשון
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        
+        // הופכים את האקסל לרשימת אובייקטים (JSON)
+        const jsonData: any[] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+        
+        await processData(jsonData);
+      } catch (err) {
+        console.error("Error reading Excel:", err);
+        alert("שגיאה בקריאת הקובץ. וודא שזה קובץ אקסל תקין.");
+      }
     };
 
-    reader.readAsText(file); // קורא קבצי CSV או טקסט מאקסל
+    reader.readAsArrayBuffer(file);
   };
 
-  const processData = async (data: string) => {
+  const processData = async (rows: any[]) => {
     const rulesSnap = await getDocs(collection(db, "business_rules"));
     const rules = rulesSnap.docs.map(d => d.data());
 
-    const rows = data.split('\n').filter(row => row.trim() !== '');
     const driverStats: any = {};
 
     rows.forEach((row, index) => {
-      if (index === 0) return; // דילוג על כותרות הטבלה
-      
-      const columns = row.split(/,|\t/); // תמיכה ב-CSV או העתקה מאקסל
-      const [vId, time, location, ptoStatus, duration] = columns;
+      if (index === 0) return; // דילוג על כותרות
 
-      if (!vId) return;
+      // מיפוי עמודות לפי דוח איתורן (נניח: [רכב, שעה, מיקום, PTO, משך])
+      const [vId, time, location, ptoStatus, duration] = row;
+
+      if (!vId || vId === "") return;
 
       if (!driverStats[vId]) {
         driverStats[vId] = { id: vId, actions: [], score: 100, costLoss: 0 };
       }
 
       const durInt = parseInt(duration) || 0;
-      const rule = rules.find(r => location?.includes(r.item));
+      const rule = rules.find(r => location?.toString().includes(r.item));
       const isAnomaly = durInt > (rule?.maxTime || 30);
 
       if (isAnomaly) {
-        driverStats[vId].score -= 15;
-        driverStats[vId].costLoss += (durInt - 30) * 8; // חישוב הפסד משוער ב₪
+        driverStats[vId].score -= 10;
+        driverStats[vId].costLoss += (durInt - 30) * 7.5; // חישוב הפסד לפי דקה
       }
 
       driverStats[vId].actions.push({
-        time, location, durInt, isAnomaly,
+        time: time?.toString(),
+        location: location?.toString(),
+        durInt,
+        isAnomaly,
         status: isAnomaly ? 'חריגת זמן' : 'תקין'
       });
     });
@@ -64,55 +80,51 @@ export default function SabanAdvancedAnalysis() {
 
   return (
     <main dir="rtl" style={containerStyle}>
-      {/* Header & Upload */}
       <header style={headerCard}>
-        <div style={{textAlign:'right'}}>
-          <h1 style={{margin:0, color:'#075E54'}}>המוח של סבן - ניתוח ביצועים</h1>
-          <p style={{color:'#666'}}>העלאת דוח איתורן והצלבה מול חוקי עסק</p>
+        <div>
+          <h1 style={{margin:0, color:'#075E54'}}>🧠 Gemini Logic - ניתוח עומק</h1>
+          <p style={{color:'#666'}}>מנתח נתוני אמת: הצלבת איתורן וחוקי ח. סבן</p>
         </div>
         
         <div style={uploadContainer}>
           <label htmlFor="file-upload" style={uploadBtn}>
-            📁 בחר קובץ אקסל / CSV
+            {isProcessing ? 'מעבד...' : '📂 העלאת דוח איתורן (Excel)'}
           </label>
-          <input id="file-upload" type="file" accept=".csv, .txt, .xlsx" onChange={handleFileUpload} style={{display:'none'}} />
+          <input id="file-upload" type="file" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} style={{display:'none'}} />
         </div>
       </header>
 
-      {isProcessing && <div style={loaderStyle}>Gemini מנתח את נתוני הנהגים...</div>}
-
-      {/* Drivers Results Grid */}
       <div style={gridStyle}>
         {analyzedDrivers.map(driver => (
           <div key={driver.id} style={driverCard}>
             <div style={driverHeader}>
-              <h2 style={{margin:0}}>משאית: {driver.id}</h2>
+              <h3 style={{margin:0}}>🚚 משאית: {driver.id}</h3>
               <div style={scoreBadge(driver.score)}>יעילות: {driver.score}%</div>
             </div>
 
             <div style={statsBox}>
               <div style={statItem}>
                 <small>הפסד משוער</small>
-                <div style={{color:'#d32f2f', fontWeight:'bold'}}>₪ {driver.costLoss}</div>
+                <div style={{color:'#d32f2f', fontSize:'18px', fontWeight:'bold'}}>₪ {driver.costLoss.toFixed(0)}</div>
               </div>
               <div style={statItem}>
-                <small>סטטוס יומי</small>
-                <div style={{color: driver.score > 70 ? '#2e7d32' : '#d32f2f'}}>{driver.score > 70 ? 'רווחי' : 'דורש בדיקה'}</div>
+                <small>חריגות שנמצאו</small>
+                <div style={{fontWeight:'bold'}}>{driver.actions.filter((a:any)=>a.isAnomaly).length}</div>
               </div>
             </div>
 
             <div style={logContainer}>
               {driver.actions.map((a: any, i: number) => (
                 <div key={i} style={logRow(a.isAnomaly)}>
-                  <span>{a.time}</span>
-                  <span style={{flex:1, marginRight:'10px'}}>{a.location}</span>
-                  <span style={{fontWeight:'bold'}}>{a.durInt} דק'</span>
+                  <span style={{fontSize:'11px'}}>{a.time}</span>
+                  <span style={{flex:1, marginRight:'10px', fontWeight: a.isAnomaly ? 'bold' : 'normal'}}>{a.location}</span>
+                  <span>{a.durInt} דק'</span>
                 </div>
               ))}
             </div>
 
-            <button style={reportBtn} onClick={() => window.open(`https://wa.me/97250XXXXXXX?text=דוח חריגות משאית ${driver.id}`)}>
-              דווח לראמי / נהג
+            <button style={reportBtn} onClick={() => window.open(`https://wa.me/97250XXXXXXX?text=נמצאו חריגות למשאית ${driver.id}`)}>
+              דווח לראמי / נהג 📱
             </button>
           </div>
         ))}
@@ -121,39 +133,17 @@ export default function SabanAdvancedAnalysis() {
   );
 }
 
-// --- Styles (Mixed Light Design) ---
+// (הסטייל נשאר אותו דבר כמו שביקשת בעיצוב הבהיר והנקי)
 const containerStyle: any = { background: '#f8f9fa', minHeight: '100vh', padding: '30px', fontFamily: 'sans-serif' };
-const headerCard: any = { 
-  background: '#fff', padding: '30px', borderRadius: '20px', display: 'flex', 
-  justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', marginBottom: '30px' 
-};
+const headerCard: any = { background: '#fff', padding: '30px', borderRadius: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', marginBottom: '30px' };
 const uploadContainer: any = { textAlign: 'center' };
-const uploadBtn: any = { 
-  background: '#075E54', color: '#fff', padding: '12px 25px', borderRadius: '12px', 
-  cursor: 'pointer', fontWeight: 'bold', display: 'inline-block', transition: '0.3s' 
-};
-
+const uploadBtn: any = { background: '#075E54', color: '#fff', padding: '15px 30px', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold' };
 const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '25px' };
 const driverCard: any = { background: '#fff', borderRadius: '20px', padding: '25px', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', border: '1px solid #edf2f7' };
 const driverHeader = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' };
-const scoreBadge = (score: number) => ({
-  background: score > 70 ? '#e8f5e9' : '#ffebee', color: score > 70 ? '#2e7d32' : '#d32f2f',
-  padding: '6px 15px', borderRadius: '10px', fontWeight: 'bold', fontSize: '14px'
-});
-
+const scoreBadge = (score: number) => ({ background: score > 70 ? '#e8f5e9' : '#ffebee', color: score > 70 ? '#2e7d32' : '#d32f2f', padding: '6px 15px', borderRadius: '10px', fontWeight: 'bold' });
 const statsBox = { display: 'flex', background: '#f1f3f5', borderRadius: '15px', padding: '15px', marginBottom: '20px' };
 const statItem = { flex: 1, textAlign: 'center' as 'center' };
-
 const logContainer = { maxHeight: '180px', overflowY: 'auto' as 'auto', padding: '5px' };
-const logRow = (isAnomaly: boolean) => ({
-  display: 'flex', padding: '10px', borderRadius: '8px', marginBottom: '5px',
-  background: isAnomaly ? '#fff5f5' : '#f8f9fa',
-  borderRight: isAnomaly ? '4px solid #f8d7da' : '4px solid #e9ecef',
-  fontSize: '13px', color: isAnomaly ? '#d32f2f' : '#495057'
-});
-
-const reportBtn = { 
-  width: '100%', marginTop: '20px', padding: '12px', background: '#25D366', 
-  color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' 
-};
-const loaderStyle = { textAlign: 'center' as 'center', padding: '20px', color: '#075E54', fontWeight: 'bold' };
+const logRow = (isAnomaly: boolean) => ({ display: 'flex', padding: '10px', borderRadius: '8px', marginBottom: '5px', background: isAnomaly ? '#fff5f5' : '#f8f9fa', color: isAnomaly ? '#d32f2f' : '#495057' });
+const reportBtn = { width: '100%', marginTop: '20px', padding: '12px', background: '#25D366', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' };
