@@ -20,7 +20,7 @@ export default function SabanStudio() {
   const [internalMsg, setInternalMsg] = useState('');
   const [loading, setLoading] = useState(true);
 
-  // פונקציה למשיכת נתונים
+  // פונקציה למשיכת נתונים מה-Firebase
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -40,35 +40,36 @@ export default function SabanStudio() {
     fetchData();
   }, []);
 
+  // פונקציה לשליחת הודעה פנימית
   const sendInternalMessage = async () => {
     if (!internalMsg.trim()) return alert("נא לכתוב הודעה");
     try {
       await addDoc(collection(db, "internal_messages"), {
         text: internalMsg,
-        sender: "ניהול",
+        sender: "ניהול סטודיו",
         timestamp: serverTimestamp()
       });
       setInternalMsg('');
       alert("הודעה נשלחה לצוות (ראמי, נתנאל וגליה) ✅");
     } catch (e) {
-      alert("שגיאה בשליחה");
+      alert("שגיאה בשליחת ההודעה");
     }
   };
 
-  if (loading) return <div style={centerStyle}>טוען סטודיו סבן 94...</div>;
+  if (loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>טוען סטודיו סבן 94...</div>;
 
   return (
     <main dir="rtl" style={mainWrapper}>
       <header style={headerStyle}>
         <h1 style={logoStyle}>SABAN 94 <span style={{ color: '#25D366' }}>STUDIO</span></h1>
-        <p style={{ color: '#666' }}>מערכת ניהול ובקרה - ח. סבן</p>
+        <p style={{ color: '#666' }}>ניהול מלאי ותקשורת צוות</p>
       </header>
 
-      {/* תפריט ניווט */}
+      {/* ניווט טאבים */}
       <nav style={navStyle}>
         <button style={tabStyle(activeTab === 'products')} onClick={() => setActiveTab('products')}>📦 מוצרים</button>
-        <button style={tabStyle(activeTab === 'team')} onClick={() => setActiveTab('team')}>👥 לקוחות/צוות</button>
-        <button style={tabStyle(activeTab === 'internal')} onClick={() => setActiveTab('internal')}>💬 קשר סמוי</button>
+        <button style={tabStyle(activeTab === 'team')} onClick={() => setActiveTab('team')}>👥 לקוחות וצוות</button>
+        <button style={tabStyle(activeTab === 'internal')} onClick={() => setActiveTab('internal')}>💬 הודעה לצוות</button>
       </nav>
 
       <div style={contentWrapper}>
@@ -81,7 +82,7 @@ export default function SabanStudio() {
                 <div style={imgPlaceholder}>{p.name[0]}</div>
                 <div style={{ padding: '15px' }}>
                   <h3 style={{ margin: '0' }}>{p.name}</h3>
-                  <p style={priceStyle}>₪ {p.price || '0'}</p>
+                  <p style={{ color: '#25D366', fontWeight: 'bold' }}>₪ {p.price || '0'}</p>
                 </div>
               </div>
             ))}
@@ -92,7 +93,7 @@ export default function SabanStudio() {
         {activeTab === 'team' && (
           <div style={cardStyle}>
             <div style={{ padding: '20px' }}>
-              <h3 style={{ marginBottom: '15px' }}>ניהול אנשי קשר</h3>
+              <h3 style={{ marginBottom: '15px' }}>אנשי קשר במערכת</h3>
               {team.map(m => (
                 <div key={m.id} style={memberRow}>
                   <div style={avatarStyle}>{m.name?.substring(0,2)}</div>
@@ -112,16 +113,16 @@ export default function SabanStudio() {
           </div>
         )}
 
-        {/* טאב קשר סמוי (צ'אט פנימי) */}
+        {/* טאב הודעה פנימית לצוות (הוחזר!) */}
         {activeTab === 'internal' && (
           <div style={cardStyle}>
             <div style={alertBox}>
-              <strong>💡 ערוץ תיאום פנימי</strong>
-              <p>הודעות כאן נשלחות ישירות לראמי, נתנאל וגליה לצורך תיאום לוגיסטי מהיר.</p>
+              <strong>💡 ערוץ קשר סמוי (ראמי - נתנאל - גליה)</strong>
+              <p>השתמשו בתיבה זו לתיאומים דחופים, הודעה על חוסרים או עדכוני נהגים.</p>
             </div>
             <div style={{ padding: '20px' }}>
               <textarea 
-                placeholder="הודעה דחופה לצוות (מלאי, חריגות, נהגים)..." 
+                placeholder="הקלד הודעה לצוות הניהול..." 
                 style={textareaStyle}
                 value={internalMsg}
                 onChange={(e) => setInternalMsg(e.target.value)}
@@ -130,7 +131,7 @@ export default function SabanStudio() {
                 style={magicBtn}
                 onClick={sendInternalMessage}
               >
-                שלח הודעה פנימית
+                שלח הודעה פנימית לצוות
               </button>
             </div>
           </div>
@@ -140,10 +141,10 @@ export default function SabanStudio() {
   );
 }
 
-// --- Styles ---
+// --- הגדרות עיצוב (Styles) - הכל מוגדר כאן כדי למנוע שגיאות Build ---
 const mainWrapper: any = { backgroundColor: '#F0F2F5', minHeight: '100vh', padding: '20px', fontFamily: 'sans-serif' };
 const headerStyle: any = { textAlign: 'center', marginBottom: '30px' };
-const logoStyle: any = { fontSize: '2rem', fontWeight: '900', color: '#1C1E21', margin: 0 };
+const logoStyle: any = { fontSize: '2.2rem', fontWeight: '900', color: '#1C1E21', margin: 0 };
 const navStyle: any = { display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '30px' };
 const contentWrapper: any = { maxWidth: '800px', margin: '0 auto' };
 
@@ -155,26 +156,24 @@ const tabStyle = (active: boolean) => ({
   color: active ? '#fff' : '#555',
   fontWeight: 'bold',
   cursor: 'pointer',
-  boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
+  boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+  zIndex: 5
 });
 
 const cardStyle: any = { backgroundColor: '#fff', borderRadius: '15px', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' };
-const gridStyle: any = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' };
-const imgPlaceholder: any = { height: '100px', backgroundColor: '#e9ecef', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', color: '#adb5bd' };
-const priceStyle: any = { color: '#25D366', fontWeight: 'bold', marginTop: '5px' };
+const gridStyle: any = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '15px' };
+const imgPlaceholder: any = { height: '120px', backgroundColor: '#e9ecef', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', color: '#adb5bd' };
 
-const memberRow: any = { display: 'flex', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #eee' };
+const memberRow: any = { display: 'flex', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #eee' };
 const avatarStyle: any = { width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#075E54', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' };
 
 const waBtn: any = { 
-  backgroundColor: '#25D366', color: '#fff', border: 'none', padding: '8px 15px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', pointerEvents: 'auto' 
+  backgroundColor: '#25D366', color: '#fff', border: 'none', padding: '8px 15px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', pointerEvents: 'auto', position: 'relative', zIndex: 10 
 };
 
 const alertBox: any = { backgroundColor: '#FFF9C4', padding: '15px', borderRight: '5px solid #FBC02D', color: '#856404', fontSize: '14px' };
-const textareaStyle: any = { width: '100%', height: '120px', padding: '15px', borderRadius: '10px', border: '1px solid #ddd', boxSizing: 'border-box', marginBottom: '15px', fontSize: '16px' };
+const textareaStyle: any = { width: '100%', height: '120px', padding: '15px', borderRadius: '10px', border: '1px solid #ddd', boxSizing: 'border-box', marginBottom: '15px', fontSize: '16px', outline: 'none' };
 
 const magicBtn: any = { 
-  width: '100%', padding: '15px', backgroundColor: '#FB8C00', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer', pointerEvents: 'auto', position: 'relative', zIndex: 10 
+  width: '100%', padding: '15px', backgroundColor: '#FB8C00', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer', pointerEvents: 'auto', position: 'relative', zIndex: 20 
 };
-
-const centerStyle: any = { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' };
