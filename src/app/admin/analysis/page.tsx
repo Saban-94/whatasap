@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
-import * as XLSX from 'xlsx'; // ספריה לקריאת אקסל
+import * as XLSX from 'xlsx'; // חובה להתקין: npm install xlsx
 
-export default function SabanFinalAnalysis() {
+export default function SabanLogicAnalyzer() {
   const [analyzedDrivers, setAnalyzedDrivers] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -20,111 +20,99 @@ export default function SabanFinalAnalysis() {
       try {
         const data = new Uint8Array(event.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
-        
-        // לוקחים את הגיליון הראשון
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
-        
-        // הופכים את האקסל לרשימת אובייקטים (JSON)
-        const jsonData: any[] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-        
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
         await processData(jsonData);
       } catch (err) {
-        console.error("Error reading Excel:", err);
-        alert("שגיאה בקריאת הקובץ. וודא שזה קובץ אקסל תקין.");
+        alert("שגיאה בפענוח הקובץ. וודא שזה קובץ אקסל תקין.");
+      } finally {
+        setIsProcessing(false);
       }
     };
-
     reader.readAsArrayBuffer(file);
   };
 
-  const processData = async (rows: any[]) => {
+  const processData = async (rows: any[][]) => {
     const rulesSnap = await getDocs(collection(db, "business_rules"));
     const rules = rulesSnap.docs.map(d => d.data());
 
     const driverStats: any = {};
 
     rows.forEach((row, index) => {
-      if (index === 0) return; // דילוג על כותרות
+      if (index === 0 || !row[0]) return; // דילוג על כותרות או שורות ריקות
 
-      // מיפוי עמודות לפי דוח איתורן (נניח: [רכב, שעה, מיקום, PTO, משך])
-      const [vId, time, location, ptoStatus, duration] = row;
-
-      if (!vId || vId === "") return;
+      // מיפוי עמודות (רכב, שעה, מיקום, זמן מנוף)
+      const vId = row[0]?.toString();
+      const time = row[1]?.toString();
+      const location = row[2]?.toString();
+      const duration = parseInt(row[4]) || 0;
 
       if (!driverStats[vId]) {
         driverStats[vId] = { id: vId, actions: [], score: 100, costLoss: 0 };
       }
 
-      const durInt = parseInt(duration) || 0;
-      const rule = rules.find(r => location?.toString().includes(r.item));
-      const isAnomaly = durInt > (rule?.maxTime || 30);
+      const rule = rules.find(r => location.includes(r.item));
+      const maxAllowed = rule?.maxTime || 30;
+      const isAnomaly = duration > maxAllowed;
 
       if (isAnomaly) {
         driverStats[vId].score -= 10;
-        driverStats[vId].costLoss += (durInt - 30) * 7.5; // חישוב הפסד לפי דקה
+        driverStats[vId].costLoss += (duration - maxAllowed) * 8; // חישוב הפסד משוער
       }
 
-      driverStats[vId].actions.push({
-        time: time?.toString(),
-        location: location?.toString(),
-        durInt,
-        isAnomaly,
-        status: isAnomaly ? 'חריגת זמן' : 'תקין'
-      });
+      driverStats[vId].actions.push({ time, location, duration, isAnomaly });
     });
 
     setAnalyzedDrivers(Object.values(driverStats));
-    setIsProcessing(false);
   };
 
   return (
-    <main dir="rtl" style={containerStyle}>
-      <header style={headerCard}>
+    <main dir="rtl" style={pageContainer}>
+      <header style={headerStyle}>
         <div>
-          <h1 style={{margin:0, color:'#075E54'}}>🧠 Gemini Logic - ניתוח עומק</h1>
-          <p style={{color:'#666'}}>מנתח נתוני אמת: הצלבת איתורן וחוקי ח. סבן</p>
+          <h1 style={{color: '#075E54', margin: 0}}>🧠 ניתוח לוגיסטי - ח. סבן</h1>
+          <p style={{color: '#666'}}>הצלבת נתוני איתורן מול חוקי עסק</p>
         </div>
-        
-        <div style={uploadContainer}>
-          <label htmlFor="file-upload" style={uploadBtn}>
-            {isProcessing ? 'מעבד...' : '📂 העלאת דוח איתורן (Excel)'}
-          </label>
-          <input id="file-upload" type="file" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} style={{display:'none'}} />
-        </div>
+        <label style={uploadBtn}>
+          📂 העלה דוח איתורן (Excel)
+          <input type="file" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} style={{display: 'none'}} />
+        </label>
       </header>
+
+      {isProcessing && <p style={{textAlign: 'center'}}>Gemini מנתח נתונים... ⏳</p>}
 
       <div style={gridStyle}>
         {analyzedDrivers.map(driver => (
           <div key={driver.id} style={driverCard}>
-            <div style={driverHeader}>
-              <h3 style={{margin:0}}>🚚 משאית: {driver.id}</h3>
-              <div style={scoreBadge(driver.score)}>יעילות: {driver.score}%</div>
+            <div style={cardHeader}>
+              <h3 style={{margin: 0}}>🚚 משאית: {driver.id}</h3>
+              <span style={scoreBadge(driver.score)}>יעילות: {driver.score}%</span>
             </div>
 
-            <div style={statsBox}>
-              <div style={statItem}>
+            <div style={statsRow}>
+              <div style={statBox}>
                 <small>הפסד משוער</small>
-                <div style={{color:'#d32f2f', fontSize:'18px', fontWeight:'bold'}}>₪ {driver.costLoss.toFixed(0)}</div>
+                <div style={{color: '#d32f2f', fontWeight: 'bold', fontSize: '1.2rem'}}>₪{driver.costLoss}</div>
               </div>
-              <div style={statItem}>
-                <small>חריגות שנמצאו</small>
-                <div style={{fontWeight:'bold'}}>{driver.actions.filter((a:any)=>a.isAnomaly).length}</div>
+              <div style={statBox}>
+                <small>סטטוס</small>
+                <div style={{color: driver.score > 70 ? '#2e7d32' : '#d32f2f'}}>{driver.score > 70 ? 'רווחי' : 'חריג'}</div>
               </div>
             </div>
 
             <div style={logContainer}>
               {driver.actions.map((a: any, i: number) => (
                 <div key={i} style={logRow(a.isAnomaly)}>
-                  <span style={{fontSize:'11px'}}>{a.time}</span>
-                  <span style={{flex:1, marginRight:'10px', fontWeight: a.isAnomaly ? 'bold' : 'normal'}}>{a.location}</span>
-                  <span>{a.durInt} דק'</span>
+                  <span style={{fontSize: '0.8rem', color: '#888'}}>{a.time}</span>
+                  <span style={{flex: 1, marginRight: '10px'}}>{a.location}</span>
+                  <span style={{fontWeight: 'bold'}}>{a.duration} דק'</span>
                 </div>
               ))}
             </div>
 
-            <button style={reportBtn} onClick={() => window.open(`https://wa.me/97250XXXXXXX?text=נמצאו חריגות למשאית ${driver.id}`)}>
-              דווח לראמי / נהג 📱
+            <button style={waBtn} onClick={() => window.open(`https://wa.me/97250XXXXXXX?text=נמצאו חריגות למשאית ${driver.id}`)}>
+              שלח דוח לראמי / נהג
             </button>
           </div>
         ))}
@@ -133,17 +121,16 @@ export default function SabanFinalAnalysis() {
   );
 }
 
-// (הסטייל נשאר אותו דבר כמו שביקשת בעיצוב הבהיר והנקי)
-const containerStyle: any = { background: '#f8f9fa', minHeight: '100vh', padding: '30px', fontFamily: 'sans-serif' };
-const headerCard: any = { background: '#fff', padding: '30px', borderRadius: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', marginBottom: '30px' };
-const uploadContainer: any = { textAlign: 'center' };
-const uploadBtn: any = { background: '#075E54', color: '#fff', padding: '15px 30px', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold' };
-const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '25px' };
-const driverCard: any = { background: '#fff', borderRadius: '20px', padding: '25px', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', border: '1px solid #edf2f7' };
-const driverHeader = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' };
-const scoreBadge = (score: number) => ({ background: score > 70 ? '#e8f5e9' : '#ffebee', color: score > 70 ? '#2e7d32' : '#d32f2f', padding: '6px 15px', borderRadius: '10px', fontWeight: 'bold' });
-const statsBox = { display: 'flex', background: '#f1f3f5', borderRadius: '15px', padding: '15px', marginBottom: '20px' };
-const statItem = { flex: 1, textAlign: 'center' as 'center' };
-const logContainer = { maxHeight: '180px', overflowY: 'auto' as 'auto', padding: '5px' };
-const logRow = (isAnomaly: boolean) => ({ display: 'flex', padding: '10px', borderRadius: '8px', marginBottom: '5px', background: isAnomaly ? '#fff5f5' : '#f8f9fa', color: isAnomaly ? '#d32f2f' : '#495057' });
-const reportBtn = { width: '100%', marginTop: '20px', padding: '12px', background: '#25D366', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' };
+// --- Styles ---
+const pageContainer: any = { background: '#f4f7f6', minHeight: '100vh', padding: '30px', fontFamily: 'sans-serif' };
+const headerStyle: any = { background: '#fff', padding: '25px', borderRadius: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '30px' };
+const uploadBtn: any = { background: '#075E54', color: '#fff', padding: '12px 24px', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' };
+const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' };
+const driverCard: any = { background: '#fff', borderRadius: '15px', padding: '20px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', border: '1px solid #eee' };
+const cardHeader = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' };
+const scoreBadge = (s: number) => ({ background: s > 70 ? '#e8f5e9' : '#ffebee', color: s > 70 ? '#2e7d32' : '#d32f2f', padding: '5px 12px', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.9rem' });
+const statsRow = { display: 'flex', gap: '10px', marginBottom: '15px' };
+const statBox = { flex: 1, background: '#f8f9fa', padding: '10px', borderRadius: '10px', textAlign: 'center' as 'center' };
+const logContainer = { maxHeight: '150px', overflowY: 'auto' as 'auto', border: '1px solid #f0f0f0', borderRadius: '8px', padding: '5px' };
+const logRow = (anomaly: boolean) => ({ display: 'flex', padding: '8px', borderRadius: '6px', marginBottom: '4px', background: anomaly ? '#fff5f5' : 'transparent', color: anomaly ? '#d32f2f' : '#333' });
+const waBtn: any = { width: '100%', marginTop: '15px', padding: '12px', background: '#25D366', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer' };
