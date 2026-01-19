@@ -1,34 +1,71 @@
+'use client';
+
 // src/components/AnalysisReport.tsx
 
-export const AnalysisReport = ({ report }: { report: any }) => (
-  <div className="max-w-md mx-auto bg-gray-50 p-4 rounded-[40px] shadow-2xl border-[8px] border-black min-h-[600px] font-sans rtl">
-   <div className="w-32 h-6 bg-black mx-auto rounded-b-3xl mb-6"></div>
-    <h1 className="text-2xl font-bold text-center mb-6 text-gray-800">דוח בקרה - ח.סבן</h1>
-    
-   {report.map((item: any) => (
-  <div key={item.ticketId} className={`mb-4 p-5 rounded-3xl shadow-sm border-r-8 ${item.isAnomalous ? 'bg-red-50 border-red-500' : 'bg-white border-green-500'}`}>
-        <div className="flex justify-between items-start mb-2">
-          <span className="font-bold text-lg">{item.driver}</span>
-          <span className="text-xs text-gray-500">{item.ticketId}</span>
-        </div>
-        <p className="text-sm text-gray-600 mb-3">{item.address}</p>
-        
-        <div className="flex justify-between text-sm py-2 border-t border-gray-100">
-          <span>דווח בתעודה: {item.reportedTime} דק'</span>
-          <span className={item.isAnomalous ? 'text-red-600 font-bold' : ''}>אמת (איתורן): {item.actualTime} דק'</span>
-        </div>
-
-        {item.alerts.length > 0 && (
-          <div className="mt-2 p-2 bg-red-100 rounded-xl text-xs text-red-700 font-bold">
-            ⚠️ {item.alerts.join(' | ')}
-          </div>
-        )}
+export const AnalysisReport = ({ report }: { report: any }) => {
+  // הגנה למקרה שהדוח ריק או לא הגיע
+  if (!report || !Array.isArray(report)) {
+    return (
+      <div className="p-8 text-center bg-white rounded-3xl shadow-xl">
+        <p className="text-gray-500">ממתין לנתוני ניתוח...</p>
       </div>
-    ))}
-    
-    <div className="mt-8 p-4 bg-blue-600 rounded-2xl text-white text-center shadow-lg">
-      <p className="text-sm opacity-80">פוטנציאל חיסכון יומי זוהה:</p>
-      <p className="text-2xl font-black">₪ {report.reduce((sum, i) => sum + i.loss, 0)}</p>
+    );
+  }
+
+  return (
+    <div className="max-w-md mx-auto bg-gray-50 p-4 rounded-[40px] shadow-2xl border-[8px] border-black min-h-[600px] font-sans rtl" dir="rtl">
+      {/* Notch סגנון אייפון */}
+      <div className="w-32 h-6 bg-black mx-auto rounded-b-3xl mb-6"></div>
+      
+      <h1 className="text-2xl font-black text-center mb-6 text-gray-800">מרכז בקרה - ח.סבן</h1>
+      
+      <div className="space-y-4">
+        {report.map((item: any) => (
+          <div 
+            key={item.ticketId || Math.random()} 
+            className={`p-5 rounded-3xl shadow-sm border-r-8 transition-all ${
+              item.isAnomalous ? 'bg-red-50 border-red-500' : 'bg-white border-green-500'
+            }`}
+          >
+            <div className="flex justify-between items-start mb-2">
+              <span className="font-bold text-lg text-gray-900">{item.driver}</span>
+              {item.isAnomalous && (
+                <span className="bg-red-500 text-white text-[10px] px-2 py-1 rounded-full font-bold">
+                  חריגה
+                </span>
+              )}
+            </div>
+            
+            <div className="text-sm text-gray-600 mb-3">
+              <p>📍 {item.address}</p>
+              <p>📄 תעודה: {item.ticketId}</p>
+            </div>
+
+            {item.isAnomalous && (
+              <div className="bg-white p-3 rounded-xl border border-red-100 mt-2">
+                <p className="text-xs font-bold text-red-700">
+                  ⚠️ {item.anomalyType || 'זוהה פער בנתונים'}
+                </p>
+                {item.loss > 0 && (
+                  <p className="text-xs text-red-600 mt-1">אובדן מוערך: ₪{item.loss}</p>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* סיכום חיסכון יומי */}
+      <div className="mt-8 p-5 bg-gradient-to-br from-blue-600 to-blue-800 rounded-3xl text-white text-center shadow-xl">
+        <p className="text-sm opacity-90 mb-1">פוטנציאל חיסכון יומי זוהה:</p>
+        <p className="text-3xl font-black">
+          ₪ {report.reduce((sum: any, i: any) => sum + (Number(i.loss) || 0), 0)}
+        </p>
+      </div>
+
+      <div className="mt-6 text-center">
+        <p className="text-[10px] text-gray-400 font-medium">SABAN INTELLIGENCE SYSTEM v1.0</p>
+      </div>
     </div>
-  </div>
-);
+  );
+};
