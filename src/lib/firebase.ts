@@ -10,8 +10,8 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
-// אתחול האפליקציה רק אם היא לא קיימת
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+// אתחול האפליקציה בזהירות
+const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
-// ייצוא ה-db בצורה הכי בטוחה שיש ל-Next.js
+// ייצוא ה-DB - זו הדרך היחידה שמונעת את השגיאה ב-Build
 export const db = getFirestore(app);
