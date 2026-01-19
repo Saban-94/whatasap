@@ -40,15 +40,54 @@ export default function Saban94Insights() {
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const jsonData: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-        await runDeepAnalysis(jsonData);
-      } catch (err) {
-        console.error(err);
-        alert("שגיאה בניתוח הקובץ. וודא שזה דוח איתורן תקין.");
-      } finally {
-        setIsProcessing(false);
-      }
+const runDeepAnalysis = async (rows: any[][]) => {
+    const rulesSnap = await getDocs(collection(db, "business_rules"));
+    const rules = rulesSnap.docs.map(d => d.data());
+
+    // "זיכרון הכתובות" שחילצנו מה-PDF ומההיסטוריה
+    const addressMemory: any = {
+      "ישעיהו": "נישה אדריכלות",
+      "החרש": "נישה אדריכלות",
+      "התלמיד": "זבולון-עדיר",
+      "סמטת הגן": "בועז נחשוני"
     };
-    reader.readAsArrayBuffer(file);
+
+    const driverMap: any = {};
+    let totalLoss = 0;
+
+    rows.forEach((row, index) => {
+      if (index < 8 || !row[1]) return;
+      const [time, driverName, , , duration, , address, , status] = row;
+      const durInt = parseFloat(duration) || 0;
+
+      if (!driverMap[driverName]) {
+        driverMap[driverName] = { name: driverName, events: [], loss: 0, efficiency: 100 };
+      }
+
+      // הצלבת לקוח לפי כתובת
+      const matchedClient = Object.keys(addressMemory).find(key => address?.includes(key));
+      const clientName = matchedClient ? addressMemory[matchedClient] : "כתובת לא רשומה";
+
+      const rule = rules.find(r => address?.includes(r.item)) || { maxTime: 30 };
+      const isAnomaly = (status?.includes('עצירה') || status?.includes('PTO')) && durInt > rule.maxTime;
+
+      if (isAnomaly) {
+        const penalty = (durInt - rule.maxTime) * 7.5;
+        driverMap[driverName].loss += penalty;
+        totalLoss += penalty;
+      }
+
+      const lastEvent = driverMap[driverName].events[driverMap[driverName].events.length - 1];
+      if (!lastEvent || lastEvent.status !== status || lastEvent.address !== address) {
+        driverMap[driverName].events.push({
+          time, address, status, duration: durInt, isAnomaly, clientName
+        });
+      } else {
+        lastEvent.duration += durInt;
+      }
+    });
+
+    setAnalyzedDrivers(Object.values(driverMap));
   };
 
   const runDeepAnalysis = async (rows: any[][]) => {
