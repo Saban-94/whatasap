@@ -1,111 +1,173 @@
 'use client';
-export const dynamic = 'force-dynamic';
-import { db } from "@/lib/firebase";
-import { collection, addDoc, getDocs, doc, deleteDoc, query, orderBy, limit } from "firebase/firestore";
-import { useState, useEffect } from 'react';
 
-export default function AdminStudio() {
-  const [activeTab, setActiveTab] = useState<'products' | 'team' | 'internal'>('products');
+export const dynamic = 'force-dynamic';
+
+import { useState, useEffect } from 'react';
+import { db } from "@/lib/firebase";
+import { 
+  collection, 
+  getDocs, 
+  addDoc, 
+  updateDoc, 
+  doc, 
+  deleteDoc,
+  query,
+  orderBy 
+} from "firebase/firestore";
+
+export default function SabanStudio() {
+  const [activeTab, setActiveTab] = useState('products');
   const [products, setProducts] = useState<any[]>([]);
   const [team, setTeam] = useState<any[]>([]);
-  
-  const [formProduct, setFormProduct] = useState({ name: '', type: 'product', imageUrl: '' });
-  const [formMember, setFormMember] = useState({ name: '', phone: '', project: '', address: '', profileImg: '' });
+  const [loading, setLoading] = useState(true);
 
+  // פונקציה למשיכת נתונים
   const fetchData = async () => {
+    setLoading(true);
     try {
-      const pSnap = await getDocs(collection(db, "products"));
-      setProducts(pSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-      const tSnap = await getDocs(collection(db, "team"));
-      setTeam(tSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-    } catch (e) { console.error(e); }
+      const prodSnap = await getDocs(query(collection(db, "products"), orderBy("name")));
+      setProducts(prodSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+
+      const teamSnap = await getDocs(collection(db, "team"));
+      setTeam(teamSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+    } catch (error) {
+      console.error("Error fetching studio data:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    fetchData();
+  }, []);
 
-  const sendMagicLink = (member: any) => {
-    const magicLink = `https://whatsapp-three-beryl.vercel.app/client/${member.id}`;
-    const message = `שלום ${member.name}, ברוך הבא למערכת VIP של ח.סבן! 🏗️%0A%0Aהנה אפליקציית הניהול האישית שלך לפרויקט ${member.project}:%0A🔗 ${magicLink}%0A%0A🚨 הנחיות חשובות:%0A1. לחץ על הלינק.%0A2. במכשירך, בחר "הוסף למסך הבית" (Add to Home Screen).%0A3. אשר קבלת התראות (Push) כדי לקבל עדכוני אספקה ומכולות בזמן אמת!%0A%0Aמעכשיו, הכל במקום אחד - מקצועי, מהיר וזמין.`;
-    window.open(`https://wa.me/972${member.phone.substring(1)}?text=${message}`);
-  };
+  // ניהול טאבים ועיצוב
+  const tabStyle = (id: string) => ({
+    padding: '12px 24px',
+    cursor: 'pointer',
+    backgroundColor: activeTab === id ? '#25D366' : '#fff',
+    color: activeTab === id ? '#fff' : '#333',
+    borderRadius: '12px',
+    fontWeight: 'bold',
+    border: 'none',
+    transition: 'all 0.3s ease',
+    boxShadow: activeTab === id ? '0 4px 10px rgba(37, 211, 102, 0.3)' : 'none'
+  });
+
+  if (loading) return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif' }}>
+      טוען סטודיו סבן...
+    </div>
+  );
 
   return (
-    <main dir="rtl" style={{ background: '#f4f7f6', minHeight: '100vh', fontFamily: 'sans-serif', padding: '20px' }}>
-      <header style={{ background: '#075E54', color: '#fff', padding: '25px', borderRadius: '20px', textAlign: 'center', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
-        <h1 style={{ margin: 0 }}>SABAN 94 - STUDIO</h1>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '15px' }}>
-          <button onClick={() => setActiveTab('products')} style={tabBtn(activeTab === 'products')}>📦 קטלוג</button>
-          <button onClick={() => setActiveTab('team')} style={tabBtn(activeTab === 'team')}>👥 לקוחות וצוות</button>
-          <button onClick={() => setActiveTab('internal')} style={tabBtn(activeTab === 'internal')}>💬 קשר סמוי</button>
-        </div>
+    <main dir="rtl" style={{ backgroundColor: '#f4f7f6', minHeight: '100vh', padding: '20px', fontFamily: 'sans-serif' }}>
+      <header style={{ textAlign: 'center', marginBottom: '30px' }}>
+        <h1 style={{ fontSize: '2.5rem', fontWeight: '900', color: '#1a1a1a', margin: '0' }}>SABAN 94 <span style={{ color: '#25D366' }}>STUDIO</span></h1>
+        <p style={{ color: '#666' }}>ניהול מלאי, לקוחות ותקשורת פנים-ארגונית</p>
       </header>
 
-      {activeTab === 'products' && (
-        <section style={cardStyle}>
-          <h3 style={titleStyle}>הוספת מוצר/מכולה לקטלוג</h3>
-          <input placeholder="שם המוצר" style={iS} value={formProduct.name} onChange={e => setFormProduct({...formProduct, name: e.target.value})} />
-          <input placeholder="לינק לתמונת מוצר" style={iS} value={formProduct.imageUrl} onChange={e => setFormProduct({...formProduct, imageUrl: e.target.value})} />
-          <select style={iS} value={formProduct.type} onChange={e => setFormProduct({...formProduct, type: e.target.value})}>
-            <option value="product">חומר בניין</option>
-            <option value="container">מכולה 8 קוב</option>
-          </select>
-          <button style={saveBtn} onClick={async () => { await addDoc(collection(db, "products"), formProduct); setFormProduct({name:'', type:'product', imageUrl:''}); fetchData(); }}>שמור מוצר</button>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '15px', marginTop: '20px' }}>
-            {products.map(p => (
-              <div key={p.id} style={pCard}>
-                <img src={p.imageUrl || '/images/gravel.jpg/80'} style={{ width:'100%', height:'80px', objectFit:'cover', borderRadius:'8px' }} />
-                <div style={{ fontWeight:'bold', fontSize:'13px', marginTop:'5px' }}>{p.name}</div>
-                <button onClick={async () => { await deleteDoc(doc(db, "products", p.id)); fetchData(); }} style={{ border:'none', color:'red', background:'none', cursor:'pointer', fontSize:'11px' }}>מחק</button>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      <nav style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '30px' }}>
+        <button style={tabStyle('products')} onClick={() => setActiveTab('products')}>📦 קטלוג מוצרים</button>
+        <button style={tabStyle('team')} onClick={() => setActiveTab('team')}>👥 ניהול לקוחות/צוות</button>
+        <button style={tabStyle('internal')} onClick={() => setActiveTab('internal')}>💬 קשר סמוי</button>
+      </nav>
 
-      {activeTab === 'team' && (
-        <section style={cardStyle}>
-          <h3 style={titleStyle}>יצירת לקוח/איש צוות (לינק קסם)</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <input placeholder="שם הלקוח" style={iS} onChange={e => setFormMember({...formMember, name: e.target.value})} />
-            <input placeholder="טלפון (למשל 0501234567)" style={iS} onChange={e => setFormMember({...formMember, phone: e.target.value})} />
-            <input placeholder="שם פרויקט" style={iS} onChange={e => setFormMember({...formMember, project: e.target.value})} />
-            <input placeholder="לינק לתמונת פרופיל" style={iS} onChange={e => setFormMember({...formMember, profileImg: e.target.value})} />
-          </div>
-<button 
-  style={{
-    ...magicBtn, 
-    cursor: 'pointer', 
-    position: 'relative', 
-    zIndex: 999, 
-    pointerEvents: 'auto'
-  }} 
-  onClick={async (e) => {
-    e.preventDefault(); // מונע מהדף להתרענן או לקפוץ
-    try {
-      console.log("Adding member...");
-      await addDoc(collection(db, "team"), formMember);
-      await fetchData(); // וודא שזה await
-      alert("לקוח נוסף!");
-    } catch (err) {
-      console.error("שגיאה בהוספה:", err);
-    }
-  }}
->
-  צור לקוח במערכת
-</button>
-        </section>
-      )}
+      <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+        
+        {/* טאב מוצרים */}
+        {activeTab === 'products' && (
+          <section className="animate-in">
+            <div style={gridStyle}>
+              {products.map(p => (
+                <div key={p.id} style={cardStyle}>
+                  <img src={p.image || '/logo.png'} alt={p.name} style={imgStyle} />
+                  <div style={{ padding: '15px' }}>
+                    <h3 style={{ margin: '0 0 10px 0' }}>{p.name}</h3>
+                    <p style={{ fontSize: '0.9rem', color: '#666' }}>{p.description || 'אין תיאור מוצר'}</p>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '15px' }}>
+                      <span style={{ fontWeight: 'bold', color: '#25D366' }}>₪ {p.price || '0'}</span>
+                      <button style={editBtnStyle}>ערוך</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div style={{ ...cardStyle, border: '2px dashed #ccc', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '200px', cursor: 'pointer' }}>
+                <span style={{ fontSize: '3rem', color: '#ccc' }}>+</span>
+                <span style={{ color: '#666' }}>הוסף מוצר חדש</span>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* טאב צוות/לקוחות */}
+        {activeTab === 'team' && (
+          <section style={cardStyle}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid #eee', textAlign: 'right' }}>
+                  <th style={thStyle}>שם</th>
+                  <th style={thStyle}>פרויקט</th>
+                  <th style={thStyle}>פעולות</th>
+                </tr>
+              </thead>
+              <tbody>
+                {team.map(m => (
+                  <tr key={m.id} style={{ borderBottom: '1px solid #eee' }}>
+                    <td style={tdStyle}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{ width: '35px', height: '35px', borderRadius: '50%', backgroundColor: '#075E54', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>
+                          {m.name?.substring(0,2)}
+                        </div>
+                        {m.name}
+                      </div>
+                    </td>
+                    <td style={tdStyle}>{m.project || 'כללי'}</td>
+                    <td style={tdStyle}>
+                      <button 
+                        style={{ ...waBtnStyle, position: 'relative', zIndex: 10, pointerEvents: 'auto' }}
+                        onClick={() => window.open(`https://wa.me/${m.phone}`, '_blank')}
+                      >
+                        שלח WhatsApp
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+        )}
+
+        {/* טאב קשר סמוי */}
+        {activeTab === 'internal' && (
+          <section style={cardStyle}>
+            <div style={{ backgroundColor: '#fff9c4', padding: '20px', borderRadius: '15px', marginBottom: '20px', borderRight: '5px solid #fbc02d' }}>
+              <strong>💡 ערוץ פנימי (ראמי - נתנאל - גליה)</strong>
+              <p style={{ margin: '10px 0 0 0', fontSize: '0.9rem' }}>כאן מתאמים מלאי וחריגות מול המגרש והנהגים בלי שהלקוח קצה מעורב.</p>
+            </div>
+            <textarea 
+              placeholder="כתוב הודעה דחופה לצוות..." 
+              style={{ width: '100%', height: '150px', padding: '15px', borderRadius: '12px', border: '1px solid #ddd', marginBottom: '15px', boxSizing: 'border-box' }}
+            />
+            <button 
+              style={{ width: '100%', padding: '15px', backgroundColor: '#fb8c00', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', position: 'relative', zIndex: 10, pointerEvents: 'auto' }}
+              onClick={() => alert("הודעה נשלחה לצוות!")}
+            >
+              שלח הודעה לצוות
+            </button>
+          </section>
+        )}
+
+      </div>
     </main>
   );
 }
 
 // Styles
-const tabBtn = (active: boolean) => ({ padding: '10px 18px', borderRadius: '25px', border: 'none', background: active ? '#25D366' : '#054d44', color: '#fff', cursor: 'pointer', fontWeight: 'bold' as 'bold' });
-const cardStyle = { background: '#fff', padding: '20px', borderRadius: '15px', marginTop: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' };
-const titleStyle = { color: '#075E54', borderBottom: '2px solid #25D366', paddingBottom: '8px', marginBottom: '15px' };
-const iS = { width: '100%', padding: '12px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #ddd', boxSizing: 'border-box' as 'border-box' };
-const saveBtn = { width: '100%', padding: '15px', background: '#075E54', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold' as 'bold', cursor: 'pointer' };
-const magicBtn = { width: '100%', padding: '15px', background: '#25D366', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold' as 'bold', cursor: 'pointer' };
-const pCard = { textAlign: 'center' as 'center', border: '1px solid #eee', padding: '10px', borderRadius: '12px' };
-const memberRow = { display: 'flex', alignItems: 'center', padding: '12px', borderBottom: '1px solid #eee' };
-const waBtn = { background: '#25D366', color: '#fff', border: 'none', padding: '10px 15px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold' as 'bold' };
+const gridStyle: any = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '20px' };
+const cardStyle: any = { backgroundColor: '#fff', borderRadius: '20px', overflow: 'hidden', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', padding: '10px' };
+const imgStyle: any = { width: '100%', height: '150px', objectFit: 'cover', borderRadius: '15px' };
+const editBtnStyle: any = { padding: '6px 12px', backgroundColor: '#f0f0f0', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem' };
+const thStyle: any = { padding: '15px', color: '#666', fontWeight: '600' };
+const tdStyle: any = { padding: '15px', color: '#333' };
+const waBtnStyle: any = { padding: '8px 16px', backgroundColor: '#25D366', color: '#fff', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' };
