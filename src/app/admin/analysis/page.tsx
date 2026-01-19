@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
 
-export default function SabanLogicAnalyzer() {
+export default function SabanUltimateAnalyzer() {
   const [analyzedDrivers, setAnalyzedDrivers] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedDriver, setSelectedDriver] = useState<any>(null);
 
-  // טעינת ספריית האקסל באופן דינמי ללא טרמינל
+  // טעינת ספריית XLSX מה-CDN
   useEffect(() => {
     const script = document.createElement('script');
     script.src = "https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js";
@@ -25,17 +26,16 @@ export default function SabanLogicAnalyzer() {
 
     reader.onload = async (event) => {
       try {
-        // @ts-ignore - XLSX נטען מה-CDN
+        // @ts-ignore
         const XLSX = window.XLSX;
         const data = new Uint8Array(event.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const jsonData: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-        await processLogistics(jsonData);
+        await processSabanData(jsonData);
       } catch (err) {
-        console.error(err);
-        alert("שגיאה בפענוח. וודא שזה קובץ אקסל תקין.");
+        alert("שגיאה בפענוח הקובץ.");
       } finally {
         setIsProcessing(false);
       }
@@ -43,104 +43,129 @@ export default function SabanLogicAnalyzer() {
     reader.readAsArrayBuffer(file);
   };
 
-  const processLogistics = async (rows: any[][]) => {
+  const processSabanData = async (rows: any[][]) => {
     const rulesSnap = await getDocs(collection(db, "business_rules"));
     const rules = rulesSnap.docs.map(d => d.data());
 
     const driverMap: any = {};
 
     rows.forEach((row, index) => {
-      if (index === 0 || !row[0]) return;
+      // דילוג על שורות הלוגו והכותרת של איתורן (7 השורות הראשונות)
+      if (index < 8 || !row[1]) return; 
 
-      const vId = row[0]?.toString(); 
-      const time = row[1]?.toString(); 
-      const location = row[2]?.toString(); 
-      const duration = parseInt(row[4]) || 0; 
+      const time = row[0];        // זמן הודעה
+      const driverName = row[1];  // תג זיהוי / שם נהג
+      const address = row[6];     // כתובת
+      const status = row[8];      // שם מצב (חניה/נסיעה/PTO)
+      
+      // איתורן שמים קילומטראז' בעמודה 4, נשתמש בו לזיהוי תנועה חריגה
+      const rawDuration = parseFloat(row[4]) || 0; 
 
-      if (!driverMap[vId]) {
-        driverMap[vId] = { id: vId, logs: [], score: 100, loss: 0 };
+      if (!driverMap[driverName]) {
+        driverMap[driverName] = { 
+          name: driverName, 
+          logs: [], 
+          totalLoss: 0, 
+          score: 100,
+          totalPtoTime: 0 
+        };
       }
 
-      const rule = rules.find(r => location?.includes(r.item));
-      const limit = rule?.maxTime || 30;
-      const isAnomaly = duration > limit;
+      // חישוב חריגה - אם המצב הוא עמידה/PTO והזמן ארוך מהחוק
+      const rule = rules.find(r => address?.includes(r.item)) || { maxTime: 30 };
+      const isAnomaly = rawDuration > rule.maxTime;
 
       if (isAnomaly) {
-        driverMap[vId].score -= 10;
-        driverMap[vId].loss += (duration - limit) * 8.5;
+        driverMap[driverName].totalLoss += (rawDuration - rule.maxTime) * 7.5; // 7.5 ש"ח לדקת חריגה
+        driverMap[driverName].score -= 5;
       }
 
-      driverMap[vId].logs.push({ time, location, duration, isAnomaly });
+      driverMap[driverName].logs.push({
+        time, address, status, duration: rawDuration, isAnomaly
+      });
     });
 
     setAnalyzedDrivers(Object.values(driverMap));
   };
 
   return (
-    <main dir="rtl" style={pageStyle}>
+    <main dir="rtl" style={containerStyle}>
       <header style={headerStyle}>
-        <div>
-          <h1 style={logoStyle}>SABAN <span style={{color:'#25D366'}}>AI</span> LOGISTICS</h1>
-          <p style={{color:'#666', margin:0}}>ניתוח חריגות והצלבת נתוני איתורן (גרסת ענן)</p>
-        </div>
+        <h1 style={{margin:0, color:'#075E54'}}>🧠 המוח של סבן - ניתוח איתורן</h1>
         <label style={uploadBtn}>
-          {isProcessing ? 'מעבד...' : '📂 העלאת דוח אקסל'}
-          <input type="file" accept=".xlsx, .xls" onChange={handleFileUpload} style={{display:'none'}} />
+          {isProcessing ? 'מעבד...' : '📂 העלה דוח איתורן'}
+          <input type="file" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} style={{display:'none'}} />
         </label>
       </header>
 
-      <div style={gridStyle}>
+      {/* תצוגת נהגים ככפתורים */}
+      <div style={driverGrid}>
         {analyzedDrivers.map(driver => (
-          <div key={driver.id} style={driverCard}>
-            <div style={cardTop}>
-              <h2 style={{margin:0, fontSize:'1.4rem'}}>🚚 משאית: {driver.id}</h2>
-              <div style={scoreBadge(driver.score)}>יעילות: {driver.score}%</div>
+          <div key={driver.name} style={driverCard} onClick={() => setSelectedDriver(driver)}>
+            <div style={{fontSize:'2rem', marginBottom:'10px'}}>🚚</div>
+            <h3 style={{margin:0}}>{driver.name}</h3>
+            <div style={lossBadge}>הפסד: ₪{driver.totalLoss.toFixed(0)}</div>
+            <div style={{color: driver.score > 70 ? '#2e7d32' : '#d32f2f', fontWeight:'bold'}}>
+              יעילות: {Math.max(driver.score, 0)}%
             </div>
-
-            <div style={statsBox}>
-              <div style={statItem}>
-                <small>הפסד משוער</small>
-                <div style={lossStyle(driver.loss)}>₪{driver.loss.toFixed(0)}</div>
-              </div>
-              <div style={statItem}>
-                <small>סטטוס</small>
-                <div style={{fontWeight:'bold'}}>{driver.score > 75 ? '🟢 תקין' : '🔴 חריג'}</div>
-              </div>
-            </div>
-
-            <div style={logTable}>
-              {driver.logs.map((log: any, i: number) => (
-                <div key={i} style={rowStyle(log.isAnomaly)}>
-                  <span style={timeText}>{log.time}</span>
-                  <span style={{flex:1, marginRight:'10px'}}>{log.location}</span>
-                  <span style={{fontWeight:'bold'}}>{log.duration} דק'</span>
-                </div>
-              ))}
-            </div>
-
-            <button style={waBtn} onClick={() => window.open(`https://wa.me/97250XXXXXXX?text=נמצאו חריגות למשאית ${driver.id}`)}>
-              דווח לראמי בוואטסאפ 📱
-            </button>
+            <button style={viewBtn}>צפה בניתוח מצבים</button>
           </div>
         ))}
       </div>
+
+      {/* חלון פירוט לנהג נבחר */}
+      {selectedDriver && (
+        <div style={modalOverlay} onClick={() => setSelectedDriver(null)}>
+          <div style={modalContent} onClick={e => e.stopPropagation()}>
+            <header style={modalHeader}>
+              <h2>דוח פעילות: {selectedDriver.name}</h2>
+              <button onClick={() => setSelectedDriver(null)} style={closeBtn}>✕</button>
+            </header>
+            
+            <div style={tableWrapper}>
+              <table style={tableStyle}>
+                <thead>
+                  <tr style={{background:'#f1f3f5'}}>
+                    <th>זמן</th>
+                    <th>מיקום / כתובת</th>
+                    <th>סטטוס</th>
+                    <th>משך (דק')</th>
+                    <th>ניתוח Gemini</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedDriver.logs.map((log:any, i:number) => (
+                    <tr key={i} style={{borderBottom:'1px solid #eee', background: log.isAnomaly ? '#fff5f5' : 'transparent'}}>
+                      <td>{log.time}</td>
+                      <td>{log.address}</td>
+                      <td>{log.status}</td>
+                      <td style={{fontWeight:'bold'}}>{log.duration.toFixed(1)}</td>
+                      <td style={{color: log.isAnomaly ? '#d32f2f' : '#2e7d32'}}>
+                        {log.isAnomaly ? '🚨 חריגת זמן - לבדוק חיוב' : '✅ תקין'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
 
-// --- Styles (Clean & Light) ---
-const pageStyle: any = { background: '#f8f9fa', minHeight: '100vh', padding: '30px', fontFamily: 'system-ui, sans-serif' };
-const headerStyle: any = { background: '#fff', padding: '25px 40px', borderRadius: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', marginBottom: '30px' };
-const logoStyle = { margin: 0, fontWeight: 900, fontSize: '1.8rem', letterSpacing: '-1px' };
-const uploadBtn: any = { background: '#075E54', color: '#fff', padding: '15px 30px', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold' };
-const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '25px' };
-const driverCard: any = { background: '#fff', borderRadius: '25px', padding: '25px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', border: '1px solid #edf2f7' };
-const cardTop = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' };
-const scoreBadge = (s: number) => ({ background: s > 75 ? '#e8f5e9' : '#ffebee', color: s > 75 ? '#2e7d32' : '#d32f2f', padding: '6px 15px', borderRadius: '10px', fontWeight: 'bold' });
-const statsBox = { display: 'flex', background: '#f1f3f5', borderRadius: '15px', padding: '15px', marginBottom: '20px' };
-const statItem = { flex: 1, textAlign: 'center' as 'center' };
-const lossStyle = (l: number) => ({ color: l > 0 ? '#d32f2f' : '#2ecc71', fontWeight: 900, fontSize: '1.4rem' });
-const logTable = { maxHeight: '200px', overflowY: 'auto' as 'auto', padding: '5px' };
-const rowStyle = (anom: boolean) => ({ display: 'flex', padding: '10px', borderRadius: '10px', marginBottom: '5px', background: anom ? '#fff5f5' : '#f8f9fa', color: anom ? '#d32f2f' : '#333', fontSize: '14px' });
-const timeText = { fontSize: '12px', color: '#999', width: '50px' };
-const waBtn: any = { width: '100%', marginTop: '20px', padding: '15px', background: '#25D366', color: '#fff', border: 'none', borderRadius: '15px', fontWeight: 'bold', cursor: 'pointer' };
+// --- Styles ---
+const containerStyle: any = { background: '#f8f9fa', minHeight: '100vh', padding: '30px', fontFamily: 'sans-serif' };
+const headerStyle: any = { background: '#fff', padding: '20px 40px', borderRadius: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', marginBottom: '30px' };
+const uploadBtn: any = { background: '#075E54', color: '#fff', padding: '12px 25px', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' };
+const driverGrid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '20px' };
+const driverCard: any = { background: '#fff', padding: '25px', borderRadius: '20px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.03)', border: '1px solid #eee', transition: '0.2s' };
+const lossBadge = { background: '#ffebee', color: '#d32f2f', padding: '5px 10px', borderRadius: '8px', margin: '10px 0', fontWeight: 'bold' };
+const viewBtn = { marginTop: '15px', background: '#e9ecef', border: 'none', padding: '8px 15px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px' };
+const modalOverlay: any = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 };
+const modalContent: any = { background: '#fff', width: '90%', maxHeight: '80%', borderRadius: '25px', padding: '30px', overflowY: 'auto', boxShadow: '0 20px 50px rgba(0,0,0,0.2)' };
+const modalHeader = { display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '15px', marginBottom: '20px' };
+const closeBtn = { background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' };
+const tableWrapper = { overflowX: 'auto' as 'auto' };
+const tableStyle = { width: '100%', borderCollapse: 'collapse' as 'collapse', textAlign: 'right' as 'right' };
