@@ -13,5 +13,5 @@ const firebaseConfig = {
 // אתחול האפליקציה רק אם היא לא קיימת
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// ייצוא ה-db בצורה ישירה - getFirestore יודע להחזיר אינסטנס קיים אם יש כזה
+// ייצוא ה-db בצורה הכי בסיסית - Next.js ינהל את האינסטנסים
 export const db = getFirestore(app);
