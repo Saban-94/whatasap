@@ -1,4 +1,5 @@
 'use client';
+import { db } from "@/lib/firebase";
 src/app/admin/studio/page.tsx
   import { collection, addDoc, getDocs, doc, updateDoc, query, orderBy } from "firebase/firestore";
 import { useState, useEffect } from 'react';
