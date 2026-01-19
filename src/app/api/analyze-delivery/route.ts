@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
-import { analyzeIturanCSV } from '@/lib/ituran-parser';
+import { parseIturanData } from '@/lib/ituran-parser'; // שינוי שם הפונקציה לפי הצעת ה-Build
 import { analyzeDelivery } from '@/lib/saban-brain';
 import { analyzePDFWithGemini } from '@/lib/gemini';
 
 export async function POST(req: Request) {
   try {
     const { csvContent, pdfBuffer } = await req.json();
+    const ituranResults = await parseIturanData(csvContent); // שינוי כאן
+    // ... שאר הקוד
     
     // 1. קריאת איתורן (ממאגר ituran)
     const ituranResults = await analyzeIturanCSV(csvContent);
