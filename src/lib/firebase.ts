@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getFirestore, initializeFirestore, persistentLocalCache } from "firebase/firestore";
+import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -10,12 +10,15 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
-// אתחול חכם למניעת כפילויות
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+// בדיקת תקינות - אם ה-Project ID ריק, נשתמש בערך קשיח כגיבוי
+if (!firebaseConfig.projectId) {
+  console.error("⚠️ Vercel Environment Variables missing! Using hardcoded fallback.");
+  firebaseConfig.projectId = "ituran-9722e";
+  firebaseConfig.apiKey = "AIzaSyAXb3Of5uay1-hR9Z7WGyNwzSuUaqa4OvU";
+  // תוסיף כאן את השאר אם אתה רוצה גיבוי מלא
+}
 
-// שימוש ב-initializeFirestore כדי לוודא שאין בעיות זיכרון בדפדפן
-const db = initializeFirestore(app, {
-  localCache: persistentLocalCache()
-});
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+const db = getFirestore(app);
 
 export { db };
