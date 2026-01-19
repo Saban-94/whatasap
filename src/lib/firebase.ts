@@ -10,6 +10,8 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
-// בדיקה אם האפליקציה כבר אותחלה כדי למנוע את שגיאת initializeFirestore
+// אתחול האפליקציה בזהירות
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+
+// ייצוא ה-DB בצורה שמונעת אתחול כפול של Firestore
 export const db = getFirestore(app);
