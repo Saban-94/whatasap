@@ -1,15 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
 
-export default function Saban94Insights() {
+// הגדרת הדף כ-Default Export הכרחית למניעת 404
+export default function InsightsPage() {
   const [analyzedDrivers, setAnalyzedDrivers] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [globalStats, setGlobalStats] = useState({ loss: 0, anomalies: 0, drivers: 0 });
+  const [summary, setSummary] = useState({ loss: 0, count: 0 });
 
   useEffect(() => {
+    // טעינת ספריית הפענוח
     const script = document.createElement('script');
     script.src = "https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js";
     script.async = true;
@@ -26,9 +28,13 @@ export default function Saban94Insights() {
       try {
         const data = new Uint8Array(event.target?.result as ArrayBuffer);
         const XLSX = (window as any).XLSX;
+        if (!XLSX) return alert("המערכת טוענת רכיבים, נסה שוב");
+
         const workbook = XLSX.read(data, { type: 'array' });
-        const jsonData: any[][] = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
-        await runDeepAnalysis(jsonData);
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+        
+        await processData(jsonData);
       } catch (err) {
         alert("שגיאה בניתוח הקובץ");
       } finally {
@@ -38,130 +44,82 @@ export default function Saban94Insights() {
     reader.readAsArrayBuffer(file);
   };
 
-  const runDeepAnalysis = async (rows: any[][]) => {
+  const processData = async (rows: any[][]) => {
     const rulesSnap = await getDocs(collection(db, "business_rules"));
     const rules = rulesSnap.docs.map(d => d.data());
-
-    // זיכרון ה-AI: הצלבת כתובות מה-PDF שסרקנו
-    const addressMemory: any = {
-      "ישעיהו": "נישה אדריכלות נוף",
-      "החרש": "נישה אדריכלות נוף",
-      "התלמיד": "זבולון-עדיר",
-      "סמטת הגן": "בועז נחשוני",
-      "השומרון": "לקוח אבן יהודה",
-      "קקטוס": "לקוח אבן יהודה"
-    };
-
     const driverMap: any = {};
     let totalLoss = 0;
-    let totalAnoms = 0;
 
-    rows.forEach((row, index) => {
-      if (index < 8 || !row[1]) return;
-      const [time, driverName, , , duration, , address, , status] = row;
+    rows.forEach((row, idx) => {
+      if (idx < 8 || !row[1]) return;
+      const [time, driver, , , duration, , address, , status] = row;
       const durInt = parseFloat(duration) || 0;
 
-      if (!driverMap[driverName]) {
-        driverMap[driverName] = { name: driverName, events: [], loss: 0, score: 100 };
-      }
-
-      // הצלבת לקוח מהזיכרון
-      const matchedKey = Object.keys(addressMemory).find(k => address?.includes(k));
-      const clientName = matchedKey ? addressMemory[matchedKey] : "כתובת לא מזוהה";
+      if (!driverMap[driver]) driverMap[driver] = { name: driver, loss: 0, alerts: 0 };
 
       const rule = rules.find(r => address?.includes(r.item)) || { maxTime: 30 };
-      const isAnomaly = (status?.includes('עצירה') || status?.includes('PTO')) && durInt > rule.maxTime;
-
-      if (isAnomaly) {
-        const excess = durInt - rule.maxTime;
-        const lossAmount = excess * 7.5;
-        driverMap[driverName].loss += lossAmount;
-        totalLoss += lossAmount;
-        totalAnoms++;
-      }
-
-      // צמצום שורות לאירועים (Aggregation)
-      const lastEvent = driverMap[driverName].events[driverMap[driverName].events.length - 1];
-      if (!lastEvent || lastEvent.status !== status || lastEvent.address !== address) {
-        driverMap[driverName].events.push({ time, address, status, duration: durInt, isAnomaly, clientName });
-      } else {
-        lastEvent.duration += durInt;
+      if ((status?.includes('עצירה') || status?.includes('PTO')) && durInt > rule.maxTime) {
+        const loss = (durInt - rule.maxTime) * 7.5;
+        driverMap[driver].loss += loss;
+        driverMap[driver].alerts++;
+        totalLoss += loss;
       }
     });
 
     setAnalyzedDrivers(Object.values(driverMap));
-    setGlobalStats({ loss: totalLoss, anomalies: totalAnoms, drivers: Object.keys(driverMap).length });
+    setSummary({ loss: totalLoss, count: Object.keys(driverMap).length });
   };
 
   return (
-    <main dir="rtl" style={pageStyle}>
-      <header style={headerStyle}>
+    <div dir="rtl" style={{ padding: '30px', fontFamily: 'system-ui', background: '#f0f2f5', minHeight: '100vh' }}>
+      <header style={{ background: '#075E54', color: '#fff', padding: '25px', borderRadius: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
         <div>
-          <h1 style={{margin:0, fontSize:'1.8rem', fontWeight:900}}>SABAN <span style={{color:'#2ecc71'}}>LOGISTICS</span> INSIGHTS</h1>
-          <p style={{margin:0, opacity:0.7}}>מערכת הצלבה חכמה: איתורן vs תעודות משלוח</p>
+          <h1 style={{ margin: 0 }}>המוח של סבן - Insights</h1>
+          <p style={{ margin: 0, opacity: 0.8 }}>ניתוח חריגות והפסדים כספיים</p>
         </div>
-        <label style={uploadBtn}>
-          {isProcessing ? 'מעבד נתונים...' : '📂 טען דוח לניתוח הצלבה'}
-          <input type="file" onChange={handleFileUpload} style={{display:'none'}} />
+        <label style={{ background: '#2ecc71', color: '#fff', padding: '12px 25px', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' }}>
+          {isProcessing ? 'מעבד...' : 'טען דוח איתורן'}
+          <input type="file" onChange={handleFileUpload} style={{ display: 'none' }} />
         </label>
       </header>
 
-      <div style={statsGrid}>
-        <div style={statCard}>
-          <small>הפסד זמן מצטבר (₪)</small>
-          <h2 style={{color:'#e74c3c', margin:'10px 0'}}>₪{globalStats.loss.toFixed(0)}</h2>
-          <div style={trend}>מבוסס על חריגות פריקה</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '30px' }}>
+        <div style={{ background: '#fff', padding: '25px', borderRadius: '20px', textAlign: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+          <small>סה"כ נזק משוער (זמן המתנה)</small>
+          <h2 style={{ color: '#e74c3c', fontSize: '2.5rem', margin: '10px 0' }}>₪{summary.loss.toFixed(0)}</h2>
         </div>
-        <div style={statCard}>
-          <small>חריגות שזוהו</small>
-          <h2 style={{margin:'10px 0'}}>{globalStats.anomalies}</h2>
-          <div style={trend}>אירועי המתנה מעל 30 דק'</div>
+        <div style={{ background: '#fff', padding: '25px', borderRadius: '20px', textAlign: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+          <small>נהגים מנותחים</small>
+          <h2 style={{ fontSize: '2.5rem', margin: '10px 0' }}>{summary.count}</h2>
         </div>
       </div>
 
-      <section style={mainContent}>
-        <table style={table}>
+      <div style={{ background: '#fff', padding: '30px', borderRadius: '25px', boxShadow: '0 10px 30px rgba(0,0,0,0.02)' }}>
+        <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
           <thead>
-            <tr style={thRow}>
-              <th>נהג</th>
-              <th>לקוח מזוהה</th>
-              <th>חריגה אחרונה</th>
-              <th>נזק כספי</th>
+            <tr style={{ borderBottom: '2px solid #f1f3f5', color: '#95a5a6' }}>
+              <th style={{ padding: '15px' }}>נהג</th>
+              <th>מספר חריגות</th>
+              <th>הפסד כספי</th>
               <th>סטטוס</th>
             </tr>
           </thead>
           <tbody>
             {analyzedDrivers.map(d => (
-              <tr key={d.name} style={tr}>
-                <td style={{fontWeight:'bold'}}>🚚 {d.name}</td>
-                <td>{d.events.find((e:any)=>e.isAnomaly)?.clientName || "תקין"}</td>
-                <td>{d.events.find((e:any)=>e.isAnomaly)?.duration.toFixed(0) || 0} דק'</td>
-                <td style={{color: d.loss > 0 ? '#e74c3c' : '#2ecc71', fontWeight:900}}>₪{d.loss.toFixed(0)}</td>
+              <tr key={d.name} style={{ borderBottom: '1px solid #f8f9fa' }}>
+                <td style={{ padding: '15px', fontWeight: 'bold' }}>🚚 {d.name}</td>
+                <td>{d.alerts} אירועים</td>
+                <td style={{ color: '#c0392b', fontWeight: 'bold' }}>₪{d.loss.toFixed(0)}</td>
                 <td>
-                  <span style={badge(d.loss)}>{d.loss > 300 ? 'בדיקת חיוב ⚠️' : 'יעיל ✅'}</span>
+                  <span style={{ background: d.loss > 300 ? '#ffebee' : '#e8f5e9', color: d.loss > 300 ? '#c62828' : '#2e7d32', padding: '5px 12px', borderRadius: '10px', fontSize: '12px', fontWeight: 'bold' }}>
+                    {d.loss > 300 ? 'דורש בירור' : 'תקין'}
+                  </span>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-      </section>
-    </main>
+      </div>
+    </div>
   );
 }
-
-// --- Styles ---
-const pageStyle: any = { background: '#f4f7f6', minHeight: '100vh', padding: '40px', fontFamily: 'system-ui' };
-const headerStyle: any = { background: '#075E54', color: '#fff', padding: '30px 40px', borderRadius: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' };
-const uploadBtn = { background: '#fff', color: '#075E54', padding: '12px 25px', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold' };
-const statsGrid = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '30px' };
-const statCard = { background: '#fff', padding: '25px', borderRadius: '20px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', textAlign: 'center' as 'center' };
-const trend = { fontSize: '11px', color: '#95a5a6' };
-const mainContent = { background: '#fff', padding: '30px', borderRadius: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.03)' };
-const table = { width: '100%', borderCollapse: 'collapse' as 'collapse', textAlign: 'right' as 'right' };
-const thRow = { borderBottom: '2px solid #f1f3f5', color: '#95a5a6', fontSize: '13px' };
-const tr = { borderBottom: '1px solid #f8f9fa', height: '60px' };
-const badge = (loss: number) => ({
-  background: loss > 300 ? '#ffebee' : '#e8f5e9',
-  color: loss > 300 ? '#c62828' : '#2e7d32',
-  padding: '6px 12px', borderRadius: '10px', fontSize: '12px', fontWeight: 'bold'
-});
