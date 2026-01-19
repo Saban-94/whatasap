@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-
+import { db } from '@/lib/firebase';
 export default function AnalysisPage() {
   // כאן נמשוך את הנתונים מה-API שבנינו למעלה
   return (
