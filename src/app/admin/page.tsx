@@ -82,7 +82,7 @@ ${link}
           <div style={{ marginTop: '20px' }}>
             {team.map(m => (
               <div key={m.id} style={itemRow}>
-                <img src={m.profileImg || 'https://via.placeholder.com/40'} style={pImg} />
+                <img src={m.profileImg || 'h/images/gravel.jpg/40'} style={pImg} />
                 <div style={{ flex: 1, marginRight: '10px' }}>
                   <strong>{m.name}</strong><br/>
                   <small>{m.project}</small>
