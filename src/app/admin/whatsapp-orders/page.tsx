@@ -2,146 +2,117 @@
 
 import React, { useState, useEffect } from 'react';
 import { db } from "@/lib/firebase"; 
-import { collection, onSnapshot, query, orderBy, addDoc, doc, deleteDoc, serverTimestamp } from "firebase/firestore";
-import { MessageSquare, CheckCircle, Trash2, ArrowLeft, Clock, BellRing } from 'lucide-react';
-import Link from 'next/link';
+import { collection, addDoc, query, onSnapshot, orderBy, serverTimestamp, doc, updateDoc } from "firebase/firestore";
 
-export default function WhatsAppOrdersPage() {
-  const [orders, setOrders] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function SabanEnterpriseChat() {
+  const [activeTab, setActiveTab] = useState('chats');
+  const [groups, setGroups] = useState<any[]>([]);
+  const [staff, setStaff] = useState<any[]>([]);
+  const [showAddStaff, setShowAddStaff] = useState(false);
+  const [showAddGroup, setShowAddGroup] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState<any>(null);
 
-  // 1. האזנה להודעות וואטסאפ בזמן אמת
+  // נתוני טופס לאיש צוות חדש
+  const [newStaff, setNewStaff] = useState({
+    name: '', dept: '', role: '', phone: '', ext: '', email: '', avatar: ''
+  });
+
+  // טעינת קבוצות וצוות בזמן אמת
   useEffect(() => {
-    const q = query(collection(db, "whatsapp_orders"), orderBy("timestamp", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setOrders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      setLoading(false);
-    });
-    return () => unsubscribe();
+    const qGroups = query(collection(db, "saban_groups"), orderBy("timestamp", "desc"));
+    const unsubGroups = onSnapshot(qGroups, (s) => setGroups(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+    
+    const qStaff = query(collection(db, "employees")); // שימוש באוסף הקיים שלך
+    const unsubStaff = onSnapshot(qStaff, (s) => setStaff(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+
+    return () => { unsubGroups(); unsubStaff(); };
   }, []);
 
-  // 2. מנגנון "נודניק" - צלצול כל דקה על הודעות "חדש" שלא קיבלו התייחסות
-  useEffect(() => {
-    const checkAndAlert = () => {
-      const now = new Date().getTime();
-      let hasPendingOrder = false;
-
-      orders.forEach(order => {
-        if (order.status === 'חדש' && order.timestamp) {
-          const orderTime = order.timestamp.toDate().getTime();
-          // אם עברה יותר מדקה (60,000 מילישניות)
-          if (now - orderTime > 60000) {
-            hasPendingOrder = true;
-          }
-        }
-      });
-
-      if (hasPendingOrder) {
-        const audio = new Audio('/notification.mp3'); // שימוש בקובץ הקיים במאגר
-        audio.play().catch(e => console.log("ממתין לאינטראקציה ראשונה להפעלת סאונד"));
-      }
-    };
-
-    const interval = setInterval(checkAndAlert, 60000); // בדיקה כל דקה
-    return () => clearInterval(interval);
-  }, [orders]);
-
-  // 3. פונקציית אישור הזמנה וסנכרון ל-365 ול-Tasks
-  const approveOrder = async (order: any) => {
-    try {
-      const flowUrl = "https://defaultae1f0547569d471693f95b9524aa2b.31.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/0828f74ee7e44228b96c93eab728f280/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=lgdg1Hw--Z35PWOK6per2K02fql76m_WslheLXJL-eA";
-
-      const taskData = {
-        client: order.sender || "לקוח וואטסאפ",
-        address: "נא לעדכן כתובת", 
-        items: order.text,
-        phone: "972508861080", 
-        status: "🆕 ממתין",
-        timestamp: serverTimestamp()
-      };
-
-      // שליחה ל-Microsoft 365
-      await fetch(flowUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...taskData, date: new Date().toLocaleDateString('he-IL') })
-      });
-
-      // הוספה לאוסף המשימות הראשי
-      await addDoc(collection(db, "tasks"), taskData);
-
-      // מחיקה מרשימת הוואטסאפ
-      await deleteDoc(doc(db, "whatsapp_orders", order.id));
-      
-      alert("ההזמנה אושרה וסונכרנה! ✅");
-    } catch (error) {
-      alert("שגיאה בסנכרון ל-365");
-    }
+  const createMagicLink = (groupId: string) => {
+    const link = `https://whatasap.vercel.app/join/${groupId}`;
+    navigator.clipboard.writeText(link);
+    alert("לינק קסם הועתק! שלח אותו למצטרפים החדשים.");
   };
 
-  const deleteOrder = async (id: string) => {
-    if (confirm("למחוק את ההודעה?")) {
-      await deleteDoc(doc(db, "whatsapp_orders", id));
-    }
+  const handleAddStaff = async () => {
+    await addDoc(collection(db, "employees"), { ...newStaff, createdAt: serverTimestamp() });
+    setShowAddStaff(false);
+    setNewStaff({ name: '', dept: '', role: '', phone: '', ext: '', email: '', avatar: '' });
   };
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#f0f2f5] p-4 font-sans">
-      <header className="max-w-4xl mx-auto flex justify-between items-center mb-6 bg-white p-5 rounded-2xl shadow-sm border-b-4 border-[#25D366]">
-        <div>
-          <h1 className="text-2xl font-black text-[#075E54] flex items-center gap-2">
-            הזמנות וואטסאפ <BellRing className="text-orange-500 animate-pulse" size={20} />
-          </h1>
-          <p className="text-sm text-gray-500">מרכז בקרה - ח. סבן</p>
+    <div style={{ display: 'flex', height: '100vh', backgroundColor: '#f0f2f5', direction: 'rtl', fontFamily: 'sans-serif' }}>
+      
+      {/* סרגל לשוניות צדדי (כמו וואטסאפ) */}
+      <div style={{ width: '60px', backgroundColor: '#202c33', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '15px 0', gap: '20px', color: '#aebac1' }}>
+        <div onClick={() => setActiveTab('chats')} style={{ cursor: 'pointer', color: activeTab === 'chats' ? 'white' : 'inherit' }}>💬</div>
+        <div onClick={() => setActiveTab('staff')} style={{ cursor: 'pointer', color: activeTab === 'staff' ? 'white' : 'inherit' }}>👥</div>
+        <div onClick={() => setActiveTab('settings')} style={{ cursor: 'pointer', color: activeTab === 'settings' ? 'white' : 'inherit' }}>⚙️</div>
+        <div style={{ marginTop: 'auto', marginBottom: '10px' }}>
+             <img src="/logo.png" style={{ width: '35px', borderRadius: '50%' }} />
         </div>
-        <Link href="/admin">
-          <button className="flex items-center gap-2 bg-gray-100 p-2 px-4 rounded-xl text-gray-600 font-bold hover:bg-gray-200 transition-all">
-            <ArrowLeft size={18} /> חזרה
-          </button>
-        </Link>
-      </header>
+      </div>
 
-      <div className="max-w-4xl mx-auto space-y-4">
-        {loading ? (
-          <p className="text-center font-bold text-gray-400">טוען הודעות...</p>
-        ) : orders.length === 0 ? (
-          <div className="bg-white p-12 rounded-3xl text-center shadow-sm border border-dashed border-gray-300">
-            <MessageSquare size={48} className="mx-auto text-gray-200 mb-4" />
-            <p className="text-gray-400 font-medium">אין הודעות חדשות</p>
-          </div>
-        ) : (
-          orders.map((order) => {
-            const isLate = order.status === 'חדש' && (new Date().getTime() - (order.timestamp?.toDate().getTime() || 0) > 60000);
-            return (
-              <div key={order.id} className={`bg-white p-6 rounded-3xl shadow-sm border-2 transition-all ${isLate ? 'border-red-400 animate-pulse' : 'border-transparent'}`}>
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                  <div className="flex-1 text-right">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="bg-[#dcf8c6] text-[#075e54] text-xs font-bold px-3 py-1 rounded-full">
-                        👤 {order.sender}
-                      </span>
-                      <span className="text-[10px] text-gray-400 flex items-center gap-1">
-                        <Clock size={10} />
-                        {order.timestamp?.toDate().toLocaleString('he-IL')}
-                      </span>
-                      {isLate && <span className="text-red-500 text-[10px] font-bold">⚠️ דורש התייחסות!</span>}
-                    </div>
-                    <p className="text-gray-800 font-bold text-lg leading-relaxed">{order.text}</p>
-                  </div>
-                  <div className="flex gap-2 w-full md:w-auto">
-                    <button onClick={() => approveOrder(order)} className="flex-1 md:flex-none bg-[#25D366] text-white p-4 px-6 rounded-2xl font-black flex items-center justify-center gap-2 hover:bg-[#128C7E] transition-all">
-                      <CheckCircle size={20} /> אשר
-                    </button>
-                    <button onClick={() => deleteOrder(order.id)} className="bg-red-50 text-red-500 p-4 rounded-2xl hover:bg-red-100 transition-all">
-                      <Trash2 size={20} />
-                    </button>
-                  </div>
+      {/* רשימת צ'אטים / צוות */}
+      <div style={{ width: '350px', backgroundColor: 'white', borderLeft: '1px solid #ddd', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ padding: '20px', backgroundColor: '#f0f2f5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ fontSize: '20px', fontWeight: 'bold' }}>{activeTab === 'chats' ? 'צ\'אטים' : 'אנשי צוות'}</h2>
+          <button 
+            onClick={() => activeTab === 'chats' ? setShowAddGroup(true) : setShowAddStaff(true)}
+            style={{ backgroundColor: '#00a884', color: 'white', border: 'none', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', fontSize: '20px' }}
+          >+</button>
+        </div>
+
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {activeTab === 'chats' ? (
+            groups.map(g => (
+              <div key={g.id} onClick={() => setSelectedGroup(g)} style={{ padding: '15px', borderBottom: '1px solid #f0f2f5', cursor: 'pointer', display: 'flex', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontWeight: 'bold' }}>{g.name}</div>
+                  <div style={{ fontSize: '12px', color: '#666' }}>לינק הצטרפות פעיל</div>
+                </div>
+                <button onClick={() => createMagicLink(g.id)} style={{ fontSize: '10px', border: '1px solid #00a884', color: '#00a884', padding: '2px 5px', borderRadius: '5px' }}>🔗 לינק</button>
+              </div>
+            ))
+          ) : (
+            staff.map(s => (
+              <div key={s.id} style={{ padding: '15px', borderBottom: '1px solid #f0f2f5', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <img src={s.avatar || '/logo.png'} style={{ width: '40px', height: '40px', borderRadius: '50%' }} />
+                <div>
+                  <div style={{ fontWeight: 'bold' }}>{s.name}</div>
+                  <div style={{ fontSize: '11px', color: '#666' }}>{s.role} | {s.dept}</div>
                 </div>
               </div>
-            );
-          })
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* אזור הצגת תוכן מרכזי */}
+      <div style={{ flex: 1, position: 'relative' }}>
+        {showAddStaff && (
+          <div style={{ position: 'absolute', inset: 0, backgroundColor: 'white', zIndex: 10, padding: '40px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <h3>הקמת איש צוות חדש (ראמי)</h3>
+            <input placeholder="שם מלא" value={newStaff.name} onChange={e => setNewStaff({...newStaff, name: e.target.value})} style={inputStyle} />
+            <input placeholder="מחלקה" value={newStaff.dept} onChange={e => setNewStaff({...newStaff, dept: e.target.value})} style={inputStyle} />
+            <input placeholder="תפקיד" value={newStaff.role} onChange={e => setNewStaff({...newStaff, role: e.target.value})} style={inputStyle} />
+            <input placeholder="נייד" value={newStaff.phone} onChange={e => setNewStaff({...newStaff, phone: e.target.value})} style={inputStyle} />
+            <input placeholder="שלוחה" value={newStaff.ext} onChange={e => setNewStaff({...newStaff, ext: e.target.value})} style={inputStyle} />
+            <input placeholder="אימייל" value={newStaff.email} onChange={e => setNewStaff({...newStaff, email: e.target.value})} style={inputStyle} />
+            <input placeholder="לינק לתמונת פרופיל" value={newStaff.avatar} onChange={e => setNewStaff({...newStaff, avatar: e.target.value})} style={inputStyle} />
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={handleAddStaff} style={{ backgroundColor: '#00a884', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>שמור איש צוות</button>
+              <button onClick={() => setShowAddStaff(false)} style={{ backgroundColor: '#ccc', padding: '10px 20px', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>ביטול</button>
+            </div>
+          </div>
         )}
+        
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#666' }}>
+          {selectedGroup ? `צ'אט פעיל: ${selectedGroup.name}` : 'בחר קבוצה או איש צוות להתחלת העבודה'}
+        </div>
       </div>
     </div>
   );
 }
+
+const inputStyle = { padding: '10px', borderRadius: '5px', border: '1px solid #ddd', width: '100%', maxWidth: '400px' };
