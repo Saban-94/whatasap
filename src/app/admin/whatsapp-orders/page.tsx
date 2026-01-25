@@ -3,14 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import { db } from "@/lib/firebase"; 
 import { collection, onSnapshot, query, orderBy, addDoc, doc, deleteDoc, serverTimestamp } from "firebase/firestore";
-import { MessageSquare, CheckCircle, Trash2, ArrowLeft, Send, Clock } from 'lucide-react';
+import { MessageSquare, CheckCircle, Trash2, ArrowLeft, Clock } from 'lucide-react';
 import Link from 'next/link';
 
 export default function WhatsAppOrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 1. האזנה להודעות וואטסאפ חדשות שנכנסו ל-Firebase
+  // האזנה להודעות וואטסאפ חדשות שנכנסו ל-Firebase
   useEffect(() => {
     const q = query(collection(db, "whatsapp_orders"), orderBy("timestamp", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -20,39 +20,36 @@ export default function WhatsAppOrdersPage() {
     return () => unsubscribe();
   }, []);
 
-  // 2. פונקציית אישור הזמנה - סנכרון ל-365 והוספה ל-Tasks
+  // פונקציית אישור הזמנה - סנכרון ל-365 והוספה ל-Tasks
   const approveOrder = async (order: any) => {
     try {
       // הלינק לאוטומציה מהקובץ src/app/page.tsx שלך
       const flowUrl = "https://defaultae1f0547569d471693f95b9524aa2b.31.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/0828f74ee7e44228b96c93eab728f280/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=lgdg1Hw--Z35PWOK6per2K02fql76m_WslheLXJL-eA";
 
-      const payload = {
-        customer: order.sender || "לקוח וואטסאפ",
-        address: "נא לעדכן כתובת", // שדה חובה לאוטומציה
+      // הכנת הנתונים בדיוק לפי המבנה ב-Firestore (תמונה 2)
+      const taskData = {
+        client: order.sender || "לקוח וואטסאפ",
+        address: "נא לעדכן כתובת", // שדה חובה באוטומציה
         items: order.text,
-        phone: "972508860896", // מספר ברירת מחדל
+        phone: "972508861080", // מספר תואם לדוגמה בתמונה
         status: "🆕 ממתין",
-        date: new Date().toLocaleDateString('he-IL')
+        timestamp: serverTimestamp()
       };
 
-      // שליחה ל-Power Automate (Microsoft 365)
+      // 1. שליחה ל-Power Automate (Microsoft 365)
       await fetch(flowUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+          ...taskData,
+          date: new Date().toLocaleDateString('he-IL')
+        })
       });
 
-      // הוספה לאוסף ה-tasks בדיוק לפי המבנה שראינו בצילום המסך שלך
-      await addDoc(collection(db, "tasks"), {
-        client: payload.customer,
-        address: payload.address,
-        items: payload.items,
-        phone: payload.phone,
-        status: payload.status,
-        timestamp: serverTimestamp() 
-      });
+      // 2. הוספה לאוסף ה-tasks ב-Firestore (תמונה 2)
+      await addDoc(collection(db, "tasks"), taskData);
 
-      // מחיקה מרשימת הממתינים של וואטסאפ
+      // 3. מחיקה מרשימת הממתינים של וואטסאפ
       await deleteDoc(doc(db, "whatsapp_orders", order.id));
       
       alert("ההזמנה אושרה, נשלחה ל-365 והתווספה לרשימת המשימות! ✅");
@@ -73,21 +70,21 @@ export default function WhatsAppOrdersPage() {
       <header className="max-w-4xl mx-auto flex justify-between items-center mb-6 bg-white p-5 rounded-2xl shadow-sm border-b-4 border-[#25D366]">
         <div>
           <h1 className="text-2xl font-black text-[#075E54]">הזמנות וואטסאפ</h1>
-          <p className="text-sm text-gray-500 font-medium">הודעות חדשות מקבוצת ההזמנות</p>
+          <p className="text-sm text-gray-500 font-medium">ניהול הודעות נכנסות מ-Green-API</p>
         </div>
         <Link href="/admin">
           <button className="flex items-center gap-2 bg-gray-100 p-2 px-4 rounded-xl text-gray-600 font-bold hover:bg-gray-200 transition-all">
-            <ArrowLeft size={18} /> חזרה
+            <ArrowLeft size={18} /> חזרה לניהול
           </button>
         </Link>
       </header>
 
       {loading ? (
-        <div className="text-center p-10 font-bold text-[#075E54]">טוען נתונים מהקבוצה...</div>
+        <div className="text-center p-10 font-bold text-[#075E54]">טוען הודעות...</div>
       ) : (
         <div className="grid gap-4 max-w-4xl mx-auto">
           {orders.length === 0 ? (
-            <div className="bg-white p-12 rounded-3xl text-center shadow-sm">
+            <div className="bg-white p-12 rounded-3xl text-center shadow-sm border border-dashed border-gray-300">
               <MessageSquare size={48} className="mx-auto text-gray-200 mb-4" />
               <p className="text-gray-400 font-medium text-lg">אין הודעות חדשות שממתינות לאישור</p>
             </div>
@@ -126,12 +123,6 @@ export default function WhatsAppOrdersPage() {
           )}
         </div>
       )}
-      
-      <div className="max-w-4xl mx-auto mt-8 p-4 bg-blue-50 rounded-2xl border border-blue-100">
-        <p className="text-xs text-blue-600 text-center font-medium">
-          💡 <b>טיפ:</b> לחיצה על "אשר" מעבירה את הנתונים ישירות ל-SharePoint של גליה ולרשימת המשימות של הנהגים.
-        </p>
-      </div>
     </div>
   );
 }
