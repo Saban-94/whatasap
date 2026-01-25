@@ -1,5 +1,8 @@
+// @ts-ignore
+import { createClient } from '@supabase/supabase-js';
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+
 
 const firebaseConfig = {
   apiKey: "AIzaSyBGYsZylsIyeWudp8_SlnLBelkgoNXjU60",
