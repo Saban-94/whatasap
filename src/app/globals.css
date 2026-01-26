@@ -17,3 +17,51 @@ body {
 input, button {
   font-family: inherit;
 }
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --saban-cream: #FDFBF7;
+  --saban-blue: #E3F2FD;
+  --saban-dark-blue: #1976D2;
+  --whatsapp-green: #25D366;
+  --whatsapp-light: #DCF8C6;
+}
+
+body {
+  background-color: var(--saban-cream);
+  color: #333;
+  font-family: 'Inter', sans-serif;
+}
+
+/* כרטיסים מגושמים ונוחים לאצבע של קבלן */
+.saban-card {
+  @apply bg-white rounded-[32px] shadow-sm border border-gray-100 p-6 transition-all active:scale-95;
+}
+
+/* כפתורי ענק */
+.btn-huge {
+  @apply w-full py-5 rounded-2xl font-black text-xl flex items-center justify-center gap-3 shadow-lg transition-all active:scale-90;
+}
+
+/* אפקט הבהוב עדין להזמנה חריגה/מכולה */
+@keyframes alert-pulse {
+  0% { border-color: #ef4444; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  70% { border-color: #f87171; box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+  100% { border-color: #ef4444; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.alert-mode {
+  animation: alert-pulse 2s infinite;
+  border-width: 2px;
+}
+
+/* עיצוב בועות צ'אט */
+.chat-bubble-user {
+  @apply bg-white rounded-2xl rounded-tr-none p-4 shadow-sm border border-gray-100 self-start max-w-[80%];
+}
+
+.chat-bubble-saban {
+  @apply bg-[#DCF8C6] rounded-2xl rounded-tl-none p-4 shadow-sm self-end max-w-[80%] text-right;
+}
