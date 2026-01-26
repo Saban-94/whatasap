@@ -1,48 +1,50 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-saban-cream: #FDFBF7;
+  --color-saban-blue: #E3F2FD;
+  --color-saban-dark-blue: #1976D2;
+  --color-whatsapp-green: #25D366;
+  --color-whatsapp-light: #DCF8C6;
+}
 
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
-}
-
-body {
-  color: rgb(var(--foreground-rgb));
-  background: white;
-  direction: rtl; /* תמיכה בעברית */
-}
-
-input, button {
-  font-family: inherit;
-}
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-:root {
-  --saban-cream: #FDFBF7;
-  --saban-blue: #E3F2FD;
-  --saban-dark-blue: #1976D2;
-  --whatsapp-green: #25D366;
-  --whatsapp-light: #DCF8C6;
-}
-
-body {
-  background-color: var(--saban-cream);
+  background-color: var(--color-saban-cream);
   color: #333;
-  font-family: 'Inter', sans-serif;
 }
 
 /* כרטיסים מגושמים ונוחים לאצבע של קבלן */
 .saban-card {
-  @apply bg-white rounded-[32px] shadow-sm border border-gray-100 p-6 transition-all active:scale-95;
+  background-color: white;
+  border-radius: 32px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  border: 1px solid #f3f4f6;
+  padding: 1.5rem;
+  transition: all 0.2s;
+}
+
+.saban-card:active {
+  transform: scale(0.95);
 }
 
 /* כפתורי ענק */
 .btn-huge {
-  @apply w-full py-5 rounded-2xl font-black text-xl flex items-center justify-center gap-3 shadow-lg transition-all active:scale-90;
+  width: 100%;
+  padding-top: 1.25rem;
+  padding-bottom: 1.25rem;
+  border-radius: 1rem;
+  font-weight: 900;
+  font-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s;
+}
+
+.btn-huge:active {
+  transform: scale(0.9);
 }
 
 /* אפקט הבהוב עדין להזמנה חריגה/מכולה */
@@ -55,13 +57,4 @@ body {
 .alert-mode {
   animation: alert-pulse 2s infinite;
   border-width: 2px;
-}
-
-/* עיצוב בועות צ'אט */
-.chat-bubble-user {
-  @apply bg-white rounded-2xl rounded-tr-none p-4 shadow-sm border border-gray-100 self-start max-w-[80%];
-}
-
-.chat-bubble-saban {
-  @apply bg-[#DCF8C6] rounded-2xl rounded-tl-none p-4 shadow-sm self-end max-w-[80%] text-right;
 }
