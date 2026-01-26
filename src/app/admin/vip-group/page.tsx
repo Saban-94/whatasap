@@ -1,4 +1,4 @@
-src/app/admin/vip-group/page.tsx'use client';
+  use client';
 
 import React, { useState, useEffect } from 'react';
 import { db } from "@/lib/firebase"; 
