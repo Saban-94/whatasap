@@ -1,0 +1,128 @@
+{
+  "meta": {
+    "generated_at": "2026-01-27T05:30:00Z",
+    "brand": "ח. סבן",
+    "version": "2.0",
+    "description": "מוח לוגיסטי מאוחד הכולל קטלוג מוצרים, נוסחאות תצרוכת וחוקי מומחה"
+  },
+  "products": [
+    {
+      "id": "SAB-603",
+      "brand": "תרמוקיר",
+      "name": "תרמוקיר 603 AD (פלסטומר 603) C2TE S1",
+      "category": "דבקים",
+      "unit": "שק 25 ק\"ג",
+      "image_url": "https://www.termokir.co.il/wp-content/uploads/2015/03/603-AD.jpg",
+      "technical": {
+        "verified": true,
+        "consumption_formula": {
+          "type": "kg_by_area_and_thickness_mm",
+          "parameters": { "consumption_kg_per_m2_per_mm": 1.4 },
+          "description": "חישוב: שטח X עובי X 1.4 ק\"ג"
+        },
+        "yield_per_unit": {
+          "unit": "שק 25 ק\"ג",
+          "yield_m2_at_1mm": 17.857
+        }
+      },
+      "expert_tip": "טיפ זהב: מומלץ ליישם בשיטת 'מריחה כפולה' באריחים מעל 60 ס\"מ.",
+      "linked_products_logic": ["ספייסרים", "פריימר מקשר", "פטיש גומי"]
+    },
+    {
+      "id": "SAB-M150",
+      "brand": "נירלט",
+      "name": "שליכט צבעוני EXTRA M150",
+      "category": "שליכט",
+      "unit": "דלי 24 ק\"ג",
+      "image_url": "https://nirlat.com/wp-content/uploads/2018/05/M150.jpg",
+      "technical": {
+        "verified": true,
+        "consumption_formula": {
+          "type": "kg_by_area_and_yield_per_unit",
+          "parameters": { "yield_m2_per_unit": 10.5 },
+          "description": "דלי מכסה בממוצע 10.5 מ\"ר"
+        }
+      },
+      "expert_tip": "חובה ליישם פריימר X בגוון השליכט לפחות 24 שעות לפני היישום.",
+      "linked_products_logic": ["פריימר X", "ניילון הגנה", "סרט הדבקה (מסקנטייפ)"]
+    },
+    {
+      "id": "SAB-GYP-GRN",
+      "brand": "אורבונד (Knauf)",
+      "name": "לוח גבס ירוק (עמיד לחות)",
+      "category": "גבס",
+      "unit": "יחידה (לוח)",
+      "image_url": "https://www.orbond.co.il/images/products/green-board.jpg",
+      "technical": {
+        "verified": true,
+        "consumption_formula": {
+          "type": "pieces_by_area_and_layers",
+          "parameters": { "screws_per_m2_per_layer": 10 },
+          "description": "חישוב: לוח אחד לכל 3 מ\"ר + 10 ברגים למ\"ר"
+        }
+      },
+      "expert_tip": "בחדרים רטובים יש להשתמש בברגים מושחרים עמידי חלודה ובסרט שריון פיברגלס.",
+      "linked_products_logic": ["ברגי גבס 25 מ\"מ", "סרט שריון", "מרק גבס (פילר)"]
+    },
+    {
+      "id": "SAB-107",
+      "brand": "Sika",
+      "name": "SikaTop Seal-107",
+      "category": "איטום",
+      "unit": "סט 25 ק\"ג (א+ב)",
+      "image_url": "https://isr.sika.com/content/israel/main/he/solutions/construction/waterproofing/_jcr_content/product-image.img.jpg/107.jpg",
+      "technical": {
+        "verified": true,
+        "consumption_formula": {
+          "type": "kg_by_area_and_thickness_mm",
+          "parameters": { "consumption_kg_per_m2_per_mm": 2.0 },
+          "description": "איטום בשתי שכבות דורש כ-4 ק\"ג למ"ר"
+        }
+      },
+      "expert_tip": "יש להרטיב את התשתית (רוויה אך ללא שלוליות) לפני יישום השכבה הראשונה.",
+      "linked_products_logic": ["מברשת איטום", "סרט איטום (סיקה סיל-טייפ)"]
+    },
+    {
+      "id": "SAB-SE980",
+      "brand": "תרמוקיר",
+      "name": "תרמוקיר SE 980 (אלסטוסיל)",
+      "category": "איטום",
+      "unit": "שק 25 ק\"ג",
+      "technical": {
+        "verified": true,
+        "consumption_formula": {
+          "type": "kg_by_area_and_thickness_mm",
+          "parameters": { "consumption_kg_per_m2_per_mm": 2.0 }
+        }
+      },
+      "expert_tip": "מצוין לאיטום סדקים נימיים. יש להמתין 3 שעות בין שכבות.",
+      "linked_products_logic": ["רשת פיברגלס", "מברשת סיבים"]
+    },
+    {
+      "id": "SAB-710",
+      "brand": "כרמית (מיסטר פיקס)",
+      "name": "טיח חוץ 710",
+      "category": "טיח",
+      "unit": "שק 25 ק\"ג",
+      "technical": {
+        "verified": true,
+        "consumption_formula": {
+          "type": "kg_by_area_and_thickness_mm",
+          "parameters": { "consumption_kg_per_m2_per_mm": 1.4 }
+        }
+      },
+      "expert_tip": "בעובי מעל 20 מ\"מ יש ליישם בשתי שכבות עם רשת ביניהן.",
+      "linked_products_logic": ["פינות גרמני", "רשת טיח"]
+    }
+  ],
+  "knowledge_base": {
+    "plaster_drying_times": {
+      "cement_based": "24-72 שעות בהתאם למזג האוויר",
+      "acrylic_based": "24-48 שעות"
+    },
+    "general_tips": [
+      "אין ליישם חומרים צמנטיים בטמפרטורה מתחת ל-5 מעלות.",
+      "תשתית חייבת להיות נקייה מאבק, שומנים וחלקים רופפים."
+    ]
+  }
+}
