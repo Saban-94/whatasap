@@ -99,6 +99,43 @@
       "linked_products_logic": ["רשת פיברגלס", "מברשת סיבים"]
     },
     {
+  "meta": {
+    "version": "2.1",
+    "update": "Regulatory & Municipal Permits Patch",
+    "focus": "Herzliya, Raanana, Hod HaSharon"
+  },
+  "regulatory_logic": {
+    "municipalities": {
+      "herzliya": {
+        "permit_link": "https://www.herzliya.muni.il/forms/waste-container/",
+        "critical_rules": [
+          "חובה לפנות עד יום שישי שעה 14:00 (איסור סופ\"ש)",
+          "חובה להשאיר מעבר חופשי להולכי רגל",
+          "כיסוי מכולה חובה בסוף כל יום"
+        ],
+        "required_docs": ["ת\"ז בעל נכס", "פרטי קבלן", "חוזה מטמנה"]
+      },
+      "raanana": {
+        "permit_link": "https://www.raanana.muni.il/ConstructionAndPlanning/Pages/WasteContainer.aspx",
+        "critical_rules": [
+          "איסור הצבה מיום שישי 12:00 עד ראשון 06:00",
+          "חובה מחזירי אור ב-4 פינות",
+          "מעבר מדרכה מינימלי: 1.30 מטר"
+        ]
+      },
+      "hod_hasharon": {
+        "permit_link": "https://www.hod-hasharon.muni.il/158/",
+        "critical_rules": [
+          "פתיחת פנייה 10 ימים מראש",
+          "חודש ראשון ללא אגרה",
+          "שימוש בשרוול חובה מעל גובה 3 מטר"
+      }
+    },
+    "tofes_4_compliance": {
+      "essential_docs": ["אישור קליטה ממטמנה", "אישור פינוי סופי", "חשבונית עם גוש/חלקה"],
+      "expert_tip": "המוח של סבן שומר לך את כל אישורי השקילה אוטומטית לתיקיית טופס 4."
+    }
+  }
       "id": "SAB-710",
       "brand": "כרמית (מיסטר פיקס)",
       "name": "טיח חוץ 710",
