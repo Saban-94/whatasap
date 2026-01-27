@@ -22,6 +22,30 @@ export default function RamiAdminDashboard() {
     warehouseId: 40, // ברירת מחדל שי שרון
     address: ''
   });
+  // פונקציה להפעלת החוזה ע"י ראמי
+const activateContract = async (taskId: string, address: string) => {
+  setLoading(true);
+  try {
+    // 1. הפיכת כתובת לקואורדינטות (Geocoding) - בסימולציה נשתמש במיקום גנרי או סטטי
+    const docRef = doc(db, "container_contracts", taskId);
+    
+    await updateDoc(docRef, {
+      status: "IN_FIELD",
+      current_day: 1,
+      start_date: new Date().toLocaleDateString('he-IL'),
+      last_activated_at: serverTimestamp(),
+      // במידה וראמי מזין כתובת, המערכת "נועצת" את המפה עליה
+      lat: 32.1624, // דוגמה לקואורדינטה של הרצליה
+      lng: 34.8447,
+    });
+
+    alert("המכולה הופעלה! אבי כהן עכשיו ביום 1 והמפה שלו חיה.");
+  } catch (err) {
+    console.error("שגיאה בהפעלת החוזה", err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleCreateCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
