@@ -2,95 +2,78 @@
 export const dynamic = 'force-dynamic';
 
 import React, { useState, useMemo } from 'react';
-import { Truck, ShoppingCart, Send, ArrowRight, Search, Plus, Minus, Trash2, ShieldCheck, Calculator, Package } from 'lucide-react';
+import { Calculator, ShoppingCart, Send, ArrowRight, Search, Plus, Trash2, ShieldCheck, Package, Info } from 'lucide-react';
 import Link from 'next/link';
 
-// --- המוח המוטמע (במקום ייבוא חיצוני שגורם לשגיאה) ---
-const sabanBrain = {
+// --- מוח שחר שאול: נתונים מלוטשים מה-JSON המאוחד ---
+const SHAHAR_BRAIN = {
+  clientName: "שחר שאול",
+  activeProject: "גלגל המזלות 73",
   products: [
     {
       brand: "תרמוקיר",
-      name: "תרמוקיר 603 AD (פלסטומר 603) C2TE S1",
+      name: "פלסטומר 603 (AD 603) C2TE S1",
       category: "דבקים",
       unit: "שק 25 ק״ג",
-      technical: {
-        consumption_formula: {
-          type: "kg_by_area_and_thickness_mm",
-          parameters: { consumption_kg_per_m2_per_mm: 1.4 }
-        }
-      },
-      expert_tip: "טיפ זהב: יישום בעובי 3-5 מ״מ מבטיח הדבקה מושלמת לפורצלן.",
-      linked_products_logic: ["פריימר", "ספייסרים"]
+      formula: { type: "kg_mm", factor: 1.4 },
+      expert_tip: "לפורצלן בגלגל המזלות: מומלץ עובי 5 מ״מ עם מריחה כפולה.",
+      linked: ["פריימר מקשר", "ספייסרים 3 מ״מ"]
     },
     {
       brand: "נירלט",
       name: "שליכט צבעוני EXTRA M150",
       category: "שליכט",
       unit: "דלי 24 ק״ג",
-      technical: {
-        consumption_formula: {
-          type: "kg_by_area_and_yield_per_unit",
-          parameters: { yield_m2_per_unit: 10.5 }
-        }
-      },
-      expert_tip: "לתוצאה מקצועית: חובה ליישם פריימר X יממה לפני השליכט.",
-      linked_products_logic: ["פריימר X", "ניילון הגנה"]
+      formula: { type: "yield", factor: 10.5 },
+      expert_tip: "חובה ליישם פריימר X בגוון השליכט 24 שעות מראש.",
+      linked: ["פריימר X", "ניילון הגנה (גליל)"]
     },
     {
-      brand: "אורבונד (Knauf)",
+      brand: "Sika",
+      name: "SikaTop Seal-107 איטום",
+      category: "איטום",
+      unit: "סט 25 ק״ג",
+      formula: { type: "kg_mm", factor: 2.0 },
+      expert_tip: "איטום בשתי שכבות (4 ק״ג למ״ר סה״כ). הרטב את הבטון מראש.",
+      linked: ["מברשת איטום", "סיקה סיל-טייפ"]
+    },
+    {
+      brand: "אורבונד",
       name: "לוח גבס ירוק (עמיד לחות)",
       category: "גבס",
-      unit: "יחידה (לוח)",
-      technical: {
-        consumption_formula: {
-          type: "pieces_by_area_and_layers",
-          parameters: { screws_per_m2_per_layer: 10 }
-        }
-      },
-      expert_tip: "בחדרים רטובים יש להשתמש רק בברגים מושחרים עמידי חלודה.",
-      linked_products_logic: ["ברגי גבס", "סרט שריון", "מרק גבס"]
+      unit: "לוח (3 מ״ר)",
+      formula: { type: "pieces", factor: 3 },
+      expert_tip: "במקלחות: השתמש רק בברגים מושחרים וסרט שריון.",
+      linked: ["ברגי גבס 25 מ״מ", "סרט שריון פיברגלס"]
     }
-    // ניתן להוסיף כאן עוד מוצרים מה-JSON שלך
   ]
 };
 
-export default function SmartOrderPage() {
+export default function ShaharShaulOrder() {
   const [search, setSearch] = useState('');
   const [cart, setCart] = useState<any[]>([]);
-  const [calcInput, setCalcInput] = useState({ sqm: '', thickness: '5' });
+  const [calc, setCalc] = useState({ sqm: '', thick: '5' });
   const [expertMsg, setExpertMsg] = useState<string | null>(null);
 
-  const filteredProducts = useMemo(() => {
+  const filtered = useMemo(() => {
     if (!search) return [];
-    return sabanBrain.products.filter(p => 
-      p.name.includes(search) || p.brand.includes(search)
-    ).slice(0, 5);
+    return SHAHAR_BRAIN.products.filter(p => p.name.includes(search) || p.brand.includes(search));
   }, [search]);
 
-  const calculateNeededQty = (product: any) => {
-    const area = parseFloat(calcInput.sqm);
-    if (!area || isNaN(area)) return 1;
-    const formula = product.technical?.consumption_formula;
-    if (!formula) return 1;
-
-    if (formula.type === "kg_by_area_and_thickness_mm") {
-      const thick = parseFloat(calcInput.thickness) || 5;
-      return Math.ceil((area * thick * 1.4) / 25);
-    } 
-    if (formula.type === "kg_by_area_and_yield_per_unit") {
-      return Math.ceil(area / (formula.parameters.yield_m2_per_unit || 10));
-    }
-    if (formula.type === "pieces_by_area_and_layers") {
-      return Math.ceil(area / 3); // לוח הוא ~3 מ"ר
-    }
+  const calculateQty = (p: any) => {
+    const area = parseFloat(calc.sqm);
+    if (!area) return 1;
+    if (p.formula.type === "kg_mm") return Math.ceil((area * parseFloat(calc.thick) * p.formula.factor) / 25);
+    if (p.formula.type === "yield") return Math.ceil(area / p.formula.factor);
+    if (p.formula.type === "pieces") return Math.ceil(area / p.formula.factor);
     return 1;
   };
 
-  const handleAddToCart = (product: any) => {
-    const qty = calculateNeededQty(product);
-    setCart([...cart, { ...product, qty }]);
-    if (product.linked_products_logic?.length) {
-      setExpertMsg(`שחר, שים לב: עבור ${product.name} המוח ממליץ להוסיף ${product.linked_products_logic.join(', ')} 🫂`);
+  const addToCart = (p: any) => {
+    const qty = calculateQty(p);
+    setCart([...cart, { ...p, qty }]);
+    if (p.linked.length) {
+      setExpertMsg(`שחר, המוח ממליץ להוסיף ${p.linked.join(', ')} להשלמת הביצוע 🫂`);
       setTimeout(() => setExpertMsg(null), 6000);
     }
     setSearch('');
@@ -98,58 +81,58 @@ export default function SmartOrderPage() {
 
   return (
     <div dir="rtl" className="min-h-screen bg-[#FDFBF7] pb-32 font-sans text-right">
-      <header className="bg-white p-6 rounded-b-[45px] shadow-sm border-b border-gray-100 flex justify-between items-center sticky top-0 z-50">
-        <Link href="/dashboard" className="text-gray-400"><ArrowRight size={24} /></Link>
+      {/* Header יוקרתי */}
+      <header className="bg-white p-6 rounded-b-[45px] shadow-sm flex justify-between items-center sticky top-0 z-50 border-b border-gray-100">
+        <Link href="/dashboard" className="text-gray-400 p-2"><ArrowRight size={24} /></Link>
         <div className="text-center">
-          <h1 className="text-xl font-black text-gray-800">ח. סבן – מומחה החומרי בנין</h1>
-          <p className="text-[10px] text-blue-500 font-bold tracking-widest uppercase">חישוב כמויות וסנכרון מלא</p>
+          <h1 className="text-xl font-black text-gray-800 tracking-tight italic">ח. סבן – {SHAHAR_BRAIN.clientName}</h1>
+          <p className="text-[10px] text-blue-500 font-bold uppercase tracking-widest">{SHAHAR_BRAIN.activeProject}</p>
         </div>
         <div className="w-10"></div>
       </header>
 
       <main className="p-6 space-y-6">
-        {/* מחשבון כמויות */}
-        <div className="bg-blue-50 p-6 rounded-[35px] border border-blue-100 shadow-inner">
-          <div className="flex items-center gap-2 mb-3 text-blue-800 font-black text-sm">
-            <Calculator size={18} /> הזן שטח עבודה:
-          </div>
-          <div className="grid grid-cols-2 gap-3">
+        {/* מחשבון שטח (לבן-קרם) */}
+        <div className="bg-white p-6 rounded-[35px] shadow-sm border border-gray-100">
+          <label className="text-xs font-black text-gray-400 mb-3 block flex items-center gap-2">
+            <Calculator size={16} className="text-blue-500" /> הזן נתוני שטח למחשבון:
+          </label>
+          <div className="grid grid-cols-2 gap-4">
             <input 
               type="number" placeholder="כמות מ״ר" 
-              className="p-4 rounded-2xl border-none font-black text-xl shadow-sm focus:ring-2 focus:ring-blue-400"
-              value={calcInput.sqm} onChange={e => setCalcInput({...calcInput, sqm: e.target.value})}
+              className="p-4 rounded-2xl bg-[#FDFBF7] border-none font-black text-xl text-blue-600 focus:ring-2 focus:ring-blue-100"
+              value={calc.sqm} onChange={e => setCalc({...calc, sqm: e.target.value})}
             />
             <input 
               type="number" placeholder="עובי מ״מ" 
-              className="p-4 rounded-2xl border-none font-black text-xl shadow-sm focus:ring-2 focus:ring-blue-400"
-              value={calcInput.thickness} onChange={e => setCalcInput({...calcInput, thickness: e.target.value})}
+              className="p-4 rounded-2xl bg-[#FDFBF7] border-none font-black text-xl text-blue-600 focus:ring-2 focus:ring-blue-100"
+              value={calc.thick} onChange={e => setCalc({...calc, thick: e.target.value})}
             />
           </div>
         </div>
 
         {/* חיפוש */}
         <div className="relative">
-          <Search className="absolute right-4 top-5 text-gray-400" size={20} />
+          <Search className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
           <input 
-            type="text" placeholder="חפש מוצר (גבס, שליכט, 603...)" 
+            type="text" placeholder="חפש חומר (דבק, שליכט...)" 
             className="w-full p-5 pr-14 bg-white rounded-3xl shadow-sm border-none font-bold text-lg"
             value={search} onChange={e => setSearch(e.target.value)}
           />
         </div>
 
         {/* תוצאות חיפוש */}
-        <div className="space-y-3">
-          {filteredProducts.map((p, idx) => (
-            <div key={idx} className="bg-white p-5 rounded-[30px] shadow-sm border border-gray-100 flex justify-between items-center" onClick={() => handleAddToCart(p)}>
-              <div>
-                <h4 className="font-black text-gray-800">{p.name}</h4>
-                <p className="text-[10px] text-blue-500 font-bold">{p.brand} | {p.unit}</p>
-                {calcInput.sqm && <p className="text-xs text-green-600 font-black mt-1 animate-pulse"><Package size={12} className="inline ml-1" /> המלצת המוח: {calculateNeededQty(p)} יח׳</p>}
-              </div>
-              <div className="bg-blue-600 text-white p-3 rounded-2xl shadow-lg"><Plus size={20} /></div>
+        {filtered.map((p, i) => (
+          <div key={i} className="bg-white p-5 rounded-[30px] shadow-sm border border-gray-100 flex justify-between items-center animate-in fade-in" onClick={() => addToCart(p)}>
+            <div>
+              <h4 className="font-black text-gray-800">{p.name}</h4>
+              <p className="text-[10px] text-blue-500 font-bold uppercase">{p.brand} | {p.unit}</p>
+              {calc.sqm && <p className="text-xs text-green-600 font-black mt-2 animate-pulse"><Package size={14} className="inline ml-1" /> המלצת המוח: {calculateQty(p)} יח׳</p>}
+              <p className="text-[10px] text-gray-400 italic mt-1 leading-tight">{p.expert_tip}</p>
             </div>
-          ))}
-        </div>
+            <div className="bg-[#1976D2] text-white p-4 rounded-2xl shadow-lg active:scale-90 transition-all"><Plus size={24} /></div>
+          </div>
+        ))}
 
         {/* הודעת מומחה */}
         {expertMsg && (
@@ -161,18 +144,21 @@ export default function SmartOrderPage() {
 
         {/* סל הזמנה */}
         {cart.length > 0 && (
-          <section className="bg-white rounded-[40px] p-6 shadow-2xl border-t-8 border-[#1976D2]">
-            <h3 className="font-black text-lg text-gray-800 mb-4 flex items-center gap-2"><ShoppingCart size={20} /> סיכום הזמנה חכמה:</h3>
-            <div className="space-y-3 mb-6">
+          <section className="bg-white rounded-[40px] p-8 shadow-2xl border-t-8 border-[#1976D2] space-y-6">
+            <h3 className="font-black text-xl text-gray-800 flex items-center gap-2"><ShoppingCart size={24} className="text-blue-600" /> סיכום הזמנה לאתר:</h3>
+            <div className="space-y-4">
               {cart.map((item, i) => (
-                <div key={i} className="flex justify-between items-center py-2 border-b border-gray-50">
-                  <span className="font-bold text-gray-700 text-sm">{item.name}</span>
-                  <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-xl font-black italic">x{item.qty}</span>
+                <div key={i} className="flex justify-between items-center py-3 border-b border-gray-50 last:border-0">
+                  <span className="font-bold text-gray-800 text-sm">{item.name}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="bg-blue-50 text-blue-700 px-4 py-1 rounded-xl font-black italic">x{item.qty}</span>
+                    <button onClick={() => setCart(cart.filter(c => c.name !== item.name))} className="text-red-300"><Trash2 size={20} /></button>
+                  </div>
                 </div>
               ))}
             </div>
-            <button className="w-full bg-[#1976D2] text-white py-5 rounded-2xl font-black text-xl shadow-lg flex items-center justify-center gap-2">
-              <Send size={20} /> שלח הזמנה מדויקת
+            <button onClick={() => alert("הזמנת שחר שאול נשלחה ל-365 ולנהג! 🎉")} className="w-full bg-[#1976D2] text-white py-5 rounded-2xl font-black text-xl shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all">
+               שלח הזמנה לביצוע <Send size={20} />
             </button>
           </section>
         )}
