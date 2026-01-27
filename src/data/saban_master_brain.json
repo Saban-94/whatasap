@@ -1,0 +1,22 @@
+[
+  {
+    "id": "19107",
+    "brand": "Sika",
+    "name": "סיקה 107 אפור",
+    "category": "איטום הידראולי",
+    "image": "/products/sika-107.png",
+    "specs": {
+      "drying_time": "4-6 שעות (למגע)",
+      "full_cure": "7 ימים",
+      "features": ["גמיש", "מתאים למי שתייה", "עמיד בלחץ מים חיובי ושלילי"],
+      "application": "מריחה במברשת או מאלג' ב-2 שכבות לפחות."
+    },
+    "calculator": {
+      "unit": "kg/m2",
+      "ratio": 2.0,
+      "package_size": 25,
+      "formula": "(sqm * ratio) / package_size"
+    },
+    "verified_source": "https://www.sika.com/he/construction/waterproofing/sikatop-seal-107.html"
+  }
+]
