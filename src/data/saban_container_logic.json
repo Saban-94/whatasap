@@ -1,0 +1,83 @@
+{
+  "meta": {
+    "version": "2.5",
+    "project": "H. Saban Containers Logistics",
+    "last_update": "2026-01-27"
+  },
+  "warehouses": [
+    { "id": 30, "name": "שארק", "code": "SHARK_30", "is_active": true },
+    { "id": 32, "name": "כראדי", "code": "KARADI_32", "is_active": true },
+    { "id": 40, "name": "שי שרון", "code": "SHAYSHARON40", "is_active": true }
+  ],
+  "contract_rules": {
+    "standard_rental_days": 10,
+    "sticky_contractor_rule": "ALL_FUTURE_OPERATIONS_MUST_MATCH_ORIGINAL_CONTRACTOR",
+    "auto_archive_on_removal": true
+  },
+  "time_logic_visuals": {
+    "days_1_6": {
+      "status": "RENTAL_ACTIVE",
+      "label": "בשכירות",
+      "color": "#2ECC71",
+      "action": "NORMAL"
+    },
+    "days_7_9": {
+      "status": "RENTAL_NEAR_END",
+      "label": "שים לב - לקראת סיום",
+      "color": "#F1C40F",
+      "effect": "BLINKING_EYE",
+      "notification": "OneSignal_Day8"
+    },
+    "day_10_plus": {
+      "status": "ACTION_REQUIRED",
+      "label": "חובה לנקוט פעולה",
+      "color": "#E74C3C",
+      "effect": "LOCK_UI_MODAL",
+      "notification": "OneSignal_Day10_Final"
+    }
+  },
+  "municipal_rules": {
+    "herzliya": {
+      "display_name": "הרצליה",
+      "permit_url": "https://www.herzliya.muni.il/forms/waste-container/",
+      "rules": [
+        "פינוי חובה עד יום שישי שעה 14:00",
+        "אין להותיר מכולה בסופי שבוע וחגים",
+        "כיסוי מכולה חובה בסוף כל יום"
+      ]
+    },
+    "raanana": {
+      "display_name": "רעננה",
+      "permit_url": "https://www.raanana.muni.il/ConstructionAndPlanning/Pages/WasteContainer.aspx",
+      "rules": [
+        "איסור הצבה משישי 12:00 עד ראשון 06:00",
+        "חובה מחזירי אור ב-4 פינות המכולה",
+        "מעבר הולכי רגל מינימלי: 1.30 מטר"
+      ]
+    },
+    "hod_hasharon": {
+      "display_name": "הוד השרון",
+      "permit_url": "https://www.hod-hasharon.muni.il/158/",
+      "rules": [
+        "פתיחת פנייה 10 ימים מראש",
+        "חודש ראשון ללא אגרה",
+        "חובת שרוול מעל גובה 3 מטר"
+      ]
+    }
+  },
+  "compliance": {
+    "tofes_4_requirements": [
+      "אישורי שקילה מקוריים",
+      "אישור קליטה ממטמנה מורשת",
+      "התאמה לגוש/חלקה של היתר הבנייה"
+    ]
+  },
+  "magic_link_config": {
+    "ui_restriction": "CONTAINER_ONLY_MODE",
+    "hidden_modules": ["building_materials", "vip_store", "internal_logs"],
+    "revive_logic": {
+      "auto_prefill_from_archive": true,
+      "remember_last_address": true
+    }
+  }
+}
