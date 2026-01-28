@@ -2,147 +2,91 @@
 export const dynamic = 'force-dynamic';
 
 import React, { useState, useMemo } from 'react';
-import { Search, Filter, BookOpen, ShieldCheck, ArrowRight, Package, Info } from 'lucide-react';
+import { Search, BookOpen, ShieldCheck, ArrowRight, Package, ShoppingCart, Tag } from 'lucide-react';
 import Link from 'next/link';
 
-// --- נתוני המוח המאוחד (מוטמעים למניעת שגיאות Build) ---
-const UNIFIED_PRODUCTS = [
-  {
-    brand: "Sika",
-    name: "SikaTop Seal-107 איטום צמנטי",
-    category: "איטום",
-    unit: "סט 25 ק״ג",
-    image_url: "https://isr.sika.com/content/israel/main/he/solutions/construction/waterproofing/_jcr_content/product-image.img.jpg/107.jpg",
-    expert_tip: "שתי שכבות חובה (3 ק״ג למ״ר סה״כ). סרטי פינות חובה בכל חיבור קיר-רצפה."
-  },
-  {
-    brand: "תרמוקיר",
-    name: "פלסטומר 603 (AD 603) דבק קרמיקה",
-    category: "דבקים",
-    unit: "שק 25 ק״ג",
-    image_url: "https://www.termokir.co.il/wp-content/uploads/2015/03/603-AD.jpg",
-    expert_tip: "לאריחי פורצלן גדולים (מעל 60 ס״מ) חובה לבצע מריחה כפולה - גם על התשתית וגם על גב האריח."
-  },
-  {
-    brand: "כרמית (מיסטר פיקס)",
-    name: "טיח 710 ליישור קירות",
-    category: "טיח",
-    unit: "שק 25 ק״ג",
-    image_url: "https://www.mr-fix.co.il/wp-content/uploads/2016/01/710.jpg",
-    expert_tip: "על בטון חלק חובה ליישם פריימר מקשר (כמו פריימר 101) לפני יישום הטיח."
-  },
-  {
-    brand: "אורבונד",
-    name: "לוח גבס ירוק (עמיד לחות)",
-    category: "גבס",
-    unit: "לוח (3 מ״ר)",
-    image_url: "https://www.orbond.co.il/images/products/green-board.jpg",
-    expert_tip: "בחדרים רטובים יש להשתמש רק בברגים מושחרים עמידי חלודה ובסרט שריון פיברגלס."
-  },
-  {
-    brand: "נירלט",
-    name: "שליכט צבעוני EXTRA M150",
-    category: "שליכט",
-    unit: "דלי 24 ק״ג",
-    image_url: "https://nirlat.com/wp-content/uploads/2018/05/M150.jpg",
-    expert_tip: "חובה ליישם פריימר X בגוון השליכט לפחות 24 שעות לפני תחילת העבודה."
-  }
+// נתונים מוטמעים (המוח של ח. סבן)
+const PRODUCTS = [
+  { brand: "Sika", name: "SikaTop Seal-107", category: "איטום", unit: "סט 25 ק״ג", image: "https://isr.sika.com/content/israel/main/he/solutions/construction/waterproofing/_jcr_content/product-image.img.jpg/107.jpg", tip: "שתי שכבות חובה. אל תשכח סרט איטום לפינות!" },
+  { brand: "תרמוקיר", name: "פלסטומר 603 (AD 603)", category: "דבקים", unit: "שק 25 ק״ג", image: "https://www.termokir.co.il/wp-content/uploads/2015/03/603-AD.jpg", tip: "לאריחים גדולים חובה מריחה כפולה." },
+  { brand: "אורבונד", name: "לוח גבס ירוק", category: "גבס", unit: "יחידה (3 מ״ר)", image: "https://www.orbond.co.il/images/products/green-board.jpg", tip: "בחדרים רטובים השתמש בברגים מושחרים." },
+  { brand: "נירלט", name: "שליכט צבעוני EXTRA M150", category: "שליכט", unit: "דלי 24 ק״ג", image: "https://nirlat.com/wp-content/uploads/2018/05/M150.jpg", tip: "חובה פריימר X בגוון השליכט." }
 ];
 
 export default function CatalogPage() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [activeCategory, setActiveCategory] = useState('הכל');
+  const [query, setQuery] = useState('');
 
-  const categories = ['הכל', 'איטום', 'דבקים', 'טיח', 'גבס', 'שליכט'];
-
-  const filteredProducts = useMemo(() => {
-    return UNIFIED_PRODUCTS.filter((p) => {
-      const matchesSearch = p.name.includes(searchTerm) || p.brand.includes(searchTerm);
-      const matchesCategory = activeCategory === 'הכל' || p.category === activeCategory;
-      return matchesSearch && matchesCategory;
-    });
-  }, [searchTerm, activeCategory]);
+  const filtered = PRODUCTS.filter(p => 
+    p.name.includes(query) || p.brand.includes(query) || p.category.includes(query)
+  );
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#FDFBF7] pb-24 font-sans text-right">
-      <header className="bg-white p-6 rounded-b-[45px] shadow-sm border-b border-gray-100 sticky top-0 z-50">
+    <div dir="rtl" className="min-h-screen bg-[#FDFBF7] text-right font-sans pb-20">
+      {/* Header מעוצב */}
+      <header className="bg-white px-6 pt-12 pb-8 rounded-b-[50px] shadow-sm border-b border-gray-100 sticky top-0 z-50">
         <div className="flex justify-between items-center mb-6">
-          <Link href="/dashboard" className="text-gray-400 p-2"><ArrowRight size={24} /></Link>
+          <Link href="/dashboard" className="bg-gray-50 p-3 rounded-2xl text-gray-400 hover:text-blue-600 transition-colors">
+            <ArrowRight size={24} />
+          </Link>
           <div className="text-center">
-             <h1 className="text-xl font-black text-gray-800 italic">קטלוג מומחה – ח. סבן</h1>
-             <p className="text-[10px] text-blue-500 font-bold uppercase tracking-widest text-center">מלאי מסונכרן ומידע טכני</p>
+            <h1 className="text-2xl font-black text-gray-900 tracking-tighter italic">קטלוג מומחה</h1>
+            <p className="text-[10px] text-blue-500 font-bold uppercase tracking-[0.2em]">H. SABAN LOGISTICS</p>
           </div>
-          <div className="w-10"></div>
+          <div className="w-12"></div>
         </div>
-        
-        <div className="space-y-4">
-          <div className="relative">
-            <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <input 
-              type="text"
-              placeholder="חפש לפי שם, מותג או יישום..."
-              className="w-full p-4 pr-12 bg-gray-50 rounded-2xl border-none font-bold shadow-inner text-sm"
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          
-          <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-            {categories.map(cat => (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className={`px-4 py-2 rounded-xl text-[10px] font-black whitespace-nowrap transition-all ${
-                  activeCategory === cat ? 'bg-[#1976D2] text-white' : 'bg-white text-gray-400 border border-gray-100'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
+
+        {/* Search Bar פרימיום */}
+        <div className="relative max-w-md mx-auto">
+          <Search className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-300" size={20} />
+          <input 
+            type="text"
+            placeholder="חפש חומר, מותג או קטגוריה..."
+            className="w-full p-5 pr-14 bg-gray-50 rounded-[25px] border-none font-bold text-gray-700 shadow-inner focus:ring-2 focus:ring-blue-100 transition-all"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
         </div>
       </header>
 
-      <main className="p-6">
-        <div className="grid grid-cols-1 gap-6">
-          {filteredProducts.map((product, idx) => (
-            <div key={idx} className="bg-white rounded-[35px] overflow-hidden shadow-sm border border-gray-100 flex flex-col animate-in fade-in duration-500">
-              <div className="h-44 bg-gray-50 flex items-center justify-center p-8 relative">
-                 {product.image_url ? (
-                   <img src={product.image_url} alt={product.name} className="h-full object-contain" />
-                 ) : (
-                   <Package size={40} className="text-gray-200" />
-                 )}
-                 <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-[9px] font-black text-blue-600 shadow-sm border border-blue-50 uppercase">
-                   {product.brand}
-                 </div>
-              </div>
-
-              <div className="p-6 space-y-4">
-                <h3 className="text-lg font-black text-gray-800 leading-tight">{product.name}</h3>
-                
-                <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
-                  <BookOpen size={14} className="text-gray-300" />
-                  <span>{product.category} | {product.unit}</span>
-                </div>
-
-                <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100 flex items-start gap-3">
-                  <ShieldCheck className="text-blue-600 mt-1 shrink-0" size={18} />
-                  <p className="text-xs font-bold text-blue-900 leading-relaxed italic">
-                    <span className="block text-[9px] uppercase tracking-widest text-blue-400 mb-1">טיפ זהב מראמי:</span>
-                    {product.expert_tip}
-                  </p>
-                </div>
-
-                <Link 
-                  href={`/order?search=${encodeURIComponent(product.name)}`} 
-                  className="block w-full text-center bg-gray-900 text-white py-4 rounded-2xl font-black text-sm active:scale-95 transition-all shadow-lg"
-                >
-                  הזמן מוצר זה למחסן
-                </Link>
+      {/* רשימת מוצרים */}
+      <main className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+        {filtered.map((product, idx) => (
+          <div key={idx} className="bg-white rounded-[40px] shadow-sm border border-gray-50 overflow-hidden flex flex-col group hover:shadow-xl transition-all duration-500">
+            {/* תמונת מוצר */}
+            <div className="h-56 bg-[#F9F9F9] flex items-center justify-center p-10 relative">
+              <img src={product.image} alt={product.name} className="h-full object-contain group-hover:scale-110 transition-transform duration-500" />
+              <div className="absolute top-6 left-6 bg-white/90 backdrop-blur-md px-4 py-1.5 rounded-full shadow-sm border border-gray-100">
+                <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">{product.brand}</span>
               </div>
             </div>
-          ))}
-        </div>
+
+            {/* פרטים טכניים */}
+            <div className="p-8 space-y-4">
+              <div className="flex justify-between items-start">
+                <h3 className="text-xl font-black text-gray-800 leading-tight">{product.name}</h3>
+                <Tag size={18} className="text-gray-200" />
+              </div>
+              
+              <div className="flex items-center gap-4 text-xs font-bold text-gray-400">
+                <span className="flex items-center gap-1"><Package size={14}/> {product.unit}</span>
+                <span className="flex items-center gap-1"><BookOpen size={14}/> {product.category}</span>
+              </div>
+
+              {/* בועת המוח של ראמי */}
+              <div className="bg-blue-50/50 p-5 rounded-[25px] border border-blue-100/50 flex items-start gap-3">
+                <ShieldCheck className="text-blue-500 shrink-0 mt-1" size={20} />
+                <p className="text-xs font-bold text-blue-900 leading-relaxed italic">
+                  <span className="block text-[9px] uppercase tracking-tighter text-blue-400 mb-1 font-black">טיפ מומחה ח. סבן:</span>
+                  {product.tip}
+                </p>
+              </div>
+
+              <Link href={`/order?search=${product.name}`} className="flex items-center justify-center gap-2 w-full bg-gray-900 text-white py-5 rounded-[22px] font-black text-sm hover:bg-blue-600 transition-all shadow-lg shadow-gray-200">
+                <ShoppingCart size={18} /> הזמן עכשיו למחסן
+              </Link>
+            </div>
+          </div>
+        ))}
       </main>
     </div>
   );
