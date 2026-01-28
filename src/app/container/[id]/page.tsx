@@ -1,204 +1,120 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+export const dynamic = 'force-dynamic';
+
+import React, { useState } from 'react';
 import { db } from "@/lib/firebase";
-import { doc, onSnapshot, updateDoc, serverTimestamp } from "firebase/firestore";
-import { useParams } from 'next/navigation';
-import { 
-  Truck, FileText, PhoneCall, ShieldCheck, MapPin, 
-  Clock, Calendar, Trash2, CheckCircle2, AlertCircle, RefreshCw
-} from 'lucide-react';
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { Trash2, RefreshCw, ShieldAlert, FileText, ExternalLink, MapPin, CheckCircle, Send, ArrowRight } from 'lucide-react';
+import Link from 'next/link';
 
-export default function SabanVipPortal() {
-  const { id } = useParams();
-  const [task, setTask] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [requestedTime, setRequestedTime] = useState('08:00');
-  const [isRequesting, setIsRequesting] = useState(false);
+export default function ShaharContainerPage() {
+  const [city, setCity] = useState('');
+  const [mode, setMode] = useState<'הצבה' | 'החלפה' | 'פינוי'>('הצבה');
+  const [loading, setLoading] = useState(false);
 
-  // האזנה בזמן אמת לנתוני המכולה ב-Firebase
-  useEffect(() => {
-    if (!id) return;
-    const unsub = onSnapshot(doc(db, "container_contracts", id as string), (docSnap) => {
-      if (docSnap.exists()) {
-        setTask(docSnap.data());
-      }
-      setLoading(false);
-    });
-    return () => unsub();
-  }, [id]);
-
-  // פונקציה לשליחת בקשת החלפה/פינוי עם שעה מבוקשת
-  const handleActionRequest = async (type: 'SWAP' | 'REMOVAL') => {
-    setIsRequesting(true);
-    try {
-      const docRef = doc(db, "container_contracts", id as string);
-      await updateDoc(docRef, {
-        status: type === 'SWAP' ? "SCHEDULED_SWAP" : "SCHEDULED_REMOVAL",
-        requested_arrival_time: requestedTime,
-        last_request_at: serverTimestamp(),
-      });
-      alert(`הבקשה נשלחה! ראמי עודכן להגעה ב-${requestedTime}`);
-    } catch (err) {
-      console.error(err);
-      alert("שגיאה בתקשורת. נסה שוב מאוחר יותר.");
-    } finally {
-      setIsRequesting(false);
+  // מוח רגולטורי מוטמע - מגן קנסות
+  const cityRules: any = {
+    'הרצליה': {
+      warning: "חובה לפנות מכולה עד שישי ב-14:00! הצבה בסופ\"ש גוררת קנס.",
+      link: "https://www.herzliya.muni.il/forms/waste-container/"
+    },
+    'רעננה': {
+      warning: "חובה להשאיר 1.30 מ' מדרכה פנויה ולשים מחזירי אור בפינות.",
+      link: "https://www.raanana.muni.il/ConstructionAndPlanning/Pages/WasteContainer.aspx"
+    },
+    'הוד השרון': {
+      warning: "חודש ראשון ללא אגרה. מעל גובה 3 מטר חובה להשתמש בשרוול.",
+      link: "https://www.hod-hasharon.muni.il/158/"
     }
   };
 
-  if (loading) return (
-    <div className="min-h-screen bg-white flex flex-col items-center justify-center">
-      <RefreshCw className="text-blue-600 animate-spin mb-4" size={48} />
-      <span className="font-black italic text-blue-600">SABAN LOGISTICS VIP...</span>
-    </div>
-  );
-
-  if (!task) return <div className="p-20 text-center font-black">החוזה לא נמצא במערכת.</div>;
-
-  // הגדרות עירייה דינמיות (מגן קנסות)
-  const getCityStyle = (city: string) => {
-    const cities: any = {
-      'הרצליה': { color: 'bg-[#0055A4]', url: 'https://www.herzliya.muni.il/forms/waste-container/' },
-      'רעננה': { color: 'bg-[#FF4500]', url: 'https://www.raanana.muni.il/ConstructionAndPlanning/Pages/WasteContainer.aspx' },
-      'הוד השרון': { color: 'bg-[#008080]', url: 'https://www.hod-hasharon.muni.il/158/' },
-      'תל אביב': { color: 'bg-[#333333]', url: 'https://www.tel-aviv.gov.il/Forms/ConstructionWaste' }
-    };
-    return cities[city] || { color: 'bg-blue-600', url: '#' };
+  const handleOrder = async () => {
+    if (!city) return alert("בחר עירייה להמשך");
+    setLoading(true);
+    try {
+      await addDoc(collection(db, "tasks"), {
+        client: "שחר שאול",
+        project: "גלגל המזלות 73",
+        city: city,
+        action: mode,
+        status: "חדש",
+        timestamp: serverTimestamp(),
+      });
+      alert(`בקשת ${mode} נשלחה! זכור להגיש היתר בלינק המצורף.`);
+    } catch (e) { alert("שגיאה בשליחה"); }
+    finally { setLoading(false); }
   };
 
-  const cityStyle = getCityStyle(task.city);
-  const encodedAddress = encodeURIComponent(`${task.address}, ${task.city}`);
-  // מפה חינמית, מאובטחת (HTTPS) ותומכת עברית (hl=he)
-  const mapUrl = `https://maps.google.com/maps?q=${encodedAddress}&t=&z=15&ie=UTF8&iwloc=&output=embed&hl=he`;
-
   return (
-    <div className="min-h-screen bg-[#F2F4F7] text-right font-sans pb-10" dir="rtl">
-      
-      {/* Header סמכותי */}
-      <header className="bg-white px-6 py-5 shadow-sm sticky top-0 z-50 flex justify-between items-center">
-        <div className="flex flex-col">
-          <span className="text-[18px] font-black italic text-gray-900 leading-none tracking-tighter">ח. סבן</span>
-          <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Premium Logistics</span>
+    <div dir="rtl" className="min-h-screen bg-[#FDFBF7] pb-32 font-sans text-right">
+      <header className="bg-white p-6 rounded-b-[45px] shadow-sm flex justify-between items-center border-b border-gray-100">
+        <Link href="/dashboard" className="text-gray-400 p-2"><ArrowRight size={24} /></Link>
+        <div className="text-center">
+          <h1 className="text-xl font-black text-gray-800">מחלקת מכולות – ח. סבן</h1>
+          <p className="text-[10px] text-blue-500 font-bold uppercase tracking-widest italic text-center">שירות VIP לשחר שאול</p>
         </div>
-        <div className="bg-green-50 text-green-700 px-4 py-1.5 rounded-full border border-green-100 flex items-center gap-2">
-          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-          <span className="text-[11px] font-black uppercase italic">מחובר לראמי</span>
-        </div>
+        <div className="w-10"></div>
       </header>
 
-      <main className="p-5 max-w-2xl mx-auto space-y-6">
-        
-        {/* כרטיס סטטוס לקוח */}
-        <section className="bg-white rounded-[45px] p-8 shadow-xl border border-gray-50 relative overflow-hidden">
-          <div className="relative z-10">
-            <h2 className="text-3xl font-black text-gray-900 italic mb-1">שלום, {task.customer_name}</h2>
-            <p className="text-gray-400 font-bold text-sm flex items-center gap-1 mb-6">
-              <MapPin size={16} className="text-blue-500" /> {task.address}, {task.city}
-            </p>
+      <main className="p-6 space-y-6 text-right">
+        {/* בחירת עירייה */}
+        <div className="saban-card bg-white border border-gray-100">
+          <label className="text-xs font-black text-gray-400 mb-2 block">בחר עיריית פרויקט:</label>
+          <select 
+            className="w-full p-4 rounded-2xl bg-[#FDFBF7] border-none font-bold text-lg"
+            onChange={(e) => setCity(e.target.value)}
+          >
+            <option value="">בחר עיר...</option>
+            <option value="הרצליה">הרצליה</option>
+            <option value="רעננה">רעננה</option>
+            <option value="הוד השרון">הוד השרון</option>
+          </select>
+        </div>
 
-            <div className="space-y-4">
-              <div className="flex justify-between items-end">
-                <span className="text-[11px] font-black text-gray-400 uppercase tracking-tighter">ניצול זמן מכולה</span>
-                <span className="text-4xl font-black italic text-gray-900">{task.current_day || 0}/10 <span className="text-sm">ימים</span></span>
-              </div>
-              <div className="h-4 w-full bg-gray-100 rounded-full p-1 shadow-inner">
-                <div 
-                  className={`h-full rounded-full transition-all duration-1000 ${task.current_day > 8 ? 'bg-red-500' : 'bg-blue-600'}`}
-                  style={{ width: `${(task.current_day / 10) * 100}%` }}
-                />
-              </div>
+        {/* מגן קנסות - מופיע רק כשנבחרת עיר */}
+        {city && (
+          <div className="bg-red-50 p-6 rounded-[35px] border-2 border-red-200 animate-in fade-in duration-500">
+            <div className="flex items-center gap-3 text-red-600 mb-2">
+              <ShieldAlert size={24} />
+              <span className="font-black">אזהרת פיקוח: {city}</span>
             </div>
+            <p className="text-sm text-red-800 font-bold leading-relaxed">{cityRules[city].warning}</p>
+            <a href={cityRules[city].link} target="_blank" className="mt-4 flex items-center justify-center gap-2 bg-white text-red-600 p-3 rounded-2xl text-xs font-black shadow-sm">
+              <ExternalLink size={16} /> לחץ כאן להגשת היתר עירוני
+            </a>
           </div>
-        </section>
+        )}
 
-        {/* מפה מאובטחת - HTTPS */}
-        <section className="rounded-[40px] overflow-hidden shadow-2xl border-4 border-white h-64 bg-gray-200 relative">
-          <iframe
-            width="100%"
-            height="100%"
-            frameBorder="0"
-            src={mapUrl}
-            className="contrast-[1.1]"
-            allowFullScreen
-          ></iframe>
-          <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-xl shadow-md">
-            <span className="text-[10px] font-black italic text-blue-700">מיקום מכולה חי בשטח</span>
-          </div>
-        </section>
+        {/* בחירת פעולה */}
+        <div className="grid grid-cols-1 gap-4">
+           <button onClick={() => setMode('הצבה')} className={`saban-card flex items-center gap-4 border-2 ${mode === 'הצבה' ? 'border-blue-500 bg-blue-50' : 'border-transparent bg-white'}`}>
+              <div className="bg-blue-100 p-3 rounded-xl text-blue-600"><Trash2 /></div>
+              <div className="text-right"><p className="font-black text-gray-800 text-sm">הצבת מכולה</p><p className="text-[10px] text-gray-400">10 ימי שכירות כלולים</p></div>
+           </button>
+           <button onClick={() => setMode('החלפה')} className={`saban-card flex items-center gap-4 border-2 ${mode === 'החלפה' ? 'border-blue-500 bg-blue-50' : 'border-transparent bg-white'}`}>
+              <div className="bg-green-100 p-3 rounded-xl text-green-600"><RefreshCw /></div>
+              <div className="text-right"><p className="font-black text-gray-800 text-sm">החלפה (מלאה בטובה)</p><p className="text-[10px] text-gray-400">החלפת מכולה מלאה בריקה</p></div>
+           </button>
+        </div>
 
-        {/* לוח בקרה ושעות הגעה - סמכות הלקוח */}
-        <section className="bg-[#1C1C1E] rounded-[45px] p-8 text-white shadow-2xl">
-          <div className="flex items-center gap-3 mb-6">
-            <Clock className="text-blue-400" />
-            <h3 className="text-xl font-black italic">תזמון הגעת נהג</h3>
-          </div>
-          
-          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em] mb-4 text-center">בחר חלון זמן מועדף להחלפה</p>
-          
-          <div className="grid grid-cols-4 gap-2 mb-8">
-            {['08:00', '10:00', '12:00', '14:00'].map((time) => (
-              <button
-                key={time}
-                onClick={() => setRequestedTime(time)}
-                className={`py-4 rounded-2xl font-black transition-all ${requestedTime === time ? 'bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)] scale-105' : 'bg-white/5 text-gray-500 hover:bg-white/10'}`}
-              >
-                {time}
-              </button>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <button 
-              onClick={() => handleActionRequest('SWAP')}
-              disabled={isRequesting}
-              className="bg-white text-black py-6 rounded-3xl font-black flex flex-col items-center gap-2 active:scale-95 transition-all shadow-lg"
-            >
-              <Truck size={28} />
-              <span className="text-sm">הזמן החלפה</span>
-            </button>
-            <button 
-              onClick={() => handleActionRequest('REMOVAL')}
-              disabled={isRequesting}
-              className="bg-white/10 text-white border border-white/10 py-6 rounded-3xl font-black flex flex-col items-center gap-2 active:scale-95 transition-all"
-            >
-              <CheckCircle2 size={28} className="text-red-400" />
-              <span className="text-sm text-red-400 font-black">פינוי סופי</span>
-            </button>
-          </div>
-        </section>
-
-        {/* היתר עירוני - "מגן קנסות" */}
+        {/* כפתור שליחה */}
         <button 
-          onClick={() => window.open(cityStyle.url, '_blank')}
-          className={`w-full ${cityStyle.color} p-8 rounded-[40px] shadow-lg flex justify-between items-center text-white active:scale-95 transition-all group`}
+          onClick={handleOrder}
+          disabled={loading}
+          className="btn-huge bg-[#1976D2] text-white shadow-blue-200 mt-4"
         >
-          <div className="flex items-center gap-4">
-            <div className="bg-white/20 p-3 rounded-2xl group-hover:rotate-12 transition-transform">
-              <FileText size={32} />
-            </div>
-            <div className="text-right">
-              <h4 className="text-xl font-black italic leading-none text-white">היתר עיריית {task.city}</h4>
-              <p className="text-[10px] font-bold opacity-70 uppercase mt-1">לחץ להגשת בקשה או הורדת טופס</p>
-            </div>
-          </div>
-          <ShieldCheck size={40} className="opacity-20" />
+          {loading ? "מעבד בקשה..." : <><Send size={22} /> אשר שליחת {mode}</>}
         </button>
 
-        {/* מוקד שירות */}
-        <a 
-          href="tel:972508860896"
-          className="w-full bg-white border-2 border-gray-100 p-6 rounded-[35px] flex items-center justify-center gap-3 font-black text-gray-800 shadow-sm active:scale-95 transition-all"
-        >
-          <PhoneCall size={20} className="text-green-500" />
-          שיחה ישירה עם הלוגיסטיקה
-        </a>
-
+        {/* צ'ק ליסט לטופס 4 */}
+        <div className="bg-white p-6 rounded-[35px] border border-gray-100">
+          <h4 className="font-black text-gray-800 mb-4 flex items-center gap-2 text-sm"><FileText size={18} className="text-blue-500" /> הכנה לטופס 4:</h4>
+          <ul className="space-y-3">
+             <li className="flex items-center gap-2 text-[11px] font-bold text-gray-500"><CheckCircle size={14} className="text-green-500" /> המערכת שומרת אישורי שקילה אוטומטית</li>
+             <li className="flex items-center gap-2 text-[11px] font-bold text-gray-500"><CheckCircle size={14} className="text-green-500" /> סנכרון מול מטמנה מורשת (ח. סבן)</li>
+          </ul>
+        </div>
       </main>
-
-      {/* קרדיט וגרסה */}
-      <footer className="text-center p-4">
-        <span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest italic">SabanOS Studio v2.0 - Encrypted Connection</span>
-      </footer>
     </div>
   );
 }
