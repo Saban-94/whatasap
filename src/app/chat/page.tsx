@@ -1,133 +1,177 @@
 'use client';
+export const dynamic = 'force-dynamic';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { db } from "@/lib/firebase";
-import { collection, addDoc, query, onSnapshot, orderBy } from "firebase/firestore";
+import { Send, Bot, User, ShoppingCart, Calculator, ShieldCheck, AlertCircle, ArrowRight, Package } from 'lucide-react';
+import Link from 'next/link';
 
-// מנוע חוקי העסק של רמי
-const SABAN_LOGIC = {
-  CRANE_THRESHOLD: 40, // מעל 40 שקים = מנוף
-  HEAVY_KEYWORDS: ['בלה', 'חול', 'סומסום', 'טיט', 'בלוקים'],
-  UNIT_WEIGHTS: { 'מלט': 50, 'פלסטומר': 25, 'סיקה': 20 }
-};
+// טעינת המוח המאוחד v2.0
+import sabanUnifiedBrain from '@/data/saban_unified_v2_final.json';
 
-// חובה להשתמש ב-export default function כדי ש-Next.js יזהה את הנתיב
-export default function SabanChatPage() {
-  const [messages, setMessages] = useState<any[]>([]);
-  const [inputText, setInputText] = useState("");
-  const [isStaff, setIsStaff] = useState(true);
-  const scrollRef = useRef<HTMLDivElement>(null);
+export default function SabanSmartChat() {
+  const [messages, setMessages] = useState<any[]>([
+    { role: 'bot', content: 'שלום שחר! כאן המוח של ח. סבן. אני רואה שאתה עובד בגלגל המזלות 73. מה בונים היום?' }
+  ]);
+  const [input, setInput] = useState('');
+  const [cart, setCart] = useState<any[]>([]);
+  const [sqm, setSqm] = useState<number | null>(null);
+  const scrollRef = useRef<any>(null);
 
-  useEffect(() => {
-    // האזנה ל-Firebase
-    const q = query(collection(db, "saban_chat"), orderBy("timestamp", "asc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setMessages(msgs);
-      setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-    });
-    return () => unsubscribe();
-  }, []);
+  // מנוע הדיאלוג החכם - Saban Agent Logic
+  const processMessage = (text: string) => {
+    const term = text.toLowerCase();
+    let response = { content: "אני בודק בקטלוג...", type: 'chat', data: null as any };
 
-  const analyzeMessage = (text: string) => {
-    const qty = parseInt(text.match(/\d+/)?.[0] || "0");
-    const isHeavy = SABAN_LOGIC.HEAVY_KEYWORDS.some(k => text.includes(k));
-    const needsCrane = isHeavy || qty > SABAN_LOGIC.CRANE_THRESHOLD;
-    
-    if (qty > 0) {
+    // 1. חיפוש חוקים ב-Ruleset המאוחד
+    for (const group of sabanUnifiedBrain.ruleset) {
+      for (const rule of group.rules) {
+        if (rule.Trigger_Product.some(t => term.includes(t.toLowerCase()))) {
+          let content = `${rule.Expert_Tip} `;
+          
+          // אם המשתמש הזכיר מ"ר או שיש מ"ר פעיל
+          const foundSqm = text.match(/\d+/);
+          const currentSqm = foundSqm ? parseInt(foundSqm[0]) : sqm;
+          
+          if (currentSqm) {
+            setSqm(currentSqm);
+            // לוגיקת חישוב דינמית לפי הקטגוריה
+            if (group.category === "גבס") {
+              const studs = Math.ceil(currentSqm / 0.6);
+              const screws = currentSqm * 10;
+              content += `ל-${currentSqm} מ"ר גבס, המוח מוסיף לך אוטומטית ${studs} ניצבים ו-${screws} ברגים. להמשיך?`;
+            } else if (rule.Calculation_Logic) {
+              const logicKey = Object.keys(rule.Calculation_Logic)[0];
+              const factor = parseFloat(rule.Calculation_Logic[logicKey]) || 1;
+              const total = Math.ceil((currentSqm * factor) / 25);
+              content += `לפי החישוב של ראמי, תצטרך כ-${total} שקים/דליים.`;
+            }
+          } else {
+            content += "כמה מ\"ר אתה מבצע כדי שאחשב לך כמויות מדויקות?";
+          }
+
+          return { 
+            content, 
+            type: 'expert', 
+            addons: rule.Recommended_Addons,
+            product: rule.Trigger_Product[0]
+          };
+        }
+      }
+    }
+
+    // 2. הגנה רגולטורית (מגן קנסות)
+    if (term.includes('מכולה') || term.includes('פינוי')) {
       return {
-        summary: `הזמנה: ${qty} יח'`,
-        logistics: needsCrane ? "🏗️ חובת מנוף (PTO)" : "👷 פריקה ידנית (עובדים)"
+        content: "שחר אחי, זכור שבהרצליה חייבים לפנות מכולה עד שישי ב-14:00. להזמין לך החלפה לבוקר?",
+        type: 'warning'
       };
     }
-    return null;
+
+    return response;
   };
 
-  const onSend = async () => {
-    if (!inputText.trim()) return;
-    const analysis = analyzeMessage(inputText);
+  const handleSend = () => {
+    if (!input) return;
+    const userMsg = { role: 'user', content: input };
+    setMessages(prev => [...prev, userMsg]);
 
-    // הודעה גלויה
-    await addDoc(collection(db, "saban_chat"), {
-      text: inputText,
-      sender: isStaff ? "רמי" : "לקוח: נישה",
-      role: isStaff ? "staff" : "client",
-      type: "public",
-      timestamp: new Date()
-    });
-
-    // שכבת "עין עיוורת" לצוות
-    if (analysis) {
-      await addDoc(collection(db, "saban_chat"), {
-        text: `🤖 מנתח לוגיסטי: ${analysis.summary}. ${analysis.logistics}`,
-        sender: "Saban AI",
-        type: "internal",
-        timestamp: new Date()
-      });
-    }
-    setInputText("");
+    const result = processMessage(input);
+    
+    setTimeout(() => {
+      setMessages(prev => [...prev, { 
+        role: 'bot', 
+        content: result.content, 
+        type: result.type,
+        addons: result.addons 
+      }]);
+      
+      // אם זוהה מוצר, נוסיף לסל (דוגמה בסיסית)
+      if (result.type === 'expert') {
+        // כאן ניתן להוסיף לוגיקה שמוסיפה את המוצר והאד-אונס לסל באמת
+      }
+    }, 800);
+    
+    setInput('');
   };
+
+  useEffect(() => {
+    scrollRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   return (
-    <div dir="rtl" style={styles.container}>
-      <header style={styles.header}>
-        <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-          <div style={styles.avatar}>📦</div>
-          <div>
-            <div style={{fontWeight:'bold'}}>Saban Connect</div>
-            <div style={{fontSize:'12px', opacity:0.8}}>{isStaff ? 'מצב מנהל' : 'מצב לקוח'}</div>
-          </div>
+    <div dir="rtl" className="flex flex-col h-screen bg-[#FDFBF7] font-sans">
+      {/* Header */}
+      <header className="bg-white p-6 shadow-sm border-b flex justify-between items-center sticky top-0 z-50">
+        <Link href="/dashboard" className="text-gray-400"><ArrowRight size={24} /></Link>
+        <div className="text-center">
+          <h1 className="font-black text-xl text-gray-800 italic">Saban AI Agent</h1>
+          <p className="text-[9px] text-blue-500 font-bold uppercase tracking-widest">מומחה איטום וגבס PRO</p>
         </div>
-        <button onClick={() => setIsStaff(!isStaff)} style={styles.toggle}>
-          {isStaff ? '👁️ עין עיוורת' : '👨‍💼 כניסת צוות'}
-        </button>
+        <div className="w-10"></div>
       </header>
 
-      <div style={styles.chatArea}>
-        {messages.map((m) => (
-          (!isStaff && m.type === 'internal') ? null : (
-            <div key={m.id} style={m.type === 'internal' ? styles.internalRow : styles.msgRow(m.role === 'client')}>
-              <div style={m.type === 'internal' ? styles.internalBubble : styles.bubble(m.role === 'client')}>
-                {isStaff && <div style={styles.sender}>{m.sender}</div>}
-                <div>{m.text}</div>
-                <div style={styles.time}>{m.timestamp?.seconds ? new Date(m.timestamp.seconds * 1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : ''}</div>
-              </div>
+      {/* אזור השיחה */}
+      <main className="flex-1 overflow-y-auto p-6 space-y-6">
+        {messages.map((m, i) => (
+          <div key={i} className={`flex ${m.role === 'user' ? 'justify-start' : 'justify-end animate-in slide-in-from-bottom-2'}`}>
+            <div className={`max-w-[85%] p-5 rounded-[30px] shadow-sm text-sm font-bold leading-relaxed ${
+              m.role === 'user' 
+                ? 'bg-[#1976D2] text-white rounded-br-none' 
+                : 'bg-white text-gray-800 rounded-bl-none border border-gray-100'
+            }`}>
+              {m.content}
+              
+              {/* כפתורי מוצרים משלימים (Upsell) */}
+              {m.addons && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {m.addons.map((addon: string, idx: number) => (
+                    <button key={idx} className="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-xl text-[10px] border border-blue-100 flex items-center gap-1">
+                      <Plus size={12} /> הוסף {addon}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          )
+          </div>
         ))}
         <div ref={scrollRef} />
-      </div>
+      </main>
 
-      <footer style={styles.footer}>
-        <div style={styles.inputBox}>
+      {/* Footer והזנה */}
+      <footer className="p-6 bg-white border-t rounded-t-[45px] shadow-2xl">
+        {sqm && (
+          <div className="mb-4 flex justify-center">
+            <span className="bg-green-100 text-green-700 px-4 py-1 rounded-full text-[10px] font-black flex items-center gap-2">
+              <Calculator size={12} /> המוח מחשב לפי: {sqm} מ"ר
+            </span>
+          </div>
+        )}
+        <div className="relative flex items-center gap-3">
           <input 
-            style={styles.input} 
-            placeholder="כתוב הודעה..." 
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && onSend()}
+            type="text"
+            className="flex-1 p-5 pr-6 bg-gray-50 rounded-3xl border-none focus:ring-2 focus:ring-blue-400 font-bold text-gray-700 text-lg shadow-inner"
+            placeholder="שאל את המוח (למשל: 'צריך גבס ל-50 מ''ר')..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleSend()}
           />
+          <button 
+            onClick={handleSend}
+            className="bg-[#1976D2] text-white p-5 rounded-3xl shadow-lg active:scale-90 transition-all"
+          >
+            <Send size={24} />
+          </button>
         </div>
-        <button onClick={onSend} style={styles.sendBtn}>➤</button>
       </footer>
     </div>
   );
 }
 
-const styles: any = {
-  container: { height: '100vh', display: 'flex', flexDirection: 'column', background: '#e5ddd5', fontFamily: 'system-ui' },
-  header: { background: '#075E54', color: '#fff', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  avatar: { width: '35px', height: '35px', background: '#fff', borderRadius: '50%', color: '#075E54', display: 'flex', justifyContent: 'center', alignItems: 'center' },
-  toggle: { background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', padding: '5px 12px', borderRadius: '20px', cursor: 'pointer', fontSize: '11px' },
-  chatArea: { flex: 1, overflowY: 'auto', padding: '15px', display: 'flex', flexDirection: 'column', gap: '8px' },
-  msgRow: (isClient: boolean) => ({ display: 'flex', justifyContent: isClient ? 'flex-start' : 'flex-end' }),
-  bubble: (isClient: boolean) => ({ background: isClient ? '#fff' : '#dcf8c6', padding: '8px 12px', borderRadius: '12px', maxWidth: '85%', boxShadow: '0 1px 1px rgba(0,0,0,0.1)' }),
-  internalRow: { display: 'flex', justifyContent: 'center', margin: '10px 0' },
-  internalBubble: { background: '#fff3e0', border: '1px solid #ffe0b2', color: '#e65100', padding: '10px 15px', borderRadius: '12px', fontSize: '13px', textAlign: 'center' },
-  sender: { fontSize: '10px', fontWeight: 'bold', color: '#075E54', marginBottom: '3px' },
-  time: { fontSize: '9px', color: '#999', textAlign: 'left', marginTop: '3px' },
-  footer: { background: '#f0f0f0', padding: '10px', display: 'flex', alignItems: 'center', gap: '8px' },
-  inputBox: { flex: 1, background: '#fff', borderRadius: '25px', padding: '0 15px' },
-  input: { width: '100%', border: 'none', padding: '10px', outline: 'none' },
-  sendBtn: { background: '#075E54', color: '#fff', width: '40px', height: '40px', borderRadius: '50%', border: 'none', cursor: 'pointer' }
-};
+// רכיב פלוס קטן
+function Plus({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 5v14M5 12h14"/>
+    </svg>
+  );
+}
