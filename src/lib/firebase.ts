@@ -2,7 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-
+import { getDatabase } from "firebase/database"; // הוספת תמיכה ב-Realtime Database
 
 const firebaseConfig = {
   apiKey: "AIzaSyBGYsZylsIyeWudp8_SlnLBelkgoNXjU60",
@@ -15,8 +15,11 @@ const firebaseConfig = {
   measurementId: "G-E297QYKZKQ"
 };
 
-// אתחול Singleton למניעת קריסות ב-Build
+// אתחול Singleton
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-const db = getFirestore(app);
 
-export { db };
+// ייצוא שירותי Firebase
+const db = getFirestore(app); // עבור ה-CRM וההזמנות
+const database = getDatabase(app); // עבור נתוני איתוראן בזמן אמת
+
+export { db, database, app };
