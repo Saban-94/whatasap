@@ -1,0 +1,20 @@
+[
+  {
+    "id": "shahar_53",
+    "name": "שחר שאול",
+    "company": "שאול הנדסה",
+    "active_projects": ["בילו 53, רעננה", "הפרדס 21"],
+    "preferences": "מעדיף הובלה עם מנוף, מזמין בעיקר חומרי שלד",
+    "credit_status": "מאושר",
+    "magic_link_token": "shahar"
+  },
+  {
+    "id": "tal_arviv",
+    "name": "טל ארביב",
+    "company": "הכל מבראשית",
+    "active_projects": ["שער 1, פרויקט הכל מבראשית"],
+    "preferences": "חייב אספקה מוקדם בבוקר",
+    "credit_status": "בבדיקה",
+    "magic_link_token": "tal"
+  }
+]
