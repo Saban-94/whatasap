@@ -1,10 +1,45 @@
-'use client';
-import { db } from '@/lib/firebase';
-import { collection, doc, setDoc } from 'firebase/firestore';
+export default function SeedPage() {
+  const uploadMasterData = async () => {
+    try {
+      const colRef = collection(db, 'products');
+      for (const prod of sabanFullData) {
+        // שימוש בשם המוצר כ-ID כדי למנוע כפילויות
+        const docId = prod.product_name.replace(/\//g, "-");
+        await setDoc(docRef(colRef, docId), prod);
+      }
+      alert('כל הנתונים ההנדסיים הועלו בהצלחה!');
+    } catch (e) {
+      console.error(e);
+      alert('שגיאה בהעלאה. וודא שחוקי ה-Firestore פתוחים.');
+    }
+  };
 
-// הנתונים שהוצאנו מהקובץ data.json שהעלית
-const sabanFullData = [
-  {
+  return (
+    <div className="p-10 text-center bg-black min-h-screen">
+      <h1 className="text-sabanGold text-2xl mb-6 font-bold">מערכת הזרקת ידע - ח. סבן</h1>
+      <button onClick={uploadMasterData} className="btn-huge bg-sabanGold text-black font-black p-6 rounded-2xl shadow-2xl">
+        העלה קטלוג מומחה מלא 🚀
+      </button>
+    </div>
+  );
+}
+// src/app/seed/page.tsx
+
+export default function SeedPage() {
+  // 1. הגדרת המערך בתוך משתנה
+  const sabanFullData = [
+    {
+      "product_name": "Sika MonoTop-610 / 910N",
+      "category": "Repair",
+      "engineering_solution": "ציפוי הגנה נגד קורוזיה וחיזוק הידבקות בין בטון ישן לחדש.",
+      "coverage": 1.8,
+      "pro_tip": "להרטיב את המצע עד מצב SSD לפני יישום.",
+      "media": {
+        "image": "...",
+        "video": "..."
+      }
+    },
+     {
     product_name: "דבק 132 C2TE-S1 (כרמית)",
     category: "Adhesives",
     engineering_solution: "דבק גמיש S1 לאריחים גדולים/מדוקקים, פנים/חוץ ובריכות",
@@ -331,31 +366,21 @@ const sabanFullData = [
       "image": "https://gbr.sika.com/en/construction/structural-strengthening.html",
       "video": "https://www.youtube.com/watch?v=dVip0vCBf6w"
     }
-  }
-]
-];
+  ];
 
-export default function SeedPage() {
-  const uploadMasterData = async () => {
-    try {
-      const colRef = collection(db, 'products');
-      for (const prod of sabanFullData) {
-        // שימוש בשם המוצר כ-ID כדי למנוע כפילויות
-        const docId = prod.product_name.replace(/\//g, "-");
-        await setDoc(docRef(colRef, docId), prod);
-      }
-      alert('כל הנתונים ההנדסיים הועלו בהצלחה!');
-    } catch (e) {
-      console.error(e);
-      alert('שגיאה בהעלאה. וודא שחוקי ה-Firestore פתוחים.');
-    }
+  const handleSeed = async () => {
+    // פונקציית ההזרקה שלך שמשתמשת ב-sabanFullData
+    console.log("Seeding data...", sabanFullData);
+    // כאן הקוד של Firebase שכתבנו
   };
 
   return (
-    <div className="p-10 text-center bg-black min-h-screen">
-      <h1 className="text-sabanGold text-2xl mb-6 font-bold">מערכת הזרקת ידע - ח. סבן</h1>
-      <button onClick={uploadMasterData} className="btn-huge bg-sabanGold text-black font-black p-6 rounded-2xl shadow-2xl">
-        העלה קטלוג מומחה מלא 🚀
+    <div className="p-10 text-center">
+      <button 
+        onClick={handleSeed}
+        className="bg-sabanGold p-4 rounded-lg font-bold text-black"
+      >
+        לחץ להזרקת קטלוג מומחה מלא 🚀
       </button>
     </div>
   );
