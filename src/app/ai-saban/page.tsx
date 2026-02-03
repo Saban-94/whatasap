@@ -50,7 +50,7 @@ export default function AiSabanPage() {
             <HardHat size={24} />
           </div>
           <div>
-            <h1 className="font-bold text-lg leading-none">ח. סבן - חדר צ'אט הנדסי</h1>
+            <h1 className="font-bold text-lg leading-none">Ai-ח.סבן</h1>
             <div className="flex items-center gap-1.5 mt-1">
               <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
               <p className="text-xs text-green-500 font-medium">מומחה AI מחובר</p>
