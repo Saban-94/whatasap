@@ -1,64 +1,70 @@
 import { NextRequest, NextResponse } from 'next/server';
-import productsData from "../../../data/data.json"; 
+import { promises as fs } from 'fs';
+import path from 'path';
 
-const PRIMARY_MODEL = "gemini-1.5-flash-latest";
-const FALLBACK_MODEL = "gemini-1.5-pro"; // מודל גיבוי חזק
+// המודל היציב ביותר שנמצא בבדיקה שלך
+const MODEL_NAME = "gemini-flash-latest";
+
+async function getCatalog() {
+  // ניסיון לקרוא משני נתיבים אפשריים ב-Vercel
+  const paths = [
+    path.join(process.cwd(), 'data', 'data.json'),
+    path.join(process.cwd(), 'src', 'data', 'data.json')
+  ];
+  
+  for (const p of paths) {
+    try {
+      const data = await fs.readFile(p, 'utf8');
+      return data;
+    } catch (e) {
+      continue;
+    }
+  }
+  return "[]"; // מחזיר מערך ריק אם לא נמצא קובץ, כדי למנוע קריסה (500)
+}
 
 export async function POST(req: NextRequest) {
-  // בדיקת מפתח API
   if (!process.env.GEMINI_API_KEY) {
-    return NextResponse.json(
-      { error: 'GEMINI_API_KEY missing in Vercel settings.' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Missing GEMINI_API_KEY in Vercel settings' }, { status: 500 });
   }
 
   try {
     const { message, history } = await req.json();
-
-    const systemInstruction = `
-      אתה "היועץ ההנדסי של ח. סבן". מומחה לחומרי בניין ואיטום.
-      השתמש רק בקטלוג: ${JSON.stringify(productsData)}.
-      ענה בעברית מקצועית, צרף Pro-Tip לכל מוצר והוסף 25% פחת בחישובים.
-    `;
+    const catalog = await getCatalog();
 
     const payload = {
       contents: [
-        { role: "user", parts: [{ text: systemInstruction }] },
-        { role: "model", parts: [{ text: "הבנתי, אני מוכן לייעץ בשם ח. סבן." }] },
+        { 
+          role: "user", 
+          parts: [{ text: `אתה יועץ הנדסי מומחה של חברת ח. סבן. בסיס הידע שלך הוא הקטלוג הבא: ${catalog}. ענה תמיד בעברית מקצועית.` }] 
+        },
+        { role: "model", parts: [{ text: "שלום, אני מוכן לייעץ בשם ח. סבן." }] },
         ...(history || []).map((h: any) => ({
           role: h.role === "assistant" ? "model" : "user",
-          parts: [{ text: h.content }],
+          parts: [{ text: h.content }]
         })),
         { role: "user", parts: [{ text: message }] }
       ]
     };
 
-    // ניסיון ראשון עם המודל הראשי
-    try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${PRIMARY_MODEL}:generateContent?key=${process.env.GEMINI_API_KEY}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      
-      const data = await response.json();
-      return NextResponse.json({ text: data.candidates[0].content.parts[0].text });
-      
-    } catch (e) {
-      // ניסיון שני עם מודל הגיבוי
-      console.warn("Primary model failed, trying fallback...");
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${FALLBACK_MODEL}:generateContent?key=${process.env.GEMINI_API_KEY}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      
-      const data = await response.json();
-      return NextResponse.json({ text: data.candidates[0].content.parts[0].text, note: "fallback used" });
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.error?.message || 'Gemini API Error');
     }
 
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const data = await res.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "לא התקבלה תשובה מהמודל.";
+    
+    return NextResponse.json({ text });
+
+  } catch (err: any) {
+    console.error("Chat API Error:", err.message);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
