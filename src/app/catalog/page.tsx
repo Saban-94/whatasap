@@ -4,7 +4,7 @@ import { db } from '@/lib/firebase';
 import { collection, getDocs } from 'firebase/firestore';
 
 export default function CatalogPage() {
-  const [products, setProducts] = useState<any[]>([]);
+const [products, setProducts] = useState<any[]>([]);
   const [sqm, setSqm] = useState(0);
 
   useEffect(() => {
