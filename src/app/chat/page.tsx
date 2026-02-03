@@ -1,6 +1,6 @@
 'use client';
 export const dynamic = 'force-dynamic';
-
+const PRIMARY_MODEL = "gemini-flash-latest";
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Bot, User, ShoppingCart, Calculator, ShieldCheck, AlertCircle, ArrowRight, Plus } from 'lucide-react';
 import Link from 'next/link';
