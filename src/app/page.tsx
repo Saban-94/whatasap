@@ -1,11 +1,9 @@
 'use client';
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Send, HardHat, Camera, FileUp, ShoppingCart, Play, User, History, Info } from 'lucide-react';
-import productData from '@/data/products.json'; // ייבוא נתוני המוצרים
-import customerData from '@/data/customers.json'; // ייבוא נתוני הלקוחות
+import { Send, Camera, FileUp, ShoppingCart, History, HardHat } from 'lucide-react';
 
-// --- סוגי נתונים (Interfaces) ---
+// --- Interfaces ---
 interface Product {
   id: number;
   name: string;
@@ -14,21 +12,6 @@ interface Product {
   application_method: string;
   unit: string;
   image_url: string;
-  video_url: string;
-  // נכסים אופציונליים נוספים שהיו בגרסאות קודמות, למשל:
-  drying_time?: string;
-  coverage?: string;
-}
-
-interface Customer {
-  id: string;
-  name: string;
-  company: string;
-  active_projects: string[];
-  preferences: string;
-  credit_status: string;
-  magic_link_token: string;
-  profile_image_url: string;
 }
 
 interface Message {
@@ -39,133 +22,178 @@ interface Message {
 
 // --- קומפוננטת כרטיס מוצר ---
 const ProductCard = ({ product }: { product: Product }) => (
-  <div className="mt-4 bg-[#162127] rounded-2xl overflow-hidden border border-gray-700 shadow-2xl max-w-sm mr-auto ml-0 text-right font-sans">
-    <img src={product.image_url} alt={product.name} className="w-full h-40 object-cover border-b border-gray-700" />
-    <div className="p-4 space-y-3">
-      <h4 className="text-[#C9A227] font-black text-lg tracking-tighter leading-none">{product.name}</h4>
-      <p className="text-gray-400 text-[11px] leading-tight">{product.description}</p>
-      <div className="grid grid-cols-2 gap-2 text-[10px] font-bold">
-        <div className="bg-[#202c33] p-2 rounded-lg border border-gray-800">
-          <span className="text-gray-500 block uppercase mb-1 font-black">יישום</span>
-          {product.application_method}
-        </div>
-        <div className="bg-[#202c33] p-2 rounded-lg border border-gray-800">
-          <span className="text-gray-500 block uppercase mb-1 font-black">אריזה</span>
-          {product.unit}
-        </div>
-      </div>
-      <button className="w-full bg-[#C9A227] text-black font-black py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-[#e0b52d] transition-all text-xs">
-        <ShoppingCart size={14} /> בצע הזמנה
+  <div className="mt-3 bg-[#162127] rounded-xl overflow-hidden border border-gray-700 shadow-2xl max-w-[260px] mr-auto text-right">
+    <img src={product.image_url} alt={product.name} className="w-full h-28 object-cover" />
+    <div className="p-3">
+      <h4 className="text-[#C9A227] font-bold text-sm leading-tight">{product.name}</h4>
+      <p className="text-gray-400 text-[10px] line-clamp-2 my-1">{product.description}</p>
+      <button className="w-full bg-[#C9A227] text-black font-black py-2 rounded-lg flex items-center justify-center gap-2 text-[10px] active:scale-95 transition-transform">
+        <ShoppingCart size={12} /> בצע הזמנה
       </button>
     </div>
   </div>
 );
 
-// --- קומפוננטת הצ'אט הראשית ---
 function SabanChatContent() {
   const searchParams = useSearchParams();
-  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [userName, setUserName] = useState('אחי');
+  const [profileImg, setProfileImg] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null); // רפרנס להעלאת קבצים
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // טעינת פרופיל הלקוח וברכה אישית
   useEffect(() => {
-    const token = searchParams.get('user');
-    const foundCustomer = customerData.find(c => c.magic_link_token === token);
-
-    if (foundCustomer) {
-      setCustomer(foundCustomer);
-      setMessages([
-        { role: 'assistant', content: `אהלן ${foundCustomer.name} אחי! ברוך הבא למוקד VIP של ח. סבן. אני רואה שאתה עובד על פרויקט **${foundCustomer.active_projects[0]}**. מה להכין לך היום?` }
-      ]);
-    } else {
-      // אם אין זיהוי - לקוח אורח
-      setCustomer(null); // או אובייקט לקוח אורח
-      setMessages([
-        { role: 'assistant', content: `שלום אחי! כאן מוקד ה-VIP של ח. סבן. איך אני יכול לעזור לך היום? (לכניסה כקבלן רשום, יש להשתמש בלינק האישי)` }
-      ]);
+    const user = searchParams.get('user');
+    if (user === 'shahar') {
+      setUserName('שחר שאול');
+      setProfileImg('https://randomuser.me/api/portraits/men/32.jpg');
     }
+    setMessages([{ 
+      role: 'assistant', 
+      content: `שלום ${user === 'shahar' ? 'שחר אחי' : 'אחי'}, כאן המוקד של ח. סבן. איך אפשר לעזור היום?` 
+    }]);
   }, [searchParams]);
 
-  // גלילה אוטומטית לתחתית הצ'אט
   useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
   }, [messages, isThinking]);
 
-  // טיפול בשליחת הודעה (סימולציה)
   const handleSend = () => {
-    if (!input.trim() || isThinking) return;
-
-    const userMessageContent = input;
-    setMessages(prev => [...prev, { role: 'user', content: userMessageContent }]);
+    if (!input.trim()) return;
+    const text = input;
+    setMessages(prev => [...prev, { role: 'user', content: text }]);
     setInput('');
     setIsThinking(true);
-
-    // סימולציה של תגובת AI
+    
     setTimeout(() => {
       setIsThinking(false);
-      // סימולציה: אם המשתמש מזכיר "חול", המערכת מציגה כרטיס מוצר
-      if (userMessageContent.includes("חול")) {
-        const sandProduct = productData.find(p => p.name.includes("חול"));
-        if (sandProduct) {
-          setMessages(prev => [...prev, { 
-            role: 'assistant', 
-            content: `בטח, אחי. יש לנו בלה חול נקי במלאי. הנה הפרטים:`, 
-            product: sandProduct 
-          }]);
-        } else {
-          setMessages(prev => [...prev, { role: 'assistant', content: "אנחנו יכולים לספק לך חול. כמה בלות תרצה?" }]);
-        }
-      } else {
-        setMessages(prev => [...prev, { role: 'assistant', content: `הבנתי, ${customer?.name || 'אחי'}. אני בודק את זה עבורך במלאי.` }]);
-      }
-    }, 1500);
-  };
-
-  // טיפול בהעלאת קבצים (סימולציה)
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setMessages(prev => [...prev, { role: 'user', content: `העלה קובץ: ${file.name}. אנא נתח צילום/מסמך זה.` }]);
-      setIsThinking(true);
-      setTimeout(() => {
-        setIsThinking(false);
-        const sikadurProduct = productData.find(p => p.name.includes("Sikadur 52"));
+      if (text.includes("חול")) {
         setMessages(prev => [...prev, { 
           role: 'assistant', 
-          content: 'מניתוח הצילום, אני מזהה סדק הדורש טיפול מיידי. אני ממליץ על Sikadur 52 להזרקה.', 
-          product: sikadurProduct || null 
+          content: "יש לנו בלה חול נקי במלאי:",
+          product: {
+            id: 101,
+            name: "בלה חול נקי",
+            category: "שלד",
+            description: "חול מסונן לעבודות בנייה וריצוף.",
+            application_method: "מנוף",
+            unit: "בלה",
+            image_url: "https://saban.co.il/placeholder.jpg"
+          }
         }]);
-      }, 2000);
-    }
+      } else {
+        setMessages(prev => [...prev, { role: 'assistant', content: "קיבלתי אחי, בודק לך במחסן." }]);
+      }
+    }, 1200);
   };
 
   return (
-    <div className="flex flex-col h-screen bg-[#0b141a] text-right" dir="rtl">
-      {/* Header VIP */}
-      <div className="bg-[#202c33] p-4 flex items-center justify-between border-b border-gray-700 shadow-xl z-10 font-sans">
+    <div className="fixed inset-0 flex flex-col bg-[#0b141a] overflow-hidden font-sans" dir="rtl">
+      {/* Header - Fixed Height */}
+      <header className="h-16 bg-[#202c33] flex items-center justify-between px-4 border-b border-gray-700 z-50 shadow-lg">
         <div className="flex items-center gap-3">
-          {customer?.profile_image_url ? (
-            <img 
-              src={customer.profile_image_url} 
-              alt={customer.name} 
-              className="w-10 h-10 rounded-full object-cover border-2 border-[#C9A227] shadow-inner"
-            />
-          ) : (
-            <div className="w-10 h-10 bg-[#C9A227] rounded-full flex items-center justify-center text-black font-black text-xl border-2 border-yellow-600 shadow-inner">ח</div>
-          )}
-          <div>
-            <h1 className="font-bold text-white text-sm">ח. סבן - Intelligence</h1>
-            <p className="text-[9px] text-green-500 font-black tracking-widest uppercase italic">VIP SERVICE | {customer?.name || 'אורח'}</p>
+          <div className="relative">
+            {profileImg ? (
+              <img src={profileImg} className="w-10 h-10 rounded-full border-2 border-[#C9A227] object-cover" />
+            ) : (
+              <div className="w-10 h-10 bg-[#C9A227] rounded-full flex items-center justify-center font-bold text-black border-2 border-yellow-600">ח</div>
+            )}
+            <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-[#202c33] rounded-full"></div>
+          </div>
+          <div className="flex flex-col">
+            <h1 className="text-white text-sm font-black leading-none">ח. סבן - VIP</h1>
+            <p className="text-[10px] text-gray-400 mt-1 uppercase font-bold tracking-tighter italic">היועץ ההנדסי איתך | {userName}</p>
           </div>
         </div>
-        <button className="text-gray-400 hover:text-[#C9A227] transition-colors"><History size={20} /></button>
+        <History className="text-gray-400 cursor-pointer hover:text-[#C9A227]" size={22} />
+      </header>
+
+      {/* Messages - Scrolling Area */}
+      <div 
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto p-4 space-y-6 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcd2de8.png')] bg-fixed opacity-95"
+      >
+        {messages.map((m, i) => (
+          <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-start' : 'items-end'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
+            <div className={`max-w-[85%] p-3 rounded-2xl shadow-xl text-sm leading-relaxed ${
+              m.role === 'user' 
+                ? 'bg-[#005c4b] text-white rounded-tl-none border-r-4 border-[#C9A227]' 
+                : 'bg-[#202c33] text-white rounded-tr-none border border-gray-700 shadow-black/50'
+            }`}>
+              {m.content}
+            </div>
+            {m.product && <ProductCard product={m.product} />}
+          </div>
+        ))}
+        {isThinking && (
+          <div className="flex justify-end p-2">
+            <div className="text-[10px] text-[#C9A227] font-bold animate-pulse italic tracking-widest">
+              סבן בודק במלאי...
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* אזור ההודעות */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-6 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcd2de8.png')] bg-repeat opacity-95">
-        {messages.map((m, i) => (
-          <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-start'
+      {/* Footer - Control Center */}
+      <footer className="bg-[#202c33] p-3 border-t border-gray-700 z-50 shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
+        <div className="max-w-4xl mx-auto flex items-center gap-2">
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            className="hidden" 
+            accept="image/*,.pdf"
+            onChange={(e) => {
+              if (e.target.files?.[0]) {
+                setMessages(prev => [...prev, { role: 'user', content: `העליתי קובץ: ${e.target.files![0].name}` }]);
+              }
+            }}
+          />
+          
+          <div className="flex gap-1">
+            <button 
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="p-2.5 text-gray-400 hover:text-[#C9A227] bg-[#2a3942] rounded-full active:scale-90 transition-all shadow-inner"
+            >
+              <FileUp size={22} />
+            </button>
+            <button 
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="p-2.5 text-gray-400 hover:text-[#C9A227] bg-[#2a3942] rounded-full active:scale-90 transition-all md:hidden shadow-inner"
+            >
+              <Camera size={22} />
+            </button>
+          </div>
+
+          <input 
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+            placeholder="איך אפשר לעזור אחי?"
+            className="flex-1 bg-[#2a3942] text-white p-3.5 rounded-2xl outline-none text-sm border border-transparent focus:border-[#C9A227]/40 shadow-inner"
+          />
+
+          <button 
+            onClick={handleSend}
+            className="p-3.5 bg-[#C9A227] text-black rounded-2xl hover:bg-[#e0b52d] active:scale-90 transition-all shadow-lg"
+          >
+            <Send size={22} />
+          </button>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<div className="bg-[#0b141a] h-screen text-[#C9A227] flex items-center justify-center font-black">טוען VIP...</div>}>
+      <SabanChatContent />
+    </Suspense>
+  );
+}
