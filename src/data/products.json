@@ -1,0 +1,41 @@
+[
+  {
+    "id": 101,
+    "name": "בלה חול נקי",
+    "category": "חומרי שלד",
+    "description": "חול ים מסונן ונקי לשימוש בתערובת בטון, טיח וריצוף.",
+    "drying_time": "N/A",
+    "coverage": "בלה אחת מכסה כ-12 מ\"ר בעובי 4 ס\"מ",
+    "application_method": "פיזור ידני / מנוף",
+    "image_url": "https://saban.co.il/sand-bag.jpg",
+    "video_url": "N/A",
+    "unit": "בלה",
+    "stock": 100
+  },
+  {
+    "id": 102,
+    "name": "בלה סומסום",
+    "category": "חומרי שלד",
+    "description": "חצץ דק (סומסום) למילוי מתחת לריצוף ולניקוז.",
+    "drying_time": "N/A",
+    "coverage": "בלה אחת ל-10 מ\"ר בריצוף סטנדרטי",
+    "application_method": "פיזור ידני / משאית מנוף",
+    "image_url": "https://saban.co.il/sumsum-bag.jpg",
+    "video_url": "N/A",
+    "unit": "בלה",
+    "stock": 100
+  },
+  {
+    "id": 103,
+    "name": "מלט אפור (נשר)",
+    "category": "חומרי שלד",
+    "description": "צמנט פורטלנד אפור איכותי לכל סוגי עבודות הבנייה.",
+    "drying_time": "ייבוש ראשוני: 2-4 שעות",
+    "coverage": "לפי יחס תערובת (בדרך כלל 1:4 חול-מלט)",
+    "application_method": "ערבוב ידני / מערבל",
+    "image_url": "https://saban.co.il/cement-grey.jpg",
+    "video_url": "N/A",
+    "unit": "שק 25 ק\"ג",
+    "stock": 500
+  }
+]
