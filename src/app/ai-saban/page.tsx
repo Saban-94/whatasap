@@ -1,29 +1,49 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, X, MessageCircle, ArrowRight, HardHat } from 'lucide-react';
+import { Send, HardHat, MessageCircle } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 
-export default function AiSabanPage() {
+// קומפוננטת הקלדה אנושית ללקוח
+const Typewriter = ({ text }: { text: string }) => {
+  const [displayedText, setDisplayedText] = useState('');
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    if (index < text.length) {
+      const timeout = setTimeout(() => {
+        setDisplayedText(prev => prev + text[index]);
+        setIndex(prev => prev + 1);
+      }, 15);
+      return () => clearTimeout(timeout);
+    }
+  }, [index, text]);
+
+  return (
+    <div className="prose prose-invert max-w-none text-white leading-relaxed">
+      <ReactMarkdown>{displayedText}</ReactMarkdown>
+      {index < text.length && <span className="inline-block w-1.5 h-4 bg-[#C9A227] animate-pulse ml-1" />}
+    </div>
+  );
+};
+
+export default function CustomerAiPage() {
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: 'שלום רמי! כאן המומחה ההנדסי של ח. סבן. אני מחובר ומוכן לעזור לך עם כל שאלה על מוצרי Sika, חישובי כמויות או פתרונות איטום. מה על הפרק היום?' }
+    { role: 'assistant', content: 'שלום! אני היועץ ההנדסי של ח. סבן. צריך עזרה בחישוב כמויות סיקה או פתרון לאיטום? אני פה בשבילך אחי.' }
   ]);
   const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isThinking, setIsThinking] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // גורם לצאט תמיד לקפוץ למטה להודעה האחרונה
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [messages, isThinking]);
 
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
-    
+    if (!input.trim() || isThinking) return;
     const userMsg = { role: 'user', content: input };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
-    setIsLoading(true);
+    setIsThinking(true);
 
     try {
       const res = await fetch('/api/chat', {
@@ -33,75 +53,36 @@ export default function AiSabanPage() {
       });
       const data = await res.json();
       setMessages(prev => [...prev, { role: 'assistant', content: data.text }]);
-    } catch (error) {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'אחי, יש תקלה בתקשורת. וודא שמפתח ה-API מוגדר ב-Vercel.' }]);
     } finally {
-      setIsLoading(false);
+      setIsThinking(false);
     }
   };
 
   return (
-    <div className="flex flex-col h-screen bg-[#0b141a] text-white font-sans overflow-hidden">
-      
-      {/* כותרת עליונה - סגנון WhatsApp מודרני */}
-      <div className="bg-[#202c33] p-4 flex items-center justify-between shadow-lg border-b border-gray-700">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-[#C9A227] rounded-full flex items-center justify-center text-black font-black text-xl shadow-inner">
-            <HardHat size={24} />
-          </div>
-          <div>
-            <h1 className="font-bold text-lg leading-none">Ai-ח.סבן</h1>
-            <div className="flex items-center gap-1.5 mt-1">
-              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-              <p className="text-xs text-green-500 font-medium">מומחה AI מחובר</p>
-            </div>
-          </div>
+    <div className="flex flex-col h-screen bg-[#0b141a]">
+      <div className="bg-[#202c33] p-4 flex items-center gap-3 border-b border-gray-700 shadow-lg">
+        <div className="w-10 h-10 bg-[#C9A227] rounded-full flex items-center justify-center text-black font-bold">ח.ס</div>
+        <div>
+          <h1 className="font-bold text-white">ח. סבן - ייעוץ הנדסי AI</h1>
+          <p className="text-[10px] text-green-500">מחובר | זמין לייעוץ</p>
         </div>
       </div>
 
-      {/* גוף הצ'אט - מסך מלא */}
-      <div 
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto p-4 md:p-8 space-y-4 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcd2de8.png')] bg-repeat opacity-95"
-      >
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcd2de8.png')] bg-repeat opacity-90">
         {messages.map((m, i) => (
-          <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2`}>
-            <div className={`max-w-[85%] md:max-w-[60%] p-4 rounded-2xl shadow-md text-base leading-relaxed ${
-              m.role === 'user' 
-              ? 'bg-[#005c4b] text-white rounded-tr-none' 
-              : 'bg-[#202c33] text-white rounded-tl-none border border-gray-700'
-            }`}>
-              {m.content}
+          <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-[85%] p-4 rounded-2xl shadow-md ${m.role === 'user' ? 'bg-[#005c4b] text-white rounded-tr-none' : 'bg-[#202c33] text-white rounded-tl-none border border-gray-700'}`}>
+              {m.role === 'assistant' && i === messages.length - 1 ? <Typewriter text={m.content} /> : <ReactMarkdown className="prose prose-invert">{m.content}</ReactMarkdown>}
             </div>
           </div>
         ))}
-        {isLoading && (
-          <div className="flex justify-start">
-            <div className="bg-[#202c33] p-4 rounded-2xl text-sm animate-pulse text-gray-400">
-              סבן מעבד נתונים הנדסיים...
-            </div>
-          </div>
-        )}
+        {isThinking && <div className="text-gray-500 text-xs italic animate-pulse">סבן חושב על פתרון...</div>}
       </div>
 
-      {/* שורת כתיבה תחתונה - גדולה ולחיצה */}
-      <div className="p-4 bg-[#202c33] border-t border-gray-700">
-        <div className="max-w-4xl mx-auto flex items-center gap-3">
-          <input 
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="שאל את המומחה של ח. סבן..."
-            className="flex-1 p-4 rounded-xl bg-[#2a3942] text-white border-none focus:ring-2 focus:ring-[#C9A227] outline-none text-lg"
-          />
-          <button 
-            onClick={handleSend}
-            disabled={isLoading}
-            className="bg-[#C9A227] p-4 rounded-xl text-black hover:bg-[#e0b52d] transition-all shadow-lg active:scale-95 disabled:opacity-50"
-          >
-            <Send size={24} />
-          </button>
+      <div className="p-4 bg-[#202c33]">
+        <div className="max-w-4xl mx-auto flex gap-2">
+          <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSend()} placeholder="כתוב הודעה..." className="flex-1 p-3 rounded-xl bg-[#2a3942] text-white outline-none" />
+          <button onClick={handleSend} className="bg-[#C9A227] p-3 rounded-xl text-black"><Send size={20} /></button>
         </div>
       </div>
     </div>
