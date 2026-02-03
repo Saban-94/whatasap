@@ -5,7 +5,6 @@ const PRECACHE_URLS = [
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   // Add your JSON(s) path(s) here. Example below uses root path:
-  '/saban_master_brain.json'
 ];
 
 // Install: pre-cache critical assets (manifest, icons, core JSON)
