@@ -3,7 +3,9 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import RegisterServiceWorker from '@/components/RegisterServiceWorker';
 import InstallButton from '@/components/InstallButton';
-
+import ChatWidget from '@/components/ChatWidget';
+// ... בתוך ה-return:
+<ChatWidget />
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
