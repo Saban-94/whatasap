@@ -1,47 +1,61 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/firebase'; // שימוש ב-Firestore שייצאנו
+import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import crypto from 'crypto'; // ליצירת מפתח ייחודי לכל שאלה
+import crypto from 'crypto';
+
+const MODEL_NAME = "gemini-flash-latest";
 
 export async function POST(req: NextRequest) {
   try {
     const { message, history } = await req.json();
-    
-    // 1. יצירת "טביעת אצבע" לשאלה (כדי למצוא אותה בארכיון)
-    const questionId = crypto.createHash('md5').update(message.trim().toLowerCase()).digest('hex');
+    if (!message) return NextResponse.json({ error: "No message" }, { status: 400 });
 
-    // 2. בדיקה בארכיון (Firestore)
+    // --- שלב 1: בדיקה בארכיון (חיסכון במכסה) ---
+    // יוצרים מזהה ייחודי לשאלה (ניקוי רווחים ואותיות קטנות/גדולות)
+    const normalizedQuestion = message.trim().toLowerCase();
+    const questionId = crypto.createHash('md5').update(normalizedQuestion).digest('hex');
+    
     const archiveRef = doc(db, 'chat_archive', questionId);
     const archiveSnap = await getDoc(archiveRef);
 
     if (archiveSnap.exists()) {
-      console.log("שליפה מהארכיון - חסכנו פנייה ל-AI!");
-      return NextResponse.json({ text: archiveSnap.data().answer, source: 'archive' });
+      console.log("🚀 תשובה נשלפה מהארכיון של ח. סבן - חסכנו פנייה לגוגל");
+      return NextResponse.json({ 
+        text: archiveSnap.data().answer, 
+        isFromArchive: true 
+      });
     }
 
-    // 3. אם לא בארכיון - פנייה ל-Gemini (הקוד הקיים שלך)
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+    // --- שלב 2: פנייה ל-Gemini (רק אם אין בזיכרון) ---
+    const apiKey = process.env.GEMINI_API_KEY;
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: message }] }]
-        // כאן נכנסת שאר הלוגיקה של ה-Payload שלך
+        contents: [
+          { role: "user", parts: [{ text: "אתה יועץ הנדסי של ח. סבן. ענה בעברית מקצועית." }] },
+          { role: "model", parts: [{ text: "שלום, אני המומחה של ח. סבן. איך לעזור?" }] },
+          { role: "user", parts: [{ text: message }] }
+        ]
       })
     });
 
     const data = await res.json();
-    const aiAnswer = data.candidates[0].content.parts[0].text;
+    const aiAnswer = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
-    // 4. שמירה בארכיון לשימוש חוזר
-    await setDoc(archiveRef, {
-      question: message,
-      answer: aiAnswer,
-      timestamp: new Date().toISOString()
-    });
+    if (aiAnswer) {
+      // --- שלב 3: שמירה בארכיון לשימוש עתידי ---
+      await setDoc(archiveRef, {
+        question: message,
+        answer: aiAnswer,
+        createdAt: new Date().toISOString()
+      });
+    }
 
-    return NextResponse.json({ text: aiAnswer, source: 'gemini' });
+    return NextResponse.json({ text: aiAnswer, isFromArchive: false });
 
   } catch (error: any) {
+    console.error("Chat Error:", error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
