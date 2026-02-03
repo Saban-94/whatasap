@@ -1,20 +1,32 @@
 [
   {
-    "id": "shahar_53",
+    "id": "shahar_saul",
     "name": "שחר שאול",
-    "company": "שאול הנדסה",
-    "active_projects": ["בילו 53, רעננה", "הפרדס 21"],
-    "preferences": "מעדיף הובלה עם מנוף, מזמין בעיקר חומרי שלד",
+    "company": "שאול ובניו הנדסה",
+    "active_projects": ["פרויקט בילו 53, רעננה"],
+    "preferences": "מעדיף אספקה בשעות הבוקר המוקדמות, מזמין לרוב מוצרי איטום ושלד.",
     "credit_status": "מאושר",
-    "magic_link_token": "shahar"
+    "magic_link_token": "shahar",
+    "profile_image_url": "https://media-mrs2-2.cdn.whatsapp.net/v/t61.24694-24/524989315_1073256511118475_7315275522833323073_n.jpg?ccb=11-4&oh=01_Q5Aa3gEWEwwSy2F_tzST4JFnO_aFPwZSlLw2zRSQNnlkeUbuFA&oe=698F0C9E&_nc_sid=5e03e0&_nc_cat=111"
+  },
+  {
+    "id": "roni_levi",
+    "name": "רוני לוי",
+    "company": "לוי ובניו קבלנים",
+    "active_projects": ["שיפוץ מרכז מסחרי, רחוב הרצל 10, תל אביב"],
+    "preferences": "עבודה מהירה, דורש ייעוץ טכני לפני כל הזמנה גדולה.",
+    "credit_status": "מאושר",
+    "magic_link_token": "roni",
+    "profile_image_url": "https://randomuser.me/api/portraits/women/44.jpg"
   },
   {
     "id": "tal_arviv",
     "name": "טל ארביב",
-    "company": "הכל מבראשית",
-    "active_projects": ["שער 1, פרויקט הכל מבראשית"],
-    "preferences": "חייב אספקה מוקדם בבוקר",
+    "company": "הכל מבראשית בע\"מ",
+    "active_projects": ["פרויקט יוקרה 'העוגן', הרצליה פיתוח"],
+    "preferences": "חומרי גמר איכותיים, אספקה ישירה לאתר עם מנוף.",
     "credit_status": "בבדיקה",
-    "magic_link_token": "tal"
+    "magic_link_token": "tal",
+    "profile_image_url": "https://randomuser.me/api/portraits/men/70.jpg"
   }
 ]
