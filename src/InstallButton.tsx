@@ -20,7 +20,7 @@ export default function InstallButton() {
           deferredPrompt.prompt();
           setDeferredPrompt(null);
         }}
-        className="btn-huge bg-saban-dark-blue text-white shadow-2xl animate-pulse"
+        className="btn-huge bg-[#1976D2] text-white shadow-2xl animate-bounce"
       >
         📲 התקן את אפליקציית ח. סבן
       </button>
