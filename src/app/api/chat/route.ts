@@ -1,42 +1,64 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from 'next/server';
 import productsData from "../../../data/data.json"; 
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+const PRIMARY_MODEL = "gemini-1.5-flash";
+const FALLBACK_MODEL = "gemini-1.5-pro"; // מודל גיבוי חזק
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  // בדיקת מפתח API
+  if (!process.env.GEMINI_API_KEY) {
+    return NextResponse.json(
+      { error: 'GEMINI_API_KEY missing in Vercel settings.' },
+      { status: 500 }
+    );
+  }
+
   try {
     const { message, history } = await req.json();
 
     const systemInstruction = `
-      אתה "היועץ ההנדסי של ח. סבן". מומחה לחומרי בניין, דבקים ואיטום.
-      נתוני הקטלוג שלך: ${JSON.stringify(productsData)}.
-      הנחיות:
-      1. השתמש רק במוצרים מהקטלוג.
-      2. לכל מוצר צרף "טיפ מקצוען" מהשדה pro_tip.
-      3. חישובי כמויות כוללים 25% פחת כברירת מחדל.
-      4. ענה בעברית מקצועית ותמציתית.
+      אתה "היועץ ההנדסי של ח. סבן". מומחה לחומרי בניין ואיטום.
+      השתמש רק בקטלוג: ${JSON.stringify(productsData)}.
+      ענה בעברית מקצועית, צרף Pro-Tip לכל מוצר והוסף 25% פחת בחישובים.
     `;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-    const chat = model.startChat({
-      history: [
+    const payload = {
+      contents: [
         { role: "user", parts: [{ text: systemInstruction }] },
-        { role: "model", parts: [{ text: "שלום, אני יועץ ח. סבן. איך אוכל לעזור הנדסית היום?" }] },
+        { role: "model", parts: [{ text: "הבנתי, אני מוכן לייעץ בשם ח. סבן." }] },
         ...(history || []).map((h: any) => ({
           role: h.role === "assistant" ? "model" : "user",
           parts: [{ text: h.content }],
         })),
-      ],
-    });
+        { role: "user", parts: [{ text: message }] }
+      ]
+    };
 
-    const result = await chat.sendMessage(message);
-    const text = result.response.text();
-    return NextResponse.json({ text });
+    // ניסיון ראשון עם המודל הראשי
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${PRIMARY_MODEL}:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      const data = await response.json();
+      return NextResponse.json({ text: data.candidates[0].content.parts[0].text });
+      
+    } catch (e) {
+      // ניסיון שני עם מודל הגיבוי
+      console.warn("Primary model failed, trying fallback...");
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${FALLBACK_MODEL}:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      const data = await response.json();
+      return NextResponse.json({ text: data.candidates[0].content.parts[0].text, note: "fallback used" });
+    }
 
   } catch (error: any) {
-    console.error("Chat Error:", error);
-    return NextResponse.json({ error: "שגיאת שרת פנימית" }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
