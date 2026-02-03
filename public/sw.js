@@ -5,7 +5,6 @@ const PRECACHE_URLS = [
   '/icons/icon-192.png',
   '/icons/icon-512.png'
 ];
-
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
