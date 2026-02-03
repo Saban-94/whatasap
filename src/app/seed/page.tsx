@@ -1,9 +1,8 @@
 'use client';
-import { db } from '@/lib/firebase'; // וודא שהנתיב ל-firebase.ts תקין
-import { collection, setDoc, doc } from 'firebase/dist/index'; // יבוא רכיבי פיירבייס
+import { db } from '@/lib/firebase'; 
+import { collection, setDoc, doc } from 'firebase/firestore'; 
 
 export default function SeedPage() {
-  // המשתנה המאגד את כל הנתונים ההנדסיים
   const sabanFullData = [
     {
       "product_name": "Sika MonoTop-610 / 910N",
@@ -16,18 +15,7 @@ export default function SeedPage() {
         "video": "https://www.youtube.com/watch?v=KxKXmsY8-2c"
       }
     },
-    {
-      "product_name": "Sika MonoTop-620",
-      "category": "Repair",
-      "engineering_solution": "שפכטל צמנטי להחלקה ותיקון קירות ותקרות במערכות שיקום.",
-      "coverage": 1.8,
-      "pro_tip": "ליישם בשכבות דקות כדי לקבל החלקה מיטבית.",
-      "media": {
-        "image": "https://gilar.co.il/products/%d7%a1%d7%99%d7%a7%d7%94-%d7%9e%d7%95%d7%a0%d7%95%d7%98%d7%95%d7%a4-620/",
-        "video": "https://www.youtube.com/watch?v=sxPpDvH2zN8"
-      }
-    },
-    // ... כאן תכניס את כל שאר המוצרים שהעלית ב-JSON ...
+    // ... כל שאר המוצרים שלך כאן ...
     {
       "product_name": "Sikadur-730",
       "category": "Bonding",
@@ -45,14 +33,13 @@ export default function SeedPage() {
     try {
       const colRef = collection(db, 'products');
       for (const prod of sabanFullData) {
-        // ניקוי שם המוצר לשימוש כ-ID
         const docId = prod.product_name.replace(/\//g, "-").replace(/\s+/g, "_");
         await setDoc(doc(colRef, docId), prod);
       }
       alert('כל הנתונים ההנדסיים של ח. סבן הועלו בהצלחה!');
     } catch (e) {
       console.error(e);
-      alert('שגיאה בהעלאה. וודא שאתה מחובר ושרולס ה-Firestore פתוחים.');
+      alert('שגיאה בהעלאה. וודא שחוקי ה-Firestore פתוחים.');
     }
   };
 
