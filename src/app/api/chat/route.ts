@@ -1,7 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
-import productsData from "@/data/data.json"; // הניתוב לפי המבנה שלך ב-GitHub
-
+import productsData from "../../../data/data.json";
 // אתחול ה-AI עם המפתח שמוגדר ב-Environment Variables של Vercel
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
