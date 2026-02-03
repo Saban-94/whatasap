@@ -12,10 +12,10 @@ const firebaseConfig = {
   appId: "1:956627581512:web:75d5830e1182ec015cfdff"
 };
 
+// Singleton initialization
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
 export const db = getFirestore(app);
-// שינינו מ-rtdb ל-database כדי לתקן את השגיאה ב-Vercel
-export const database = getDatabase(app); 
+export const database = getDatabase(app); // שם המשתנה מותאם לדף ה-analysis כדי למנוע שגיאות build
 
 export default app;
