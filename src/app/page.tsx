@@ -1,20 +1,43 @@
 'use client';
 import React, { useState, useEffect, useRef, Suspense } from 'react';
-import { Send, MapPin, Clock, Truck, CheckCircle } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { Send, MapPin, Clock, Truck, CheckCircle2, Package, AlertCircle, ShoppingCart } from 'lucide-react';
+import productData from '@/data/products.json';
 
-function SabanIntelligenceChat() {
+// --- לוגיקת ניתוח מוצרים (The Engine) ---
+const classifyProduct = (text: string) => {
+  const clean = text.toLowerCase();
+  if (/מלט|טיח|חול|סומסום|בטון|בלוק|אזכורית/.test(clean)) return "חומרי שלד ובניין";
+  if (/שקע|תקע|פאזי|נורה|כבל/.test(clean)) return "חשמל ותאורה";
+  if (/ברגים|ביט|מסורית|מקדח|שאקל|חבל|סולם/.test(clean)) return "פרזול ואספקה טכנית";
+  if (/צבע|רולר|מגש|פוליתאן|ספרי/.test(clean)) return "צבע וגמר";
+  if (/כיסא|שולחן|נייר|אסלות|מגב|שקיות/.test(clean)) return "לוגיסטיקה וניקיון";
+  return "כללי/אחר";
+};
+
+export default function SabanIntelligenceApp() {
+  const searchParams = useSearchParams();
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState('');
-  const [step, setStep] = useState('INIT'); // INIT -> ADDRESS -> TIME -> CONFIRM
+  const [step, setStep] = useState('INIT'); // INIT -> ADDRESS -> REVIEW -> FINAL
   const [isThinking, setIsThinking] = useState(false);
+  const [orderSummary, setOrderSummary] = useState<any[]>([]);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  // אתחול השיחה עם שחר
+  // אתחול שיחה עם היסטוריה של שחר (מה-CSV)
   useEffect(() => {
-    setMessages([{ 
-      role: 'assistant', 
-      content: 'אהלן שחר שאול אחי! ראיתי שהזמנת טיח 710 לקפלנסקי פעם שעברה. להוציא לך השלמה לשם, או שאנחנו על פרויקט חדש היום?' 
-    }]);
-  }, []);
+    const user = searchParams.get('user');
+    if (user === 'shahar') {
+      setMessages([{ 
+        role: 'assistant', 
+        content: `אהלן שחר שאול אחי! אני רואה שהזמנת טיח 710 לקפלנסקי פעם שעברה. להוציא לך השלמה לשם, או שאנחנו על פרויקט חדש היום?` 
+      }]);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [messages, isThinking]);
 
   const handleSend = () => {
     if (!input.trim()) return;
@@ -23,93 +46,102 @@ function SabanIntelligenceChat() {
     setInput('');
     setIsThinking(true);
 
-    // מנוע ניהול שלבים (State Machine)
     setTimeout(() => {
       setIsThinking(false);
       
+      // 1. שלב זיהוי פרויקט וכתובת
       if (step === 'INIT' && (userText.includes("חדש") || userText.includes("לא"))) {
         setStep('ADDRESS');
-        setMessages(prev => [...prev, { role: 'assistant', content: 'סבבה אחי, הבנתי. תכתוב לי את הכתובת החדשה לאספקה ונראה כמה זמן ייקח למשאית להגיע.' }]);
+        setMessages(prev => [...prev, { role: 'assistant', content: 'סגור אחי. לאן להוציא את המשאית? תן לי כתובת מדויקת.' }]);
       } 
+      // 2. שלב ניתוח רשימת מוצרים ומרחק
       else if (step === 'ADDRESS') {
-        setStep('TIME');
-        // כאן המערכת "כאילו" מחשבת מרחק
+        setStep('REVIEW');
+        const items = userText.split('\n').filter(l => l.trim() !== '');
+        const analyzed = items.map(item => ({
+          label: item,
+          category: classifyProduct(item),
+          inStock: productData.some(p => p.name.includes(item.split(' ')[0]))
+        }));
+        setOrderSummary(analyzed);
         setMessages(prev => [...prev, { 
           role: 'assistant', 
-          content: `קיבלתי: ${userText}. בדקתי, הכתובת שלך במרחק 24 דקות מהמחסנים שלנו. תציין תאריך ושעת אספקה מבוקשת.` 
+          content: `קיבלתי אחי: ${userText}. ויצמן 7 תל אביב זה בערך 24 דקות מהמחסן. פירקתי את הרשימה שלך לפי מחלקות. הנה מה שזיהיתי במלאי:` 
         }]);
       }
-      else if (step === 'TIME') {
-        setStep('CONFIRM');
-        setMessages(prev => [...prev, { 
-          role: 'assistant', 
-          content: `מעולה אחי. שלחתי בקשה למחלקת הזמנות לבדיקת צפי לזמן שביקשת (${userText}). ברגע שיהיה אישור סופי מהמחסן, תקבל כאן עדכון מדויק. מה עוד להוסיף להזמנה?` 
-        }]);
+      // 3. אישור סופי
+      else {
+        setMessages(prev => [...prev, { role: 'assistant', content: 'מעולה אחי. שלחתי למחלקת סידור. תקבל עדכון ברגע שהמשאית יוצאת.' }]);
       }
-    }, 1200);
+    }, 1500);
   };
 
   return (
-    <div className="fixed inset-0 flex flex-col bg-[#0b141a] text-right font-sans" dir="rtl">
-      {/* Header - Saban Intelligence */}
-      <header className="bg-[#202c33] p-4 border-b border-gray-700 flex justify-between items-center shadow-lg">
+    <div className="fixed inset-0 flex flex-col bg-[#0b141a] text-right font-sans overflow-hidden" dir="rtl">
+      {/* Header */}
+      <header className="h-16 bg-[#202c33] flex items-center justify-between px-4 border-b border-gray-700 shadow-xl z-50">
         <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#C9A227] rounded-full flex items-center justify-center font-bold text-black border-2 border-yellow-600">ח</div>
-            <h1 className="text-white font-black text-sm uppercase">Saban Logistics Intelligence</h1>
-        </div>
-        <div className="flex gap-2">
-            <span className={`h-2 w-2 rounded-full ${step === 'CONFIRM' ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'}`}></span>
+          <div className="w-10 h-10 bg-[#C9A227] rounded-full flex items-center justify-center font-black text-black border-2 border-yellow-600 shadow-inner text-xl">ח</div>
+          <div>
+            <h1 className="text-white text-sm font-black leading-none uppercase">Saban Logistics</h1>
+            <p className="text-[9px] text-green-500 font-bold mt-1 animate-pulse italic">ONLINE INTELLIGENCE</p>
+          </div>
         </div>
       </header>
 
-      {/* Chat History */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcd2de8.png')] bg-fixed">
+      {/* Messages Area */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-6 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcd2de8.png')] bg-fixed opacity-95">
         {messages.map((m, i) => (
-          <div key={i} className={`flex ${m.role === 'user' ? 'justify-start' : 'justify-end'}`}>
-            <div className={`max-w-[85%] p-4 rounded-2xl shadow-xl text-sm leading-relaxed ${
-              m.role === 'user' ? 'bg-[#005c4b] text-white rounded-tl-none border-r-4 border-[#C9A227]' : 'bg-[#202c33] text-white rounded-tr-none border border-gray-700'
-            }`}>
-              {m.content}
+          <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-start' : 'items-end'}`}>
+            <div className={`p-4 rounded-2xl shadow-xl max-w-[85%] ${m.role === 'user' ? 'bg-[#005c4b] text-white rounded-tl-none border-r-4 border-[#C9A227]' : 'bg-[#202c33] text-white rounded-tr-none border border-gray-700'}`}>
+              <div className="whitespace-pre-wrap text-sm leading-relaxed">{m.content}</div>
             </div>
           </div>
         ))}
-        {isThinking && <div className="text-[10px] text-[#C9A227] font-black animate-pulse italic">ג'ימיני מחשב מרחק לוגיסטי...</div>}
+
+        {/* Product Analysis Mirror */}
+        {orderSummary.length > 0 && step === 'REVIEW' && (
+          <div className="bg-[#162127] rounded-2xl p-4 border border-gray-700 shadow-2xl space-y-4 animate-in slide-in-from-bottom-5">
+            <h3 className="text-[#C9A227] font-black text-xs flex items-center gap-2 border-b border-gray-800 pb-2 uppercase tracking-widest"><Package size={14}/> סיכום פריטים לסידור</h3>
+            <div className="space-y-3">
+              {orderSummary.map((item, idx) => (
+                <div key={idx} className="flex items-center justify-between border-b border-gray-800 pb-2 last:border-0">
+                  <div className="flex items-center gap-3">
+                    {item.inStock ? <CheckCircle2 className="text-green-500" size={14}/> : <AlertCircle className="text-yellow-500" size={14}/>}
+                    <div>
+                      <p className="text-white text-xs font-bold leading-none">{item.label}</p>
+                      <p className="text-[9px] text-gray-500 mt-1 uppercase">{item.category}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button onClick={() => setStep('FINAL')} className="w-full bg-[#C9A227] text-black font-black py-3 rounded-xl flex items-center justify-center gap-2 text-xs shadow-lg active:scale-95 transition-all uppercase italic">אשר ושגר למחלקת סידור</button>
+          </div>
+        )}
+
+        {isThinking && <div className="text-[10px] text-[#C9A227] font-black animate-pulse italic pr-2 tracking-widest">מחשב מרחק מהמחסן ומנתח מלאי...</div>}
       </div>
 
-      {/* Status Bar */}
-      <div className="bg-[#162127] p-2 flex gap-4 overflow-x-auto border-t border-gray-800">
-        <div className={`flex items-center gap-1 text-[10px] font-bold px-3 py-1 rounded-full border ${step === 'ADDRESS' ? 'text-[#C9A227] border-[#C9A227]' : 'text-gray-600 border-gray-800'}`}>
-            <MapPin size={12}/> כתובת
+      {/* Footer Info Bar */}
+      {step === 'REVIEW' && (
+        <div className="bg-[#1c272d] p-2 flex items-center justify-center gap-4 border-t border-gray-800">
+           <div className="flex items-center gap-2 text-[10px] text-gray-400 font-bold bg-[#0b141a] px-3 py-1 rounded-full"><MapPin size={12} className="text-[#C9A227]"/> 24 דקות למחסן</div>
+           <div className="flex items-center gap-2 text-[10px] text-gray-400 font-bold bg-[#0b141a] px-3 py-1 rounded-full"><Truck size={12} className="text-[#C9A227]"/> צפי פריקה: 11:30</div>
         </div>
-        <div className={`flex items-center gap-1 text-[10px] font-bold px-3 py-1 rounded-full border ${step === 'TIME' ? 'text-[#C9A227] border-[#C9A227]' : 'text-gray-600 border-gray-800'}`}>
-            <Clock size={12}/> זמן אספקה
-        </div>
-        <div className={`flex items-center gap-1 text-[10px] font-bold px-3 py-1 rounded-full border ${step === 'CONFIRM' ? 'text-[#C9A227] border-[#C9A227]' : 'text-gray-600 border-gray-800'}`}>
-            <CheckCircle size={12}/> אישור מחסן
-        </div>
-      </div>
+      )}
 
       {/* Input */}
-      <footer className="bg-[#202c33] p-4">
-        <div className="flex gap-2 max-w-4xl mx-auto">
+      <footer className="p-4 bg-[#202c33] border-t border-gray-700 shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
+        <div className="max-w-4xl mx-auto flex items-center gap-3">
           <input 
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="איך מתקדמים אחי?"
-            className="flex-1 bg-[#2a3942] text-white p-4 rounded-2xl outline-none focus:border-[#C9A227] border border-transparent transition-all shadow-inner"
+            value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+            placeholder="איך מתקדמים אחי?" 
+            className="flex-1 p-4 rounded-2xl bg-[#2a3942] text-white outline-none border border-transparent focus:border-[#C9A227]/40 shadow-inner text-sm" 
           />
-          <button onClick={handleSend} className="bg-[#C9A227] p-4 rounded-2xl text-black hover:bg-[#e0b52d] active:scale-95 transition-all shadow-lg font-black italic">שלח</button>
+          <button onClick={handleSend} className="bg-[#C9A227] p-4 rounded-2xl text-black hover:bg-[#e0b52d] shadow-lg active:scale-90 transition-all font-black uppercase italic">שלח</button>
         </div>
       </footer>
     </div>
-  );
-}
-
-export default function Home() {
-  return (
-    <Suspense fallback={<div className="bg-[#0b141a] h-screen text-[#C9A227] flex items-center justify-center font-black italic uppercase tracking-widest">Saban Intelligence Loading...</div>}>
-      <SabanIntelligenceChat />
-    </Suspense>
   );
 }
