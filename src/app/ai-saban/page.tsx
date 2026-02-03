@@ -2,7 +2,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, HardHat, MessageCircle } from 'lucide-react';
 
-// קומפוננטת הקלדה אנושית - ללא מארקדאון כדי שה-Build יעבור
 const Typewriter = ({ text }: { text: string }) => {
   const [displayedText, setDisplayedText] = useState('');
   const [index, setIndex] = useState(0);
@@ -18,7 +17,7 @@ const Typewriter = ({ text }: { text: string }) => {
   }, [index, text]);
 
   return (
-    <div className="whitespace-pre-wrap text-white leading-relaxed">
+    <div className="whitespace-pre-wrap text-white leading-relaxed text-sm md:text-base">
       {displayedText}
       {index < text.length && <span className="inline-block w-1.5 h-4 bg-[#C9A227] animate-pulse ml-1" />}
     </div>
@@ -60,12 +59,14 @@ export default function CustomerAiPage() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-[#0b141a]">
-      <div className="bg-[#202c33] p-4 flex items-center gap-3 border-b border-gray-700 shadow-lg">
-        <div className="w-10 h-10 bg-[#C9A227] rounded-full flex items-center justify-center text-black font-bold text-xl">ח</div>
-        <div>
-          <h1 className="font-bold text-white text-lg">ח. סבן - ייעוץ הנדסי AI</h1>
-          <p className="text-[10px] text-green-500 font-bold uppercase tracking-widest">מחובר | VIP Service</p>
+    <div className="flex flex-col h-screen bg-[#0b141a] rtl">
+      <div className="bg-[#202c33] p-4 flex items-center justify-between border-b border-gray-700 shadow-lg">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-[#C9A227] rounded-full flex items-center justify-center text-black font-black text-xl shadow-inner">ח</div>
+          <div>
+            <h1 className="font-bold text-white text-sm md:text-base">ח. סבן - ייעוץ הנדסי AI</h1>
+            <p className="text-[9px] text-green-500 font-bold tracking-widest uppercase">זמין כעת | VIP Service</p>
+          </div>
         </div>
       </div>
 
@@ -73,34 +74,17 @@ export default function CustomerAiPage() {
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[85%] p-4 rounded-2xl shadow-md ${m.role === 'user' ? 'bg-[#005c4b] text-white rounded-tr-none' : 'bg-[#202c33] text-white rounded-tl-none border border-gray-700'}`}>
-              {m.role === 'assistant' && i === messages.length - 1 ? (
-                 <Typewriter text={m.content} />
-              ) : (
-                 <div className="whitespace-pre-wrap">{m.content}</div>
-              )}
+              {m.role === 'assistant' && i === messages.length - 1 ? <Typewriter text={m.content} /> : <div className="whitespace-pre-wrap text-sm md:text-base">{m.content}</div>}
             </div>
           </div>
         ))}
-        {isThinking && (
-          <div className="flex items-center gap-2 text-gray-500 text-xs italic animate-pulse">
-            <span className="w-1.5 h-1.5 bg-gray-500 rounded-full"></span>
-            סבן בודק בקטלוג...
-          </div>
-        )}
+        {isThinking && <div className="flex items-center gap-2 text-gray-500 text-xs italic animate-pulse p-2"><span className="w-1.5 h-1.5 bg-[#C9A227] rounded-full animate-bounce"></span> סבן מעבד נתונים...</div>}
       </div>
 
       <div className="p-4 bg-[#202c33] border-t border-gray-700">
         <div className="max-w-4xl mx-auto flex gap-3">
-          <input 
-            value={input} 
-            onChange={(e) => setInput(e.target.value)} 
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()} 
-            placeholder="כתוב הודעה למומחה של ח. סבן..." 
-            className="flex-1 p-4 rounded-xl bg-[#2a3942] text-white outline-none focus:ring-1 focus:ring-[#C9A227]" 
-          />
-          <button onClick={handleSend} className="bg-[#C9A227] p-4 rounded-xl text-black hover:bg-[#e0b52d] active:scale-95 transition-all">
-            <Send size={24} />
-          </button>
+          <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSend()} placeholder="איך אפשר לעזור אחי?" className="flex-1 p-3 md:p-4 rounded-xl bg-[#2a3942] text-white outline-none border border-transparent focus:border-[#C9A227] transition-all" />
+          <button onClick={handleSend} className="bg-[#C9A227] p-3 md:p-4 rounded-xl text-black hover:bg-[#e0b52d] transition-all shadow-lg"><Send size={24} /></button>
         </div>
       </div>
     </div>
