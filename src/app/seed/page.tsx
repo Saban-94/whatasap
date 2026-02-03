@@ -1,32 +1,51 @@
 'use client';
 import { db } from '@/lib/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, doc, setDoc } from 'firebase/firestore';
 
-const dummyProducts = [
-  { name: 'SikaTop Seal-107 אפור', solution: 'איטום מיכלים, בריכות ומבנים', coverage: '2.0', category: 'Sealing' },
-  { name: 'Sika Grout-214', solution: 'דיוס למכונות ומילוי חללים', coverage: '1.9', category: 'Construction' },
-  { name: 'סבן - דבק קרמיקה S1', solution: 'הדבקת אריחים בסטנדרט גבוה', coverage: '1.5', category: 'Adhesives' },
-  { name: 'Sika Monotop-612', solution: 'שיקום בטון מקצועי', coverage: '1.8', category: 'Repair' }
+// הנתונים שהוצאנו מהקובץ data.json שהעלית
+const sabanFullData = [
+  {
+    product_name: "דבק 132 C2TE-S1 (כרמית)",
+    category: "Adhesives",
+    engineering_solution: "דבק גמיש S1 לאריחים גדולים/מדוקקים, פנים/חוץ ובריכות",
+    coverage: 1.5,
+    application_method: "מסורית; Back-Butter; כיסוי ≥95%; פריימר 82-P בתשתיות חלקות",
+    pro_tip: "S1 לגמישות; זמן פתוח E; החלקה T",
+    diagnostic_questions: ["מה סוג התשתית?", "מה גודל האריח?", "פנים/חוץ/בריכה?"]
+  },
+  {
+    product_name: "אקווניר EXTRA (נירלט)",
+    category: "Paints",
+    engineering_solution: "צבע אקרילי בטכנולוגיית USP למראה חלק ואחיד",
+    coverage: 13.0,
+    application_method: "הכנת קיר; פריימר 2X; 2 שכבות",
+    pro_tip: "הפריימר הוא הבסיס - בלי זה הצבע עלול להתקלף",
+    diagnostic_questions: ["אזור יישום?", "סוג תשתית?", "איזה ביצועים חשובים?"]
+  }
+  // ניתן להוסיף כאן את שאר המוצרים מהקובץ
 ];
 
 export default function SeedPage() {
-  const uploadData = async () => {
+  const uploadMasterData = async () => {
     try {
       const colRef = collection(db, 'products');
-      for (const prod of dummyProducts) {
-        await addDoc(colRef, prod);
+      for (const prod of sabanFullData) {
+        // שימוש בשם המוצר כ-ID כדי למנוע כפילויות
+        const docId = prod.product_name.replace(/\//g, "-");
+        await setDoc(docRef(colRef, docId), prod);
       }
-      alert('הנתונים הוזרקו בהצלחה! חזור לקטלוג.');
+      alert('כל הנתונים ההנדסיים הועלו בהצלחה!');
     } catch (e) {
       console.error(e);
-      alert('שגיאה: וודא שחוקי ה-Firestore ב-Console פתוחים (Read/Write).');
+      alert('שגיאה בהעלאה. וודא שחוקי ה-Firestore פתוחים.');
     }
   };
 
   return (
-    <div className="p-10 text-center">
-      <button onClick={uploadData} className="btn-huge bg-blue-600 text-white p-5">
-        הזרק 10 מוצרים ראשונים לקטלוג 🚀
+    <div className="p-10 text-center bg-black min-h-screen">
+      <h1 className="text-sabanGold text-2xl mb-6 font-bold">מערכת הזרקת ידע - ח. סבן</h1>
+      <button onClick={uploadMasterData} className="btn-huge bg-sabanGold text-black font-black p-6 rounded-2xl shadow-2xl">
+        העלה קטלוג מומחה מלא 🚀
       </button>
     </div>
   );
