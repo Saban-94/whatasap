@@ -1,9 +1,11 @@
 'use client';
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Send, HardHat, Camera, FileUp, ShoppingCart, Play, User, History } from 'lucide-react';
+import { Send, HardHat, Camera, FileUp, ShoppingCart, Play, User, History, Info } from 'lucide-react';
+import productData from '@/data/products.json'; // ייבוא נתוני המוצרים
+import customerData from '@/data/customers.json'; // ייבוא נתוני הלקוחות
 
-// --- סוגי נתונים ---
+// --- סוגי נתונים (Interfaces) ---
 interface Product {
   id: number;
   name: string;
@@ -13,6 +15,20 @@ interface Product {
   unit: string;
   image_url: string;
   video_url: string;
+  // נכסים אופציונליים נוספים שהיו בגרסאות קודמות, למשל:
+  drying_time?: string;
+  coverage?: string;
+}
+
+interface Customer {
+  id: string;
+  name: string;
+  company: string;
+  active_projects: string[];
+  preferences: string;
+  credit_status: string;
+  magic_link_token: string;
+  profile_image_url: string;
 }
 
 interface Message {
@@ -45,34 +61,86 @@ const ProductCard = ({ product }: { product: Product }) => (
   </div>
 );
 
-// --- הקומפוננטה הראשית עם Suspense ל-Vercel ---
+// --- קומפוננטת הצ'אט הראשית ---
 function SabanChatContent() {
   const searchParams = useSearchParams();
-  const [userName, setUserName] = useState('קבלן');
+  const [customer, setCustomer] = useState<Customer | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null); // רפרנס להעלאת קבצים
 
+  // טעינת פרופיל הלקוח וברכה אישית
   useEffect(() => {
-    const user = searchParams.get('user');
-    if (user === 'shahar') setUserName('שחר שאול');
-    
-    setMessages([
-      { role: 'assistant', content: `אהלן ${user === 'shahar' ? 'שחר אחי' : 'אחי'}, ברוך הבא למוקד VIP של ח. סבן. אני רואה שאתה עובד על הפרויקט בבילו 53. מה להכין לך היום?` }
-    ]);
+    const token = searchParams.get('user');
+    const foundCustomer = customerData.find(c => c.magic_link_token === token);
+
+    if (foundCustomer) {
+      setCustomer(foundCustomer);
+      setMessages([
+        { role: 'assistant', content: `אהלן ${foundCustomer.name} אחי! ברוך הבא למוקד VIP של ח. סבן. אני רואה שאתה עובד על פרויקט **${foundCustomer.active_projects[0]}**. מה להכין לך היום?` }
+      ]);
+    } else {
+      // אם אין זיהוי - לקוח אורח
+      setCustomer(null); // או אובייקט לקוח אורח
+      setMessages([
+        { role: 'assistant', content: `שלום אחי! כאן מוקד ה-VIP של ח. סבן. איך אני יכול לעזור לך היום? (לכניסה כקבלן רשום, יש להשתמש בלינק האישי)` }
+      ]);
+    }
   }, [searchParams]);
 
+  // גלילה אוטומטית לתחתית הצ'אט
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, isThinking]);
 
+  // טיפול בשליחת הודעה (סימולציה)
   const handleSend = () => {
-    if (!input.trim()) return;
-    setMessages(prev => [...prev, { role: 'user', content: input }]);
+    if (!input.trim() || isThinking) return;
+
+    const userMessageContent = input;
+    setMessages(prev => [...prev, { role: 'user', content: userMessageContent }]);
     setInput('');
     setIsThinking(true);
-    setTimeout(() => { setIsThinking(false); }, 1500);
+
+    // סימולציה של תגובת AI
+    setTimeout(() => {
+      setIsThinking(false);
+      // סימולציה: אם המשתמש מזכיר "חול", המערכת מציגה כרטיס מוצר
+      if (userMessageContent.includes("חול")) {
+        const sandProduct = productData.find(p => p.name.includes("חול"));
+        if (sandProduct) {
+          setMessages(prev => [...prev, { 
+            role: 'assistant', 
+            content: `בטח, אחי. יש לנו בלה חול נקי במלאי. הנה הפרטים:`, 
+            product: sandProduct 
+          }]);
+        } else {
+          setMessages(prev => [...prev, { role: 'assistant', content: "אנחנו יכולים לספק לך חול. כמה בלות תרצה?" }]);
+        }
+      } else {
+        setMessages(prev => [...prev, { role: 'assistant', content: `הבנתי, ${customer?.name || 'אחי'}. אני בודק את זה עבורך במלאי.` }]);
+      }
+    }, 1500);
+  };
+
+  // טיפול בהעלאת קבצים (סימולציה)
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setMessages(prev => [...prev, { role: 'user', content: `העלה קובץ: ${file.name}. אנא נתח צילום/מסמך זה.` }]);
+      setIsThinking(true);
+      setTimeout(() => {
+        setIsThinking(false);
+        const sikadurProduct = productData.find(p => p.name.includes("Sikadur 52"));
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: 'מניתוח הצילום, אני מזהה סדק הדורש טיפול מיידי. אני ממליץ על Sikadur 52 להזרקה.', 
+          product: sikadurProduct || null 
+        }]);
+      }, 2000);
+    }
   };
 
   return (
@@ -80,49 +148,24 @@ function SabanChatContent() {
       {/* Header VIP */}
       <div className="bg-[#202c33] p-4 flex items-center justify-between border-b border-gray-700 shadow-xl z-10 font-sans">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-[#C9A227] rounded-full flex items-center justify-center text-black font-black text-xl border-2 border-yellow-600">ח</div>
+          {customer?.profile_image_url ? (
+            <img 
+              src={customer.profile_image_url} 
+              alt={customer.name} 
+              className="w-10 h-10 rounded-full object-cover border-2 border-[#C9A227] shadow-inner"
+            />
+          ) : (
+            <div className="w-10 h-10 bg-[#C9A227] rounded-full flex items-center justify-center text-black font-black text-xl border-2 border-yellow-600 shadow-inner">ח</div>
+          )}
           <div>
             <h1 className="font-bold text-white text-sm">ח. סבן - Intelligence</h1>
-            <p className="text-[9px] text-green-500 font-black tracking-widest uppercase italic">VIP SERVICE | {userName}</p>
+            <p className="text-[9px] text-green-500 font-black tracking-widest uppercase italic">VIP SERVICE | {customer?.name || 'אורח'}</p>
           </div>
         </div>
         <button className="text-gray-400 hover:text-[#C9A227] transition-colors"><History size={20} /></button>
       </div>
 
-      {/* Messages */}
+      {/* אזור ההודעות */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-6 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcd2de8.png')] bg-repeat opacity-95">
         {messages.map((m, i) => (
-          <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-start' : 'items-end'}`}>
-            <div className={`p-4 rounded-2xl shadow-xl max-w-[85%] ${m.role === 'user' ? 'bg-[#005c4b] text-white rounded-tl-none border-r-4 border-[#C9A227]' : 'bg-[#202c33] text-white rounded-tr-none border border-gray-700 font-sans'}`}>
-              <div className="whitespace-pre-wrap text-sm md:text-base leading-relaxed font-medium">{m.content}</div>
-            </div>
-            {m.product && <ProductCard product={m.product} />}
-          </div>
-        ))}
-        {isThinking && <div className="text-[10px] text-gray-500 font-bold italic pr-2">בודק במחסן ח. סבן...</div>}
-      </div>
-
-      {/* Input */}
-      <div className="p-4 bg-[#202c33] border-t border-gray-700 shadow-inner">
-        <div className="max-w-4xl mx-auto flex items-center gap-3">
-          <button className="p-3 text-gray-400 hover:text-[#C9A227]"><FileUp size={24} /></button>
-          <input 
-            value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="איך אפשר לעזור אחי?" 
-            className="flex-1 p-4 rounded-2xl bg-[#2a3942] text-white outline-none border border-transparent focus:border-[#C9A227] transition-all font-sans" 
-          />
-          <button onClick={handleSend} className="bg-[#C9A227] p-4 rounded-2xl text-black hover:bg-[#e0b52d] shadow-lg transition-all"><Send size={24} /></button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// לטיפול בשגיאות Suspense ב-Next.js 16/15
-export default function Home() {
-  return (
-    <Suspense fallback={<div className="bg-[#0b141a] h-screen text-[#C9A227] flex items-center justify-center font-black">טוען VIP...</div>}>
-      <SabanChatContent />
-    </Suspense>
-  );
-}
+          <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-start'
