@@ -4,7 +4,6 @@ const PRECACHE_URLS = [
   '/manifest.json',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
-  // Add your JSON(s) path(s) here. Example below uses root path:
 ];
 
 // Install: pre-cache critical assets (manifest, icons, core JSON)
