@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import productsData from "../../../data/data.json"; 
 
-const PRIMARY_MODEL = "gemini-1.5-flash";
+const PRIMARY_MODEL = "gemini-1.5-flash-latest";
 const FALLBACK_MODEL = "gemini-1.5-pro"; // מודל גיבוי חזק
 
 export async function POST(req: NextRequest) {
