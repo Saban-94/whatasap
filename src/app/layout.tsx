@@ -34,6 +34,7 @@ export default function RootLayout({
         <RegisterServiceWorker />
         {children}
         <InstallButton />
+        <ChatWidget />
       </body>
     </html>
   );
