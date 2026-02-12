@@ -1,40 +1,48 @@
-'use client';
-import { db } from '@/lib/firebase'; 
-import { collection, setDoc, doc } from 'firebase/firestore'; 
+'use client'
+import { db } from '@/lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { useState } from 'react';
 
 export default function SeedPage() {
-  const sabanFullData = [
-    {
-      "product_name": "Sika MonoTop-610 / 910N",
-      "category": "Repair",
-      "engineering_solution": "ציפוי הגנה נגד קורוזיה וחיזוק הידבקות.",
-      "coverage": 1.8,
-      "pro_tip": "להרטיב את המצע עד מצב SSD לפני יישום."
-    },
-    // כאן תכניס את כל שאר המוצרים שלך
-  ];
+  const [status, setStatus] = useState('ממתין להפעלה...');
 
-  const uploadMasterData = async () => {
+  const seedCustomerBrain = async () => {
+    setStatus('מבצע זריעה לנתוני שחר שאול...');
     try {
-      for (const prod of sabanFullData) {
-        const docId = prod.product_name.replace(/\//g, "-").replace(/\s+/g, "_");
-        await setDoc(doc(db, 'products', docId), prod);
-      }
-      alert('הזרקת המוח הצליחה! 🚀');
-    } catch (e) {
-      console.error(e);
-      alert('שגיאה בהעלאה. בדוק את חיבור ה-Firebase.');
+      const clientId = 'שחר_שאול'; // מזהה ייחודי ללא רווחים ליתר ביטחון
+      const brainRef = doc(db, 'customer_memory', clientId);
+
+      await setDoc(brainRef, {
+        clientId: clientId,
+        name: 'שחר שאול',
+        accumulatedKnowledge: 'לקוח ותיק בתחום השלד. מעדיף אספקה מוקדם בבוקר (7:00-8:00). רגיש מאוד לדיוק בסוג החול. יש לו אתר פעיל ברעננה עם מגבלת גישה למשאית גדולה.',
+        projects: [
+          { name: 'וילה רעננה', location: 'רחוב אחוזה 10, רעננה', lastProducts: ['בטון', 'חול מחצבה'] },
+          { name: 'שיפוץ הרצליה', location: 'רחוב הנדיב 5, הרצליה', lastProducts: ['מכולה 8 קוב'] }
+        ],
+        preferences: {
+          deliveryMethod: 'משאית מנוף קטנה (עקב רחובות צרים)',
+          preferredHours: '07:00'
+        },
+        lastUpdate: new Date().toISOString()
+      });
+
+      setStatus('הזריעה הושלמה בהצלחה! המוח של שחר שאול מוכן.');
+    } catch (error) {
+      console.error(error);
+      setStatus('שגיאה בזריעה: ' + error);
     }
   };
 
   return (
-    <div className="p-10 text-center bg-black min-h-screen font-sans">
-      <h1 className="text-[#C9A227] text-3xl mb-8 font-bold">מערכת הזרקת ידע - ח. סבן</h1>
+    <div className="p-20 text-center">
+      <h1 className="text-2xl font-bold mb-4">אתחול זיכרון לקוח - ח. סבן</h1>
+      <p className="mb-8">{status}</p>
       <button 
-        onClick={uploadMasterData} 
-        className="bg-[#C9A227] text-black font-black p-8 rounded-3xl shadow-2xl hover:scale-105 transition-transform"
+        onClick={seedCustomerBrain}
+        className="bg-green-600 text-white px-6 py-2 rounded-lg font-bold"
       >
-        הזרק קטלוג מומחה מלא 🧠
+        הפעל זריעת נתונים (Setup שחר שאול)
       </button>
     </div>
   );
