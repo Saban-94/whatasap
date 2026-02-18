@@ -1,18 +1,19 @@
 import products from "@/data/products.json";
 import knowledge from "@/data/technical_knowledge.json";
+// תיקון: ייבוא השם הנכון של הפונקציה כפי שהוא מופיע בקובץ המקור
 import { fetchCustomerBrain } from "@/lib/customerMemory";
 import { getSabanSmartResponse } from "@/app/actions/gemini-brain";
 
 /**
  * מנוע הנתונים המאוחד של ח. סבן
- * משלב בין בינה מלאכותית (Gemini) לבין לוגיקה לוגיסטית קשיחה
+ * משלב בין בינה מלאכותית ללוגיקה לוגיסטית קשיחה
  */
 export async function processSmartOrder(customerId: string, text: string) {
-  // 1. שליפת זיכרון לקוח מה-CRM
+  // 1. שליפת זיכרון לקוח מה-CRM (תיקון שם הפונקציה כאן)
   const memory = await fetchCustomerBrain(customerId);
-  const name = customerName(memory);
+  const name = (memory && memory.name) ? memory.name : "לקוח";
 
-  // 2. הפעלת המוח של Gemini לקבלת ייעוץ אנושי ומקצועי
+  // 2. הפעלת המוח של Gemini לקבלת ייעוץ אישי
   let aiResponse = "";
   try {
     aiResponse = await getSabanSmartResponse(text, customerId);
@@ -32,11 +33,11 @@ export async function processSmartOrder(customerId: string, text: string) {
   };
 
   if (isBathroom) {
-    // חילוץ שטח מהטקסט (למשל "15 מ"ר")
+    // חילוץ שטח מהטקסט (למשל "10 מ"ר")
     const areaMatch = text.match(/(\d+)\s*מ"ר/);
     const area = areaMatch ? parseInt(areaMatch[1]) : 10; 
 
-    // חישוב לפי תקן סבן (3.12 מ"ר ללוח גבס, 1.5 שקי דבק למ"ר)
+    // חישוב כמויות (למשל: 3.12 מ"ר ללוח גבס)
     const boards = Math.ceil(area / 3.12);
     const adhesive = Math.ceil(area * 1.5);
 
@@ -45,22 +46,18 @@ export async function processSmartOrder(customerId: string, text: string) {
       { name: "דבק פלסטומר 603", qty: adhesive, barcode: "14603", weight: 25 }
     ];
 
-    // חישוב משקל כולל
     logistics.totalWeightKg = (boards * 25) + (adhesive * 25);
     
-    // קביעת סוג רכב
     if (logistics.totalWeightKg > 1000) {
       logistics.truckType = "משאית עם מנוף";
       logistics.needsCrane = true;
     } else if (logistics.totalWeightKg > 500) {
       logistics.truckType = "משאית חלוקה קלה";
-      logistics.needsCrane = false;
     }
   }
 
-  // 4. החזרת תוצאה משולבת
   return {
-    text: aiResponse, // התשובה האנושית מ-Gemini
+    text: aiResponse,
     meta: {
       recommendations,
       logistics,
@@ -68,12 +65,4 @@ export async function processSmartOrder(customerId: string, text: string) {
       customerName: name
     }
   };
-}
-
-/**
- * מחלץ שם לקוח מתוך הזיכרון או מחזיר שם ברירת מחדל
- */
-function customerName(memory: any): string {
-  if (memory && memory.name) return memory.name;
-  return "לקוח יקר";
 }
