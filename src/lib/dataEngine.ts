@@ -1,17 +1,20 @@
 import products from "@/data/products.json";
 import knowledge from "@/data/technical_knowledge.json";
-// תיקון: ייבוא השם הנכון של הפונקציה כפי שהוא מופיע בקובץ המקור
 import { fetchCustomerBrain } from "@/lib/customerMemory";
 import { getSabanSmartResponse } from "@/app/actions/gemini-brain";
 
 /**
  * מנוע הנתונים המאוחד של ח. סבן
- * משלב בין בינה מלאכותית ללוגיקה לוגיסטית קשיחה
  */
 export async function processSmartOrder(customerId: string, text: string) {
-  // 1. שליפת זיכרון לקוח מה-CRM (תיקון שם הפונקציה כאן)
-  const memory = await fetchCustomerBrain(customerId);
-  const name = (memory && memory.name) ? memory.name : "לקוח";
+  // 1. שליפת זיכרון לקוח - שימוש ב-any כדי לעקוף את שגיאת הטיפוס ב-Build
+  const memory: any = await fetchCustomerBrain(customerId);
+  
+  // חילוץ השם בצורה בטוחה
+  let name = "לקוח";
+  if (memory && typeof memory === 'object' && memory.name) {
+    name = memory.name;
+  }
 
   // 2. הפעלת המוח של Gemini לקבלת ייעוץ אישי
   let aiResponse = "";
@@ -33,11 +36,9 @@ export async function processSmartOrder(customerId: string, text: string) {
   };
 
   if (isBathroom) {
-    // חילוץ שטח מהטקסט (למשל "10 מ"ר")
     const areaMatch = text.match(/(\d+)\s*מ"ר/);
     const area = areaMatch ? parseInt(areaMatch[1]) : 10; 
 
-    // חישוב כמויות (למשל: 3.12 מ"ר ללוח גבס)
     const boards = Math.ceil(area / 3.12);
     const adhesive = Math.ceil(area * 1.5);
 
