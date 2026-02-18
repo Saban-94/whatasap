@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Clock, truck, User } from 'lucide-react';
+// תיקון: Truck חייב להיות באות גדולה (PascalCase) ב-lucide-react
+import { Clock, Truck, User } from 'lucide-react';
 
 interface TimelineEvent {
   id: string;
@@ -21,7 +22,7 @@ export default function TimelineView() {
       try {
         // משיכת נתונים מטרבלת הנהגים/פעילות בסופבייס
         const { data, error } = await supabase
-          .from('driver_activities') // וודא שזה שם הטבלה שלך
+          .from('driver_activities') 
           .select('*')
           .order('event_time', { ascending: false })
           .limit(10);
@@ -40,7 +41,8 @@ export default function TimelineView() {
     // האזנה לשינויים בזמן אמת (Real-time)
     const subscription = supabase
       .channel('schema-db-changes')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'driver_activities' }, 
+      .on('postgres_changes', 
+        { event: 'INSERT', schema: 'public', table: 'driver_activities' }, 
         payload => {
           setEvents(prev => [payload.new as TimelineEvent, ...prev].slice(0, 10));
         }
@@ -52,10 +54,19 @@ export default function TimelineView() {
     };
   }, []);
 
+  // פונקציית עזר לפרמוט זמן בטוח
+  const formatTime = (dateStr: string) => {
+    try {
+      return new Date(dateStr).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+      return '--:--';
+    }
+  };
+
   return (
     <div className="mt-8 p-6 bg-slate-800 rounded-xl border border-slate-700 text-right" dir="rtl">
-      <h2 className="text-xl font-semibold mb-6 text-sky-400 flex items-center gap-2">
-        <Clock className="text-sky-400" />
+      <h2 className="text-xl font-semibold mb-6 text-sky-400 flex items-center gap-2 justify-start">
+        <Clock className="w-6 h-6" />
         ציר זמן פעילות נהגים (זמן אמת)
       </h2>
 
@@ -70,15 +81,26 @@ export default function TimelineView() {
         <div className="space-y-4">
           {events.map((event) => (
             <div key={event.id} className="relative pr-6 border-r-2 border-slate-600 pb-4 last:pb-0">
+              {/* הנקודה בציר הזמן */}
               <div className="absolute -right-[9px] top-1 w-4 h-4 bg-sky-500 rounded-full border-4 border-slate-800"></div>
+              
               <div className="bg-slate-700/50 p-3 rounded-lg border border-slate-600 hover:border-sky-500 transition-colors">
                 <div className="flex justify-between items-center mb-1">
-                  <span className="font-bold text-slate-100 flex items-center gap-1">
-                    <User size={14} /> {event.driver_name}
+                  <span className="font-bold text-slate-100 flex items-center gap-2">
+                    <User size={14} className="text-sky-400" /> 
+                    {event.driver_name}
                   </span>
-                  <span className="text-xs text-slate-400">{new Date(event.event_time).toLocaleTimeString('he-IL')}</span>
+                  <span className="text-xs text-slate-400 font-mono">
+                    {formatTime(event.event_time)}
+                  </span>
                 </div>
-                <p className="text-sm text-slate-300">{event.activity_type} - {event.location}</p>
+                <div className="flex items-start gap-2">
+                  <Truck size={14} className="text-slate-400 mt-1 shrink-0" />
+                  <p className="text-sm text-slate-300 leading-tight">
+                    <span className="text-sky-300">{event.activity_type}</span>
+                    {event.location && ` - ${event.location}`}
+                  </p>
+                </div>
               </div>
             </div>
           ))}
