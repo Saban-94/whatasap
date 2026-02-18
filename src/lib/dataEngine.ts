@@ -8,7 +8,7 @@ import { getSabanSmartResponse } from "@/app/actions/gemini-brain";
 function formatSabanDialogue(text: string) {
   return text
     .replace(/\*\*/g, '') // מחיקת כוכביות
-    .replace(/ג'ימיני:|גימני:/g, '') // ניקוי שם הבוט אם הוא מופיע בתשובה
+    .replace(/ג'ימיני:|גימני:/g, '') 
     .trim();
 }
 
@@ -16,24 +16,23 @@ export async function processSmartOrder(customerId: string, text: string) {
   const memory: any = await fetchCustomerBrain(customerId);
   const name = (memory?.name) ? memory.name : "אחי";
   
-  // גישה למאגר המוצרים המלא
   const inventory = Array.isArray(productsData) ? productsData : (productsData as any).inventory || [];
 
-  // 1. לוגיקת זיהוי "חדה": מחפש מק"ט או שילוב מילים
+  // 1. זיהוי מוצרים: חיפוש מק"ט או שם מוצר
   const foundProducts = inventory.filter((p: any) => {
     const searchText = text.toLowerCase();
     const productName = p.name?.toLowerCase() || "";
     const barcode = p.barcode?.toString() || "";
 
-    // זיהוי לפי ברקוד מדויק או מילות מפתח (למשל 'סיקה' ו-'107')
+    // זיהוי לפי ברקוד או מילות מפתח
     const keywords = productName.split(' ').filter((w: string) => w.length > 2);
     const hasAllKeywords = keywords.length > 0 && keywords.every((kw: string) => searchText.includes(kw));
 
     return searchText.includes(barcode) || searchText.includes(productName) || hasAllKeywords;
   });
 
-  // 2. בניית קונטקסט קצר לגימני
-  const productsFoundString = foundProducts.map(p => 
+  // 2. בניית קונטקסט קצר לגימני - הוספנו :any לפתרון שגיאת ה-Build
+  const productsFoundString = foundProducts.map((p: any) => 
     `- ${p.name} (מק"ט: ${p.barcode}). חישוב: ${p.calculation_logic || 'לפי יחידות'}`
   ).join('\n');
 
