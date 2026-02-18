@@ -1,41 +1,97 @@
-[
-  {
-    "id": 101,
-    "name": "בלה חול נקי",
-    "category": "חומרי שלד",
-    "description": "חול ים מסונן ונקי לשימוש בתערובת בטון, טיח וריצוף.",
-    "drying_time": "N/A",
-    "coverage": "בלה אחת מכסה כ-12 מ\"ר בעובי 4 ס\"מ",
-    "application_method": "פיזור ידני / מנוף",
-    "image_url": "https://saban.co.il/sand-bag.jpg",
-    "video_url": "N/A",
-    "unit": "בלה",
-    "stock": 100
-  },
-  {
-    "id": 102,
-    "name": "בלה סומסום",
-    "category": "חומרי שלד",
-    "description": "חצץ דק (סומסום) למילוי מתחת לריצוף ולניקוז.",
-    "drying_time": "N/A",
-    "coverage": "בלה אחת ל-10 מ\"ר בריצוף סטנדרטי",
-    "application_method": "פיזור ידני / משאית מנוף",
-    "image_url": "https://saban.co.il/sumsum-bag.jpg",
-    "video_url": "N/A",
-    "unit": "בלה",
-    "stock": 100
-  },
-  {
-    "id": 103,
-    "name": "מלט אפור (נשר)",
-    "category": "חומרי שלד",
-    "description": "צמנט פורטלנד אפור איכותי לכל סוגי עבודות הבנייה.",
-    "drying_time": "ייבוש ראשוני: 2-4 שעות",
-    "coverage": "לפי יחס תערובת (בדרך כלל 1:4 חול-מלט)",
-    "application_method": "ערבוב ידני / מערבל",
-    "image_url": "https://saban.co.il/cement-grey.jpg",
-    "video_url": "N/A",
-    "unit": "שק 25 ק\"ג",
-    "stock": 500
-  }
-]
+{
+  "business_name": "H. Saban Building Materials",
+  "project": "SabanOS Inventory",
+  "total_suppliers": 7,
+  "inventory": [
+    {
+      "barcode": "731060060",
+      "name": "פתח שרות 60 ORBOND",
+      "supplier": "אורבונד תעשיות גבס ומוצריו בע\"מ",
+      "supplier_id": "300531",
+      "department": "גבס",
+      "category": "פתחי שירות",
+      "sub_category": "פתחי שירות",
+      "model": "ORBOND"
+    },
+    {
+      "barcode": "11730",
+      "name": "מצע א' - טון",
+      "supplier": "צרצור מחמוד ובניו לה",
+      "supplier_id": "300845",
+      "department": "חומרי מחצבה",
+      "category": "תפזורת חומרי",
+      "sub_category": "",
+      "model": ""
+    },
+    {
+      "barcode": "134252550",
+      "name": "פומיס גג 25/25/50 ישיר",
+      "supplier": "בלוקי קסם השלום בע\"מ",
+      "supplier_id": "322203",
+      "department": "בלוקים",
+      "category": "פומיס גג",
+      "sub_category": "פומיס גג",
+      "model": "פומיס אוויר"
+    },
+    {
+      "barcode": "14920001",
+      "name": "כוחלה 001 שמנת 25 ק\"ג תרמוקיר",
+      "supplier": "תרמוקיר - כולל אספקה",
+      "supplier_id": "301960",
+      "department": "מלט ומוצריו",
+      "category": "כוחלה",
+      "sub_category": "",
+      "model": "כוחלה תרמוק"
+    },
+    {
+      "barcode": "9882300",
+      "name": "צבע לבטון אדום 5 ק\"ג ARDEX",
+      "supplier": "כרמית מיסטר פיקס בע\"מ",
+      "supplier_id": "300815",
+      "department": "צבעים",
+      "category": "צבע כבישים",
+      "sub_category": "",
+      "model": "צבע לבטון ו"
+    },
+    {
+      "barcode": "202102",
+      "name": "רובה CE40 ג 102 2 ק\"ג",
+      "supplier": "טמבור מוצרי בניה בע\"מ",
+      "supplier_id": "300989",
+      "department": "מלט ומוצריו",
+      "category": "רובה",
+      "sub_category": "",
+      "model": "רובה טמבור"
+    },
+    {
+      "barcode": "15686",
+      "name": "סיקפלקס FC11 אפור שרוול SIKA",
+      "supplier": "גילאר בע\"מ",
+      "supplier_id": "300955",
+      "department": "דבקים ומדלל",
+      "category": "אלסטומרים",
+      "sub_category": "",
+      "model": "סיקפלקס FC1"
+    },
+    {
+      "barcode": "19107",
+      "name": "סיקה 107 אפור+תוסף 25 ק\"ג",
+      "supplier": "גילאר בע\"מ",
+      "supplier_id": "300955",
+      "department": "מלט ומוצריו",
+      "category": "טיח הידראולי",
+      "sub_category": "",
+      "model": ""
+    },
+    {
+      "barcode": "11500",
+      "name": "חול שק",
+      "supplier": "בית הטיט למסחר - בע\"",
+      "supplier_id": "310224",
+      "department": "חומרי מחצבה",
+      "category": "שקיות חומרי",
+      "sub_category": "",
+      "model": ""
+    }
+  ]
+}
