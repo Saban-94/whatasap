@@ -9,6 +9,9 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "xlsx": "^0.18.5",
+  "jspdf": "^2.5.1",
+  "jspdf-autotable": "^3.8.2",
   "@google/generative-ai": "^0.21.0",
     "firebase": "^10.7.1",
     "framer-motion": "^11.0.3",
