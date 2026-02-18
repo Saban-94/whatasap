@@ -1,95 +1,122 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { fetchCustomerBrain } from '@/lib/customerMemory';
-// תיקון: ייבוא השם הנכון של ה-Action
-import { getSabanSmartResponse } from '@/app/actions/gemini-brain'; 
+import React, { useState, useEffect, useRef } from 'react';
+import { Send, User, Bot } from 'lucide-react';
+import { getSabanSmartResponse } from '@/app/actions/gemini-brain';
 
 interface Message {
-  role: 'user' | 'assistant';
+  id: string;
   text: string;
+  sender: 'user' | 'bot';
+  timestamp: Date;
 }
 
-export default function WhatsAppChat({ clientId, clientName }: { clientId: string, clientName: string }) {
+export default function ChatWidget({ customerId = "guest_1" }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  // פתיחה אוטומטית: ברכה אישית מבוססת זיכרון
+  // גלילה אוטומטית לסוף הצ'אט בכל הודעה חדשה
   useEffect(() => {
-    async function init() {
-      try {
-        const memory = await fetchCustomerBrain(clientId);
-        // שימוש בפונקציה המעודכנת
-        const greeting = await getSabanSmartResponse(`תן ברכת בוקר טוב אישית וקצרה ללקוח בשם ${clientName}`, clientId);
-        setMessages([{ role: 'assistant', text: greeting }]);
-      } catch (error) {
-        console.error("Init Chat Error:", error);
-        setMessages([{ role: 'assistant', text: `בוקר טוב ${clientName}, איך אוכל לעזור היום?` }]);
-      }
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-    init();
-  }, [clientId, clientName]);
+  }, [messages, isLoading]);
 
   const handleSend = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || isLoading) return;
 
-    const userMsg = input;
-    setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+    const userMsg: Message = {
+      id: Date.now().toString(),
+      text: input,
+      sender: 'user',
+      timestamp: new Date(),
+    };
+
+    setMessages(prev => [...prev, userMsg]);
     setInput('');
+    setIsLoading(true);
 
     try {
-      // שליחה ל-Gemini דרך ה-Action המעודכן
-      const aiResponse = await getSabanSmartResponse(userMsg, clientId);
-      setMessages(prev => [...prev, { role: 'assistant', text: aiResponse }]);
+      // קריאה למנוע של גימני (ח. סבן)
+      const response = await getSabanSmartResponse(input, customerId);
+      
+      const botMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        text: response,
+        sender: 'bot',
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, botMsg]);
     } catch (error) {
-      console.error("Send Message Error:", error);
-      setMessages(prev => [...prev, { role: 'assistant', text: "מצטער, אני מתקשה לענות כרגע. נסה שוב בעוד רגע." }]);
+      console.error("Chat Error:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex flex-col h-[600px] w-full max-w-md border rounded-xl shadow-2xl bg-[#E5DDD5] mx-auto" dir="rtl">
-      {/* Header WhatsApp Style */}
-      <div className="bg-[#075E54] p-4 text-white rounded-t-xl flex items-center gap-3 shadow-md">
-        <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-xl">👤</div>
+    <div className="flex flex-col h-[600px] w-full max-w-md mx-auto bg-[#0b141a] border border-gray-800 rounded-2xl overflow-hidden shadow-2xl">
+      {/* Header - בסגנון ווטסאפ */}
+      <div className="bg-[#202c33] p-4 flex items-center gap-3 border-b border-gray-700">
+        <div className="w-10 h-10 rounded-full bg-[#075e54] flex items-center justify-center">
+          <Bot className="text-white w-6 h-6" />
+        </div>
         <div>
-          <h3 className="font-bold leading-none">{clientName}</h3>
-          <p className="text-[10px] opacity-80 mt-1">ח. סבן - יועץ בנייה חכם</p>
+          <h2 className="text-white font-bold text-sm">גימני - ח. סבן</h2>
+          <p className="text-green-400 text-xs">מחובר - מומחה לוגיסטי</p>
         </div>
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 flex flex-col">
-        {messages.map((m, i) => (
-          <div 
-            key={i} 
-            className={`p-3 rounded-lg max-w-[85%] shadow-sm text-sm ${
-              m.role === 'user' 
-                ? 'bg-[#DCF8C6] self-start rounded-tr-none' 
-                : 'bg-white self-end rounded-tl-none border border-gray-200'
-            }`}
-          >
-            <p className="leading-relaxed">{m.text}</p>
+      <div 
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto p-4 space-y-4 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat opacity-90"
+      >
+        {messages.map((msg) => (
+          <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-[80%] p-3 rounded-lg text-sm shadow-md ${
+              msg.sender === 'user' 
+                ? 'bg-[#005c4b] text-white rounded-tr-none' 
+                : 'bg-[#202c33] text-white rounded-tl-none'
+            }`}>
+              {msg.text}
+              <div className="text-[10px] text-gray-400 mt-1 text-left">
+                {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </div>
+            </div>
           </div>
         ))}
+        {isLoading && (
+          <div className="flex justify-start">
+            <div className="bg-[#202c33] text-white p-3 rounded-lg animate-pulse text-xs">
+              גימני מקליד...
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Input Area */}
-      <div className="p-3 bg-[#F0F2F5] flex gap-2 items-center rounded-b-xl">
-        <input 
-          value={input} 
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-          className="flex-1 p-2.5 bg-white border-none rounded-full px-4 outline-none text-sm shadow-sm"
-          placeholder="הקלד הודעה..."
-        />
+      {/* Input Area - השדה המעוגל של ווטסאפ */}
+      <div className="bg-[#202c33] p-3 flex items-center gap-2">
+        <div className="flex-1 bg-[#2a3942] rounded-full px-4 py-2 flex items-center">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+            placeholder="כתוב הודעה..."
+            className="w-full bg-transparent text-white outline-none text-sm placeholder-gray-500"
+          />
+        </div>
         <button 
-          onClick={handleSend} 
-          className="bg-[#128C7E] text-white p-2 rounded-full w-11 h-11 flex items-center justify-center hover:bg-[#075E54] transition-colors shadow-md"
+          onClick={handleSend}
+          disabled={!input.trim() || isLoading}
+          className={`p-3 rounded-full flex items-center justify-center transition-all ${
+            input.trim() ? 'bg-[#00a884] hover:bg-[#008f72]' : 'bg-gray-600 opacity-50'
+          }`}
         >
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-            <path d="M1.101 21.757L23.8 12.028 1.101 2.3l.011 7.912 13.623 1.816-13.623 1.817-.011 7.912z" />
-          </svg>
+          <Send className="text-white w-5 h-5" />
         </button>
       </div>
     </div>
