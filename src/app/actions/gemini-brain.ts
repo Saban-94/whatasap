@@ -9,17 +9,17 @@ export async function getSabanSmartResponse(prompt: string, customerId: string) 
   let customerName = 'אחי';
   const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
-  console.log("--- 🏗️ SABAN-AI SYSTEM RESTORE ---");
+  console.log("--- 🏗️ SABAN-AI EMERGENCY REPAIR ---");
 
   if (!apiKey) {
     console.error("❌ מלשינון: API KEY חסר!");
-    return "אחי, כאן גימני. המפתח שלי לא מוגדר בשרת.";
+    return "אחי, המפתח שלי לא מוגדר בשרת. בדוק את הגדרות Vercel.";
   }
 
-  // שמות מודלים בסיסיים ללא תוספות - אלו השמות הכי עמידים
+  // אסטרטגיה: שימוש בשמות מודלים מלאים בגרסה v1 היציבה
   const modelStrategy = [
-    { name: "gemini-1.5-flash", version: "v1beta" },
-    { name: "gemini-1.5-pro", version: "v1beta" }
+    { name: "models/gemini-1.5-flash" },
+    { name: "models/gemini-1.5-pro" }
   ];
 
   const genAI = new GoogleGenerativeAI(apiKey);
@@ -37,24 +37,23 @@ export async function getSabanSmartResponse(prompt: string, customerId: string) 
 
   for (const config of modelStrategy) {
     try {
-      console.log(`🚀 מלשינון: מנסה לקרוא למודל ${config.name}...`);
+      console.log(`🚀 מלשינון: מנסה פורמט מלא למודל ${config.name}...`);
       
-      const model = genAI.getGenerativeModel({ model: config.name });
+      // שימוש בגרסת v1 היציבה במקום v1beta
+      const model = genAI.getGenerativeModel({ model: config.name }, { apiVersion: 'v1' });
 
       const systemPrompt = `
-        אתה "גימני", המומחה של חברת "ח. סבן".
-        הלקוח: ${customerName}.
-        סגנון: חברי, מקצועי, סלנג בנייה (נשמה, חביבי, סגור פינה).
-        מלאי סבן: ${JSON.stringify(sabanMasterBrain.slice(0, 10))}
+        אתה "גימני", המומחה של חברת "ח. סבן". הלקוח: ${customerName}.
+        סגנון: חברי, מקצועי, סלנג בנייה.
+        מלאי: ${JSON.stringify(sabanMasterBrain.slice(0, 5))}
       `;
 
-      // שימוש בפורמט הפשוט ביותר של generateContent
       const result = await model.generateContent(systemPrompt + "\n\nשאלה: " + prompt);
       const response = await result.response;
       const text = response.text();
 
       if (text) {
-        console.log(`✅ מלשינון: מודל ${config.name} הצליח!`);
+        console.log(`✅ מלשינון: הצלחה עם ${config.name}!`);
         return text;
       }
 
@@ -63,5 +62,5 @@ export async function getSabanSmartResponse(prompt: string, customerId: string) 
     }
   }
 
-  return `אהלן ${customerName}, יש עומס רגעי בגוגל. תנסה שוב עוד דקה אחי.`;
+  return `אהלן ${customerName}, יש עומס זמני בגוגל. תנסה לשלוח שוב בעוד כמה שניות.`;
 }
