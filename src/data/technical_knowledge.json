@@ -1,25 +1,19 @@
 {
-  "product_database": {},
-  "benchmarks": []
-}
-{
+  "benchmarks": [],
   "product_database": {
     "פלסטומר 603": {
       "drying_time": "שעתיים וחצי לייבוש ראשוני, 24 שעות לייבוש מלא",
-      "coverage": "1.5 ק\"ג למ\"ר לכל 1 מ\"מ עובי",
-      "application": "מתאים להדבקת אריחים בחדרים רטובים, גמישות גבוהה",
-      "expert_note": "מומלץ להשתמש במרית משוננת לקבלת כיסוי אופטימלי."
+      "consumption": "1.5 ק\"ג למ\"ר",
+      "usage": "הדבקת אריחי קרמיקה וגרניט פורצלן"
+    },
+    "גבס ירוק": {
+      "dimensions": "1.2 * 2.6 מטר",
+      "usage": "לוחות עמידים בלחות לחדרים רטובים",
+      "weight_per_board_kg": 25
     }
   },
-  "benchmarks": [
-    {
-      "project_type": "מקלחת",
-      "size_m2": 3.5,
-      "recommended_package": {
-        "boards": 4,
-        "adhesive_sacks": 5,
-        "grout_kg": 2
-      }
-    }
-  ]
+  "logistics_rules": {
+    "max_crane_weight_kg": 1000,
+    "truck_capacity_kg": 3500
+  }
 }
