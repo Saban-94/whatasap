@@ -1,87 +1,137 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { db } from "@/lib/firebase"; 
-import { collection, onSnapshot, query, orderBy, addDoc, doc, deleteDoc, serverTimestamp } from "firebase/firestore";
-import { MessageSquare, CheckCircle, Trash2, ArrowLeft, Clock, BellRing } from 'lucide-react';
-import Link from 'next/link';
+import React, { useState, useEffect, useRef } from 'react';
+import { Send, Camera, MoreVertical, CheckCircle2, AlertCircle, Truck, Package } from 'lucide-react';
+import { processSmartOrder } from '@/lib/dataEngine'; // המנוע שבנינו
+import { calculateLogistics } from '@/lib/logisticsEngine';
 
-export default function WhatsAppOrdersPage() {
-  const [orders, setOrders] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function SmartWhatsAppOrders() {
+  const [messages, setMessages] = useState<any[]>([]);
+  const [input, setInput] = useState("");
+  const [analysis, setAnalysis] = useState<any>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
+  // גלילה אוטומטית לסוף הצ'אט
   useEffect(() => {
-    const q = query(collection(db, "whatsapp_orders"), orderBy("timestamp", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setOrders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [messages]);
 
-  useEffect(() => {
-    const checkAndAlert = () => {
-      const now = new Date().getTime();
-      let hasPendingOrder = false;
-      orders.forEach(order => {
-        if (order.status === 'חדש' && order.timestamp) {
-          const orderTime = order.timestamp.toDate().getTime();
-          if (now - orderTime > 60000) hasPendingOrder = true;
-        }
-      });
-      if (hasPendingOrder) {
-        new Audio('/notification.mp3').play().catch(() => {});
-      }
+  const handleSendMessage = async () => {
+    if (!input.trim()) return;
+
+    const userMsg = { role: 'user', text: input, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
+    setMessages(prev => [...prev, userMsg]);
+    
+    // הפעלת ה"מוח" - בדיקת מלאי, לוגיסטיקה והמלצות
+    const result = await processSmartOrder("customer_1", input);
+    
+    const botMsg = { 
+      role: 'assistant', 
+      text: result.text, 
+      meta: result.meta,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
     };
-    const interval = setInterval(checkAndAlert, 60000);
-    return () => clearInterval(interval);
-  }, [orders]);
-
-  const approveOrder = async (order: any) => {
-    try {
-      const flowUrl = "https://defaultae1f0547569d471693f95b9524aa2b.31.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/0828f74ee7e44228b96c93eab728f280/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=lgdg1Hw--Z35PWOK6per2K02fql76m_WslheLXJL-eA";
-      const taskData = {
-        client: order.sender || "לקוח וואטסאפ",
-        address: "נא לעדכן כתובת", 
-        items: order.text,
-        phone: "972508861080", 
-        status: "🆕 ממתין",
-        timestamp: serverTimestamp()
-      };
-      await fetch(flowUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...taskData, date: new Date().toLocaleDateString('he-IL') }) });
-      await addDoc(collection(db, "tasks"), taskData);
-      await deleteDoc(doc(db, "whatsapp_orders", order.id));
-      alert("הזמנה סונכרנה בהצלחה! ✅");
-    } catch (e) { alert("שגיאה בסנכרון"); }
+    
+    setMessages(prev => [...prev, botMsg]);
+    setAnalysis(result.meta); // עדכון הניתוח בצד לטובת המשרד
+    setInput("");
   };
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#f0f2f5] p-4 font-sans">
-      <header className="max-w-4xl mx-auto flex justify-between items-center mb-6 bg-white p-5 rounded-2xl border-b-4 border-[#25D366]">
-        <div>
-          <h1 className="text-2xl font-black text-[#075E54] flex items-center gap-2">הזמנות וואטסאפ <BellRing className="text-orange-500 animate-pulse" /></h1>
-          <p className="text-sm text-gray-500">ח. סבן - ניהול לוגיסטי</p>
+    <div className="flex h-screen bg-[#f0f2f5] font-sans text-right" dir="rtl">
+      
+      {/* צד שמאל - פירוט הזמנה למשרד (Admin Panel) */}
+      <div className="hidden md:flex w-1/3 bg-white border-r flex-col shadow-xl">
+        <div className="p-6 bg-[#075e54] text-white">
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <Package size={24} /> ניתוח הזמנה - ח. סבן
+          </h2>
         </div>
-        <Link href="/admin"><button className="bg-gray-100 p-2 px-4 rounded-xl font-bold flex items-center gap-2"><ArrowLeft size={18}/> חזרה</button></Link>
-      </header>
-      <div className="max-w-4xl mx-auto space-y-4">
-        {orders.map(o => {
-          const isLate = o.status === 'חדש' && (new Date().getTime() - (o.timestamp?.toDate().getTime() || 0) > 60000);
-          return (
-            <div key={o.id} className={`bg-white p-6 rounded-3xl border-2 transition-all ${isLate ? 'border-red-400 animate-pulse' : 'border-transparent'}`}>
-              <div className="flex justify-between items-center">
-                <div className="text-right">
-                  <span className="bg-[#dcf8c6] text-[#075e54] text-xs font-bold px-3 py-1 rounded-full">👤 {o.sender}</span>
-                  <p className="text-gray-800 font-bold text-lg mt-2">{o.text}</p>
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={() => approveOrder(o)} className="bg-[#25D366] text-white p-4 rounded-2xl font-bold flex items-center gap-2 hover:bg-[#128C7E]"><CheckCircle size={20}/> אשר</button>
-                  <button onClick={() => deleteDoc(doc(db, "whatsapp_orders", o.id))} className="bg-red-50 text-red-500 p-4 rounded-2xl"><Trash2 size={20}/></button>
-                </div>
+        
+        <div className="p-4 flex-1 overflow-y-auto space-y-4">
+          {analysis ? (
+            <>
+              <div className="bg-green-50 p-4 rounded-2xl border border-green-200">
+                <h3 className="font-bold text-green-800 mb-2 flex items-center gap-2">
+                  <CheckCircle2 size={18}/> מוצרים שזוהו במלאי
+                </h3>
+                <ul className="text-sm space-y-1">
+                  {analysis.recommendations?.map((item: any, idx: number) => (
+                    <li key={idx} className="flex justify-between border-b pb-1">
+                      <span>{item.name}</span>
+                      <span className="font-bold">x {item.qty}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="bg-blue-50 p-4 rounded-2xl border border-blue-200">
+                <h3 className="font-bold text-blue-800 mb-2 flex items-center gap-2">
+                  <Truck size={18}/> לוגיסטיקה ואספקה
+                </h3>
+                <p className="text-sm"><strong>משאית:</strong> {analysis.logistics?.truckType}</p>
+                <p className="text-sm"><strong>משקל משוער:</strong> {analysis.logistics?.totalWeightKg} ק"ג</p>
+                {analysis.logistics?.needsCrane && (
+                  <span className="text-xs bg-orange-500 text-white px-2 py-0.5 rounded-full mt-2 inline-block">דרוש מנוף</span>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="text-gray-400 text-center mt-10">המתן להודעת לקוח לניתוח נתונים...</div>
+          )}
+        </div>
+      </div>
+
+      {/* צד ימין - ממשק ה-WhatsApp */}
+      <div className="flex-1 flex flex-col relative">
+        {/* Header */}
+        <div className="bg-[#075e54] p-3 flex items-center justify-between text-white">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gray-300 rounded-full overflow-hidden">
+               <img src="/icons/logo.png" alt="Saban" />
+            </div>
+            <div>
+              <p className="font-bold">תומר אלמקייס (פרויקט רעננה)</p>
+              <p className="text-xs text-green-200">מחובר - יועץ Gemini פעיל</p>
+            </div>
+          </div>
+          <MoreVertical size={20} />
+        </div>
+
+        {/* Messages Wall */}
+        <div 
+          ref={scrollRef}
+          className="flex-1 p-4 overflow-y-auto space-y-3 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat"
+        >
+          {messages.map((msg, i) => (
+            <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[80%] p-2 px-3 rounded-xl shadow-sm relative ${
+                msg.role === 'user' ? 'bg-[#dcf8c6]' : 'bg-white'
+              }`}>
+                <p className="text-sm text-gray-800">{msg.text}</p>
+                <span className="text-[10px] text-gray-500 block mt-1 text-left">{msg.time}</span>
               </div>
             </div>
-          );
-        })}
+          ))}
+        </div>
+
+        {/* Input Bar */}
+        <div className="bg-[#f0f2f5] p-3 flex items-center gap-3">
+          <button className="text-gray-500"><Camera size={24} /></button>
+          <input 
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+            placeholder="הקלד הודעה..."
+            className="flex-1 p-2 px-4 rounded-full border-none focus:outline-none text-sm"
+          />
+          <button 
+            onClick={handleSendMessage}
+            className="bg-[#128c7e] text-white p-2 rounded-full hover:bg-[#075e54] transition-colors"
+          >
+            <Send size={20} />
+          </button>
+        </div>
       </div>
     </div>
   );
