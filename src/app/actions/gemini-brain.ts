@@ -5,88 +5,62 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import sabanMasterBrain from "@/data/saban_master_brain.json";
 
-/**
- * פונקציה חכמה לקבלת תשובה מגימני - ח. סבן
- * כוללת מעבר אוטומטי בין מודלים ומערכת דיווח (מלשינון)
- */
 export async function getSabanSmartResponse(prompt: string, customerId: string) {
-  // 1. הגדרת המפתח והמלשינון הראשוני
   const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
   let customerName = 'אחי';
 
-  console.log("--- 🏗️ SABAN-AI LOG-REPORT START ---");
+  console.log("--- 🏗️ SABAN-AI SYSTEM RESTORE ---");
 
   if (!apiKey) {
-    console.error("❌ מלשינון: API KEY חסר ב-Vercel! המערכת מושבתת.");
-    return "אחי, כאן גימני. נראה שהמפתח שלי לא מוגדר בשרת. דבר עם המשרד.";
+    console.error("❌ מלשינון: API KEY חסר!");
+    return "אחי, כאן גימני. המפתח שלי לא מוגדר בשרת.";
   }
 
-  // 2. רשימת מודלים לניסיון לפי סדר עדיפויות
-  // ננסה קודם את 2.0, אחר כך את 1.5 היציב, ובסוף את 3 Preview
+  // אסטרטגיה מעודכנת: שימוש ב-v1beta עבור כולם כדי למנוע 404
+  // ושימוש בגרסאות פלאש היציבות ביותר
   const modelStrategy = [
-    { name: "gemini-2.0-flash", version: "v1beta" },
-    { name: "gemini-1.5-flash", version: "v1" },
-    { name: "gemini-3-flash-preview", version: "v1" }
+    { name: "gemini-1.5-flash-latest", version: "v1beta" },
+    { name: "gemini-1.5-pro-latest", version: "v1beta" },
+    { name: "gemini-1.5-flash", version: "v1beta" }
   ];
 
   const genAI = new GoogleGenerativeAI(apiKey);
 
-  // 3. משיכת נתונים מה-CRM (Firebase)
   try {
-    const crmSnap = await getDoc(doc(db, 'customer_memory', customerId));
+    const crmSnap = await getDoc(doc(doc(db, 'customer_memory', customerId)));
     if (crmSnap.exists()) {
-      const crmData = crmSnap.data();
-      customerName = crmData.name || 'אחי';
-      console.log(`✅ מלשינון: לקוח זוהה במערכת: ${customerName}`);
+      customerName = crmSnap.data().name || 'אחי';
     }
   } catch (e) {
-    console.warn("⚠️ מלשינון: תקלה בגישה ל-Firebase, ממשיך כסוכן עצמאי.");
+    console.warn("⚠️ מלשינון: CRM לא זמין.");
   }
-
-  // 4. לולאת הניסיונות (Automatic Fallback)
-  let lastError = "";
 
   for (const config of modelStrategy) {
     try {
-      console.log(`🚀 מלשינון: מנסה קריאה למודל ${config.name} (${config.version})...`);
+      console.log(`🚀 מלשינון: מנסה ${config.name}...`);
       
-      const model = genAI.getGenerativeModel({ 
-        model: config.name 
-      }, { apiVersion: config.version });
+      const model = genAI.getGenerativeModel({ model: config.name }, { apiVersion: config.version });
 
       const systemPrompt = `
-        אתה "גימני", היועץ האישי והנשמה של חברת "ח. סבן".
-        אתה מדבר עם ${customerName}.
-        
-        אישיות:
-        - פתח בברכה חמה: "אהלן ${customerName} אחי, בוקר אור!".
-        - תהיה חבר מקצוען. דבר בגובה העיניים (חביבי, נשמה, סגור פינה).
-        - ידע טכני: אם לקוח שואל על דבק או גבס, תן לו כמויות לפי המחירון שלנו.
-        
-        מידע מהמחסן (Top Products): 
-        ${JSON.stringify(sabanMasterBrain.slice(0, 10))}
+        אתה "גימני", המומחה של חברת "ח. סבן".
+        הלקוח: ${customerName}.
+        סגנון: חברי, מקצועי, סלנג בנייה (נשמה, חביבי, סגור פינה).
+        מלאי סבן: ${JSON.stringify(sabanMasterBrain.slice(0, 10))}
       `;
 
       const result = await model.generateContent({
-        contents: [{ role: "user", parts: [{ text: systemPrompt + "\n\nשאלה מהלקוח: " + prompt }] }]
+        contents: [{ role: "user", parts: [{ text: systemPrompt + "\n\nשאלה: " + prompt }] }]
       });
 
       const response = await result.response;
-      const text = response.text();
-
-      if (text) {
-        console.log(`✅ מלשינון: מודל ${config.name} הצליח לספק תשובה!`);
-        return text;
-      }
+      console.log(`✅ מלשינון: ${config.name} עובד!`);
+      return response.text();
 
     } catch (error: any) {
-      lastError = error.message;
-      console.warn(`⚠️ מלשינון: מודל ${config.name} נכשל. סיבה: ${lastError}`);
-      // הלולאה תמשיך אוטומטית למודל הבא ברשימה
+      console.warn(`⚠️ מלשינון: ${config.name} נכשל: ${error.message}`);
+      // אם זו שגיאת Quota (429), אנחנו עוברים למודל הבא מיד
     }
   }
 
-  // 5. אם הגענו לכאן - כל הניסיונות נכשלו
-  console.error("❌ מלשינון קריטי: כל המודלים נכשלו בקבלת תשובה!");
-  return `אהלן ${customerName}, כאן גימני. אחי, יש רגע עומס כבד בשרתים של גוגל. אל תדאג, תנסה לשלוח שוב בעוד דקה או תרים טלפון למשרד ונסגור לך הכל.`;
+  return `אהלן ${customerName}, יש עומס רגעי. תנסה שוב עוד דקה או תרים טלפון למשרד.`;
 }
