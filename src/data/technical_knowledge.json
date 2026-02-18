@@ -1,0 +1,21 @@
+{
+  "product_database": {
+    "פלסטומר 603": {
+      "drying_time": "שעתיים וחצי לייבוש ראשוני, 24 שעות לייבוש מלא",
+      "coverage": "1.5 ק\"ג למ\"ר לכל 1 מ\"מ עובי",
+      "application": "מתאים להדבקת אריחים בחדרים רטובים, גמישות גבוהה",
+      "expert_note": "מומלץ להשתמש במרית משוננת לקבלת כיסוי אופטימלי."
+    }
+  },
+  "benchmarks": [
+    {
+      "project_type": "מקלחת",
+      "size_m2": 3.5,
+      "recommended_package": {
+        "boards": 4,
+        "adhesive_sacks": 5,
+        "grout_kg": 2
+      }
+    }
+  ]
+}
