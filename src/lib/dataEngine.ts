@@ -1,19 +1,24 @@
 import products from "@/data/products.json";
 import { fetchCustomerBrain } from "@/lib/customerMemory";
 
-// הגנה למקרה שקובץ הידע הטכני עדיין לא נוצר בשרת
-let knowledge: any = { product_database: {} };
-try {
-  knowledge = require("@/data/technical_knowledge.json");
-} catch (e) {
-  console.log("technical_knowledge.json not found, using empty defaults");
-}
+/**
+ * פונקציה לטעינה בטוחה של קובץ הידע הטכני
+ * מונע קריסה אם הקובץ לא קיים בשרת ה-Build
+ */
+const getTechnicalKnowledge = () => {
+  try {
+    return require("@/data/technical_knowledge.json");
+  } catch (e) {
+    return { product_database: {} };
+  }
+};
 
 export async function processSmartOrder(customerId: string, text: string) {
-  // תיקון שם הפונקציה למה שקיים ב-lib/customerMemory.ts
+  // 1. שליפת זיכרון הלקוח (היסטוריה ושלב פרויקט)
   const memory = await fetchCustomerBrain(customerId);
+  const knowledge = getTechnicalKnowledge();
   
-  // 1. בדיקת ידע טכני מקומי (חסכון בעלויות API)
+  // 2. בדיקת ידע טכני מקומי (חסכון בעלויות API של Gemini)
   const technicalMatch = Object.keys(knowledge.product_database).find(p => text.includes(p));
   if (technicalMatch && (text.includes("ייבוש") || text.includes("כמה זמן"))) {
     return {
@@ -23,20 +28,20 @@ export async function processSmartOrder(customerId: string, text: string) {
     };
   }
 
-  // 2. חישוב כמויות אוטומטי (לפי שטח מ"ר)
+  // 3. מנוע חישוב כמויות אוטומטי (לפי שטח מ"ר מהטקסט)
   const areaMatch = text.match(/(\d+(?:\.\d+)?)\s*מ"ר/);
-  if (areaMatch && (text.includes("מקלחת") || text.includes("אמבטיה"))) {
+  if (areaMatch && (text.includes("מקלחת") || text.includes("אמבטיה") || text.includes("חדר רטוב"))) {
     const area = parseFloat(areaMatch[1]);
-    const boards = Math.ceil(area / 3.12); // חישוב לפי לוח סטנדרטי 2.60/1.20
-    const adhesive = Math.ceil(area * 1.5); // נוסחת צריכת דבק ממוצעת
+    const boards = Math.ceil(area / 3.12); // חישוב לפי לוח 2.60/1.20
+    const adhesive = Math.ceil(area * 1.5); // נוסחת צריכת דבק ממוצעת (1.5 שק למ"ר)
     
     return {
       role: "assistant",
-      text: `ניתוח מומחה עבור ${area} מ"ר מקלחת: תצטרך ${boards} לוחות גבס ירוקים ו-${adhesive} שקי דבק. האם להכין לך את ההזמנה?`,
+      text: `ניתוח מומחה עבור ${area} מ"ר מקלחת: תצטרך ${boards} לוחות גבס ירוקים (עמידים בלחות) ו-${adhesive} שקי דבק. האם תרצה שאכניס להזמנה?`,
       meta: { 
         recommendations: [
-          { name: "לוח גבס ירוק 2.60", qty: boards, category: "גבס" }, 
-          { name: "דבק פלסטומר 603", qty: adhesive, category: "מלט ומוצריו" }
+          { name: "לוח גבס ירוק 2.60", qty: boards, category: "גבס", barcode: "112260" }, 
+          { name: "דבק פלסטומר 603", qty: adhesive, category: "מלט ומוצריו", barcode: "14603" }
         ],
         projectPhase: "גבס ואיטום"
       },
@@ -44,21 +49,27 @@ export async function processSmartOrder(customerId: string, text: string) {
     };
   }
 
-  // 3. הצלבת מוצרים מהמלאי המאוחד (הזרקת ידע)
-  const foundInStock = products.filter((p: any) => text.includes(p.name));
+  // 4. הצלבת מוצרים ישירה מהמלאי המאוחד (הזרקת הידע של סבן)
+  const foundInStock = (products as any[]).filter((p: any) => 
+    text.includes(p.name) || (p.sub_category && text.includes(p.sub_category))
+  );
+
   if (foundInStock.length > 0) {
+    const productList = foundInStock.map((p: any) => p.name).join(", ");
     return {
       role: "assistant",
-      text: `זיהיתי שאתה צריך: ${foundInStock.map((p:any) => p.name).join(", ")}. הכל נמצא במלאי זמין.`,
-      meta: { foundInStock },
+      text: `זיהיתי שאתה צריך: ${productList}. הכל זמין במלאי להעמסה.`,
+      meta: { 
+        foundInStock: foundInStock.map(p => ({ name: p.name, barcode: p.barcode, supplier: p.supplier })) 
+      },
       ts: Date.now()
     };
   }
 
-  // 4. ברירת מחדל - החזרת תשובה כללית אם לא זוהה משהו טכני
+  // 5. ברירת מחדל - העברה לטיפול אנושי או ל-Gemini להשלמת פערים
   return {
     role: "assistant",
-    text: "הבנתי, אני בודק לך את הפרטים מול המלאי המעודכן. תרצה להוסיף מידות מדויקות?",
+    text: "הבנתי את הבקשה. אני בודק זמינות מדויקת במחסן עבורך. יש דגם ספציפי שתרצה להוסיף?",
     ts: Date.now()
   };
 }
