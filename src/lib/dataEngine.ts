@@ -4,48 +4,60 @@ import { getSabanSmartResponse } from "@/app/actions/gemini-brain";
 
 export async function processSmartOrder(customerId: string, text: string) {
   const memory: any = await fetchCustomerBrain(customerId);
-  const name = (memory && typeof memory === 'object' && memory.name) ? memory.name : "אחי";
+  const name = (memory?.name) ? memory.name : "אחי";
   
-  // גישה למלאי המובנה
-  const inventory = (productsData as any).inventory || [];
+  // חילוץ המערך (מוודא שאנחנו עובדים על המבנה הנכון של ה-JSON)
+  const inventory = Array.isArray(productsData) ? productsData : (productsData as any).inventory || [];
 
-  // חיפוש מוצרים בטקסט (לפי מילה ראשונה בשם המוצר)
-  const foundProducts = inventory.filter((p: any) => 
-    p.name && text.toLowerCase().includes(p.name.split(' ')[0].toLowerCase())
-  );
+  // 1. שיפור הזיהוי: חיפוש מוצר לפי שם או ברקוד בתוך הטקסט
+  const foundProducts = inventory.filter((p: any) => {
+    if (!p.name) return false;
+    
+    const searchText = text.toLowerCase();
+    const productName = p.name.toLowerCase();
+    const barcode = p.barcode?.toString();
+
+    // בדיקה אם הלקוח כתב את שם המוצר או את המק"ט שלו
+    return searchText.includes(productName) || 
+           (barcode && searchText.includes(barcode)) ||
+           // בדיקה אם לפחות 3 מילים מהשם מופיעות (למקרים של שמות ארוכים)
+           productName.split(' ').some((word: string) => word.length > 3 && searchText.includes(word));
+  });
+
+  // 2. בניית קונטקסט לגימני עם המק"ט ושם המוצר המדויק
+  let expertContext = foundProducts.map((p: any) => 
+    `[מק"ט: ${p.barcode}] שם מדויק: ${p.name}. תיאור: ${p.description || 'מוצר מלאי'}. חישוב: ${p.calculation_logic || 'לפי יחידות'}`
+  ).join('\n');
 
   let aiResponse = ""; 
   try {
-    const expertContext = foundProducts.map((p: any) => 
-      `- ${p.name}: ${p.description}. חישוב: ${p.calculation_logic}`
-    ).join('\n');
-
-    const prompt = `אתה המומחה של ח. סבן. ענה ל${name} בצורה מקצועית, נקייה ומודגשת. 
-    בלי כוכביות (**). השתמש באימוג'י אחד בלבד לכל נושא. 
-    ידע זמין: ${expertContext}\n\nשאלה: ${text}`;
+    const prompt = `אתה המחסנאי של ח. סבן. הלקוח שאל: "${text}".
+    הנה המוצרים המדויקים שמצאתי במלאי:
+    ${expertContext}
+    
+    ענה לו בצורה חברית ומקצועית. ציין את שמות המוצרים בדיוק כפי שהם מופיעים במלאי. 
+    אל תשתמש בכוכביות (**).`;
 
     const raw = await getSabanSmartResponse(prompt, customerId);
-    // ניקוי כוכביות וטקסט דהוי
     aiResponse = (raw || "").replace(/\*\*/g, '').trim();
   } catch (err) {
-    aiResponse = `אהלן ${name}, אני בודק את המפרט הטכני בשבילך...`;
+    aiResponse = `אהלן ${name}, אני בודק זמינות למק"טים שביקשת...`;
   }
 
-  // הכנת רשימת המוצרים לימין (ה-Sidebar)
+  // 3. הכנת הרשימה ל-Sidebar עם כל הנתונים
   const orderList = foundProducts.map((p: any) => ({
     id: p.barcode,
-    name: p.name,
-    qty: 1, // ברירת מחדל
+    name: p.name, // השם המדויק מהאקסל
+    qty: 1,
     price: p.price || "לפי מחירון",
     image: p.image_url,
-    // צבע לפי מחלקה: כחול לאיטום, ירוק לכל השאר
+    barcode: p.barcode,
     color: p.department?.includes('איטום') ? '#3b82f6' : '#10b981'
   }));
 
   return {
     text: aiResponse,
-    orderList: orderList, // הרשימה שתעבור לימין
-    customerName: name,
-    meta: { recommendations: orderList } // תאימות לדף הניהול
+    orderList: orderList, // עובר ישירות לימין ב-Frontend
+    meta: { recommendations: orderList }
   };
 }
