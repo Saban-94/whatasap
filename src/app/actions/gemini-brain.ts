@@ -6,7 +6,6 @@ import { doc, getDoc } from "firebase/firestore";
 import sabanMasterBrain from "@/data/saban_master_brain.json";
 
 const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY || "");
-
 export async function getSabanSmartResponse(prompt: string, customerId: string) {
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
