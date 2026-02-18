@@ -1,142 +1,86 @@
 'use client';
+import React, { useState } from 'react';
+import { processSmartOrder } from '@/lib/dataEngine';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Send, Bot, User, Paperclip, Smile } from 'lucide-react';
-import { getSabanSmartResponse } from '@/app/actions/gemini-brain';
-
-interface Message {
-  id: string;
-  text: string;
-  sender: 'user' | 'bot';
-  timestamp: Date;
-}
-
-export default function WhatsAppChat({ customerId = "guest_saban" }) {
-  const [messages, setMessages] = useState<Message[]>([]);
+export default function WhatsAppChat({ customerId = "guest" }) {
+  const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages, isLoading]);
+  const [currentOrder, setCurrentOrder] = useState<any[]>([]);
 
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
-
-    const userMsg: Message = {
-      id: Date.now().toString(),
-      text: input,
-      sender: 'user',
-      timestamp: new Date(),
-    };
-
+    const userMsg = { text: input, sender: 'user' };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
-    setIsLoading(true);
 
-    try {
-      // קריאה למנוע של גימני עם רוטציית המפתחות
-      const response = await getSabanSmartResponse(input, customerId);
-      
-      const botMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        text: response || "אחי, יש רגע עומס. תנסה שוב בעוד כמה שניות.",
-        sender: 'bot',
-        timestamp: new Date(),
-      };
+    const result = await processSmartOrder(customerId, input);
+    
+    const botMsg = { 
+      text: result.text, 
+      sender: 'bot',
+      orderData: result.orderList 
+    };
+    
+    setMessages(prev => [...prev, botMsg]);
+    if (result.orderList.length > 0) setCurrentOrder(result.orderList);
+  };
 
-      setMessages(prev => [...prev, botMsg]);
-    } catch (error) {
-      console.error("Chat Error:", error);
-    } finally {
-      setIsLoading(false);
-    }
+  const updateQty = (id: string, delta: number) => {
+    setCurrentOrder(prev => prev.map(item => 
+      item.id === id ? { ...item, qty: Math.max(1, item.qty + delta) } : item
+    ));
   };
 
   return (
-    <div className="flex flex-col h-[600px] w-full max-w-md mx-auto bg-[#0b141a] border border-gray-800 rounded-2xl overflow-hidden shadow-2xl font-sans" dir="rtl">
-      {/* Header */}
-      <div className="bg-[#202c33] p-4 flex items-center justify-between border-b border-gray-700">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-[#075e54] flex items-center justify-center border border-gray-600">
-            <Bot className="text-white w-6 h-6" />
-          </div>
-          <div>
-            <h2 className="text-white font-bold text-sm">גימני - ח. סבן</h2>
-            <p className="text-[#8696a0] text-xs font-medium">מחובר (AI המחסן)</p>
-          </div>
+    <div className="flex h-screen bg-[#0b141a] text-white p-4 gap-4" dir="rtl">
+      {/* צד ימין: רשימת הזמנה (Order Summary) */}
+      <div className="w-80 bg-[#202c33] rounded-xl p-4 flex flex-col border border-gray-700">
+        <h3 className="text-lg font-bold mb-4 border-b border-gray-600 pb-2">🛒 רשימת מצרכים</h3>
+        <div className="flex-1 overflow-y-auto space-y-3">
+          {currentOrder.length === 0 ? (
+            <p className="text-gray-500 text-sm">אין מוצרים בהזמנה עדיין...</p>
+          ) : (
+            currentOrder.map(item => (
+              <div key={item.id} className="bg-[#2a3942] p-3 rounded-lg border-r-4" style={{ borderColor: item.color }}>
+                <div className="flex justify-between items-start mb-2">
+                  <span className="text-sm font-medium">{item.name}</span>
+                  <button className="text-xs text-red-400">החלף</button>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button onClick={() => updateQty(item.id, -1)} className="bg-gray-700 px-2 rounded">-</button>
+                  <span className="font-bold">{item.qty}</span>
+                  <button onClick={() => updateQty(item.id, 1)} className="bg-gray-700 px-2 rounded">+</button>
+                  <span className="text-xs mr-auto text-gray-400">{item.price}</span>
+                </div>
+              </div>
+            ))
+          )}
         </div>
+        <button className="mt-4 bg-[#00a884] py-2 rounded-lg font-bold hover:bg-[#008f6f]">
+          שליחה למחלקת הזמנות 🚀
+        </button>
       </div>
 
-      {/* Messages Area - תיקון הסטייל כדי למנוע שגיאת Build */}
-      <div 
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#0b141a] relative"
-      >
-        {/* שכבת רקע עם שקיפות תקינה */}
-        <div 
-          className="absolute inset-0 opacity-5 pointer-events-none" 
-          style={{ 
-            backgroundImage: `url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')`, 
-            backgroundRepeat: 'repeat' 
-          }}
-        />
-        
-        <div className="relative z-10 flex flex-col gap-3">
-          {messages.map((msg) => (
-            <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-start' : 'justify-end'}`}>
-              <div className={`relative max-w-[85%] p-2 px-3 rounded-lg text-[14.2px] shadow-sm ${
-                msg.sender === 'user' 
-                  ? 'bg-[#005c4b] text-[#e9edef] rounded-tl-none' 
-                  : 'bg-[#202c33] text-[#e9edef] rounded-tr-none'
-              }`}>
-                {msg.text}
-                <div className="text-[10px] text-[#8696a0] mt-1 text-left">
-                  {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </div>
+      {/* צד שמאל: צ'אט ווטסאפ */}
+      <div className="flex-1 flex flex-col bg-[#0b141a] rounded-xl border border-gray-800 overflow-hidden">
+        <div className="bg-[#202c33] p-4 font-bold border-b border-gray-700">גימני - ח. סבן</div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {messages.map((m, i) => (
+            <div key={i} className={`flex ${m.sender === 'user' ? 'justify-start' : 'justify-end'}`}>
+              <div className={`p-3 rounded-lg max-w-md ${m.sender === 'user' ? 'bg-[#005c4b]' : 'bg-[#202c33]'}`}>
+                {m.text}
               </div>
             </div>
           ))}
-          {isLoading && (
-            <div className="flex justify-end relative z-10">
-              <div className="bg-[#202c33] text-[#e9edef] p-2 px-3 rounded-lg animate-pulse text-xs font-medium border border-gray-700">
-                גימני מקליד...
-              </div>
-            </div>
-          )}
         </div>
-      </div>
-
-      {/* Input Area */}
-      <div className="bg-[#202c33] p-2 px-3 flex items-center gap-2 relative z-20">
-        <div className="flex gap-3 text-[#8696a0]">
-          <Smile size={24} className="cursor-pointer hover:text-white transition-colors" />
-          <Paperclip size={24} className="cursor-pointer hover:text-white transition-colors rotate-45" />
-        </div>
-        
-        <div className="flex-1 bg-[#2a3942] rounded-lg px-4 py-2 flex items-center shadow-inner">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="כתוב הודעה לגימני..."
-            className="w-full bg-transparent text-[#e9edef] outline-none text-sm placeholder-[#8696a0]"
+        <div className="p-4 bg-[#202c33] flex gap-2">
+          <input 
+            value={input} 
+            onChange={e => setInput(e.target.value)}
+            className="flex-1 bg-[#2a3942] rounded-lg p-2 outline-none"
+            placeholder="כתוב הודעה..."
           />
+          <button onClick={handleSend} className="bg-[#00a884] p-2 px-4 rounded-lg">שלח</button>
         </div>
-
-        <button 
-          onClick={handleSend}
-          disabled={!input.trim() || isLoading}
-          className={`p-2.5 rounded-full flex items-center justify-center transition-all shadow-md ${
-            input.trim() ? 'bg-[#00a884] text-white' : 'text-[#8696a0]'
-          }`}
-        >
-          <Send size={20} className={input.trim() ? "fill-current" : ""} />
-        </button>
       </div>
     </div>
   );
