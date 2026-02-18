@@ -1,75 +1,85 @@
 import products from "@/data/products.json";
-import knowledge from "@/data/technical_knowledge.json";
-// שימוש בשם הפונקציה המעודכן מהזיכרון של המערכת
 import { fetchCustomerBrain } from "@/lib/customerMemory";
 import { getSabanSmartResponse } from "@/app/actions/gemini-brain";
 
-/**
- * מנוע הנתונים המאוחד של ח. סבן
- * מעבד הזמנות, מחשב לוגיסטיקה ומפעיל את ה-AI
- */
 export async function processSmartOrder(customerId: string, text: string) {
-  // 1. שליפת זיכרון לקוח מה-CRM - הגדרה כ-any למניעת שגיאת טיפוס ב-Build
+  // 1. שליפת זיכרון לקוח
   const memory: any = await fetchCustomerBrain(customerId);
-  
-  // חילוץ שם בטוח (Fallback ל"לקוח" אם לא נמצא)
   let name = "לקוח";
   if (memory && typeof memory === 'object' && 'name' in memory) {
     name = memory.name;
   }
 
-  // 2. הפעלת המוח של Gemini לקבלת ייעוץ אישי
+  // 2. חיפוש מוצרים רלוונטיים מה-JSON המועשר (Expertise)
+  // אנחנו מחפשים מוצרים שהשם שלהם מופיע בטקסט של הלקוח
+  const foundProducts = (products as any[]).filter(p => 
+    p.description && // מחפשים רק את המוצרים ה"מועשרים" (Top 100)
+    text.includes(p.name.split(' ')[0]) // התאמה לפי מילה ראשונה של המוצר
+  );
+
+  // 3. בניית הזרקת ידע (Context Injection) לגימני
+  let expertContext = "";
+  if (foundProducts.length > 0) {
+    expertContext = foundProducts.map(p => 
+      `מוצר: ${p.name}. תיאור: ${p.description}. לוגיקת חישוב: ${p.calculation_logic}. מפרט: ${JSON.stringify(p.technical_specs)}`
+    ).join('\n');
+  }
+
+  // 4. הפעלת המוח של Gemini עם הידע ההנדסי החדש
   let aiResponse: string = ""; 
   try {
-    // הבטחת קבלת מחרוזת טקסט למניעת שגיאת Type 'undefined'
-    const response = await getSabanSmartResponse(text, customerId);
-    aiResponse = response || `שלום ${name}, אני זמין לשירותך. איך אוכל לעזור במחסן היום?`;
+    const promptWithContext = foundProducts.length > 0 
+      ? `השתמש בידע הטכני הבא כדי לענות ללקוח:\n${expertContext}\n\nשאלה: ${text}`
+      : text;
+
+    const response = await getSabanSmartResponse(promptWithContext, customerId);
+    aiResponse = response || `שלום ${name}, איך אוכל לעזור?`;
   } catch (err) {
-    console.error("AI Engine Error:", err);
-    aiResponse = `אהלן ${name}, יש עומס רגעי במערכת ה-AI. אני בודק לך את הפרטים ידנית.`;
+    aiResponse = `אהלן ${name}, אני בודק לך את הפרטים במפרט הטכני.`;
   }
 
-  // 3. לוגיקה לוגיסטית וחישוב משקלים (ח. סבן לוגיסטיקה)
-  const isBathroom = text.includes("מקלחת") || text.includes("אמבטיה") || text.includes("רטוב");
-  
+  // 5. חישוב לוגיסטי דינמי לפי ה-JSON
   let recommendations: any[] = [];
-  let logistics = {
-    truckType: "טנדר / משלוח קל",
-    totalWeightKg: 0,
-    needsCrane: false
-  };
+  let totalWeight = 0;
+  let hasHeavyItems = false;
 
-  // דוגמה ללוגיקת חישוב שתורחב עם קובץ ה-100 מוצרים החדש
-  if (isBathroom) {
-    const areaMatch = text.match(/(\d+)\s*מ"ר/);
-    const area = areaMatch ? parseInt(areaMatch[1]) : 10; 
-
-    // חישוב לפי נתוני מומחה (לוח גבס ודבק)
-    const boards = Math.ceil(area / 3.12);
-    const adhesive = Math.ceil(area * 1.5);
-
-    recommendations = [
-      { name: "לוח גבס ירוק עמיד לחות", qty: boards, barcode: "112260", weight: 25 },
-      { name: "דבק פלסטומר 603", qty: adhesive, barcode: "14603", weight: 25 }
-    ];
-
-    logistics.totalWeightKg = (boards * 25) + (adhesive * 25);
+  foundProducts.forEach(p => {
+    // אם הלקוח ציין מספר (מ"ר), ננסה לחשב כמויות
+    const areaMatch = text.match(/(\d+)\s*(מ"ר|מר|מטר)/);
+    let qty = 1;
     
-    // החלטה על סוג רכב לפי משקל כולל
-    if (logistics.totalWeightKg > 1000) {
-      logistics.truckType = "משאית עם מנוף";
-      logistics.needsCrane = true;
-    } else if (logistics.totalWeightKg > 500) {
-      logistics.truckType = "משאית חלוקה קלה";
+    if (areaMatch && p.calculation_logic) {
+      // לוגיקה פשוטה לחילוץ מספרים מהחישוב (למשל "3 ק"ג למ"ר")
+      const ratioMatch = p.calculation_logic.match(/(\d+(\.\d+)?)/);
+      if (ratioMatch) {
+        const area = parseInt(areaMatch[1]);
+        const ratio = parseFloat(ratioMatch[1]);
+        qty = Math.ceil((area * ratio) / 25); // הנחה של שקים של 25 ק"ג
+      }
     }
-  }
+
+    recommendations.push({
+      name: p.name,
+      qty,
+      description: p.description,
+      calculation: p.calculation_logic
+    });
+
+    // חישוב משקל לוגיסטי
+    const weight = p.technical_specs?.unit_weight ? parseFloat(p.technical_specs.unit_weight) : 25;
+    totalWeight += (qty * weight);
+    if (p.logistics_tag === 'heavy' || weight >= 20) hasHeavyItems = true;
+  });
 
   return {
     text: aiResponse,
     meta: {
       recommendations,
-      logistics,
-      projectPhase: isBathroom ? "גמר ואיטום" : "כללי",
+      logistics: {
+        totalWeightKg: totalWeight,
+        truckType: totalWeight > 1000 ? "משאית מנוף" : totalWeight > 0 ? "טנדר חלוקה" : "משלוח רגיל",
+        needsCrane: totalWeight > 1000 || hasHeavyItems
+      },
       customerName: name
     }
   };
