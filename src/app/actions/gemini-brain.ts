@@ -1,65 +1,71 @@
+'use server'; // חובה! זה הופך את הפונקציה לשרתית ומאפשר גישה למפתחות
+
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { db } from "@/lib/firebase"; 
 import { doc, getDoc } from "firebase/firestore";
-
-// ייבוא נתוני המאגר המאוחד (מוצרים, מק"טים ויחס צריכה)
 import sabanMasterBrain from "@/data/saban_master_brain.json";
 
-const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY || "");
+// שליפת המפתח בצורה מאובטחת מהשרת
+const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
+const genAI = new GoogleGenerativeAI(apiKey);
 
 export async function getSabanSmartResponse(prompt: string, customerId: string) {
   try {
+    // בדיקה אם המפתח קיים בכלל
+    if (!apiKey) {
+      throw new Error("Missing Gemini API Key");
+    }
+
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    // 1. משיכת נתונים מה-CRM (הבנה עם מי אנחנו מדברים ומה ההיסטוריה שלו)
-    const crmSnap = await getDoc(doc(db, 'customer_memory', customerId));
-    const crmData = crmSnap.exists() ? crmSnap.data() : {};
+    // 1. משיכת נתונים מה-CRM
+    let crmData: any = {};
+    try {
+      const crmSnap = await getDoc(doc(db, 'customer_memory', customerId));
+      crmData = crmSnap.exists() ? crmSnap.data() : {};
+    } catch (e) {
+      console.log("CRM Fetch failed, continuing with empty context");
+    }
+    
     const customerName = crmData.name || 'אחי';
 
-    // 2. זיהוי צרכי שיפוץ וחילוץ לוגיקה טכנית מהמאגר
+    // 2. זיהוי צרכי שיפוץ
     const isRenovation = prompt.includes("שיפוץ") || prompt.includes("מקלחת") || prompt.includes("אמבטיה") || prompt.includes("בנייה");
     let technicalContext = "";
     
     if (isRenovation) {
       const adhesive = (sabanMasterBrain as any[]).find(p => p.name.includes("דבק") || p.name.includes("603"));
-      const ratio = adhesive?.calculator?.ratio || 1.5; // יחס צריכה הנדסי ממוצע
-      
+      const ratio = adhesive?.calculator?.ratio || 1.5;
       technicalContext = `
-        הלקוח נמצא בתהליך עבודה. 
-        לפי המפרט של ${adhesive?.name || "דבק פלסטומר 603"}:
-        יחס הצריכה המדויק שלנו הוא ${ratio} ${adhesive?.calculator?.unit || "שקים"} לכל מ"ר.
-        בדוק אם הוא קנה חומרי איטום לאחרונה - אם כן, הוא כנראה בשלב הריצוף והדבקה.
+        הלקוח בשיפוץ. מוצר רלוונטי: ${adhesive?.name || "דבק 603"}. 
+        יחס צריכה: ${ratio} שקים למ"ר.
       `;
     }
 
-    // 3. הגדרת האישיות של גימני (יועץ מקצועי + חבר)
+    // 3. הזרקת האישיות של סבן
     const systemPrompt = `
-      אתה "גימני", היועץ הבכיר והלב של חברת "ח. סבן". אתה לא בוט, אתה אישיות.
-      הלקוח שפונה אליך הוא: ${customerName}.
+      אתה "גימני", היועץ הבכיר והנשמה של חברת "ח. סבן". 
+      אתה מדבר עם ${customerName}.
       
       חוקי הדיבור שלך:
-      - בוקר טוב וברכה אישית: תמיד תפתח בברכה חמה (למשל: "אהלן ${customerName}, בוקר אור אחי!").
-      - חברי ומקצועי בו זמנית: תשתמש בסלנג של ענף הבנייה ("חביבי", "נשמה", "סגור לך פינה"), אבל תהיה חד כתער בנתונים הטכניים.
-      - יועץ אקטיבי: אם לקוח מבקש גבס למקלחת, תזכיר לו שחובה גבס ירוק (עמיד לחות) ואל תשכח לשאול אם יש לו מספיק דבק וסרט משוריין.
-      - זיכרון: אם מופיע בהיסטוריה שלו שהוא קנה משהו לאחרונה, תתייחס לזה (למשל: "ראיתי ששבוע שעבר לקחת בלה חול, צריך עוד אחת או שסיימת עם התשתית?").
+      - תמיד תפתח בברכה אישית וחמה: "אהלן ${customerName}, בוקר אור אחי!" או "שלום ${customerName} חביבי".
+      - אתה מומחה בנייה ותיק. תדבר בגובה העיניים, תשתמש בסלנג מקצועי (אחי, נשמה, סגור פינה).
+      - תהיה יועץ אקטיבי. אם חסר משהו בהזמנה לפי ההיגיון (כמו סרט משוריין לגבס), תשאל עליו.
+      - אל תהיה רובוטי. אם הלקוח אומר "בוקר טוב", אל תענה "אני בודק זמינות", אלא תענה כמו חבר ששמח לעזור.
 
-      מאגר המידע הטכני (המלאי של סבן): 
-      ${JSON.stringify(sabanMasterBrain.slice(0, 15))}
-      
-      היסטוריית רכישות (מה-CRM): 
-      ${JSON.stringify(crmData.orderHistory || [])}
-      
-      הקשר טכני נוכחי:
-      ${technicalContext}
-      
-      משימה: ענה ללקוח בצורה שתגרום לו להרגיש שהוא מדבר עם המקצוען הכי טוב במשרד של סבן. תן לו ביטחון, תן לו כמויות מדויקות, ותהיה חבר.
+      מידע טכני: ${JSON.stringify(sabanMasterBrain.slice(0, 10))}
+      היסטוריה: ${JSON.stringify(crmData.orderHistory || [])}
+      הקשר: ${technicalContext}
     `;
 
     const result = await model.generateContent([systemPrompt, prompt]);
-    return result.response.text();
+    const responseText = result.response.text();
+
+    return responseText;
 
   } catch (error) {
     console.error("Gemini Brain Error:", error);
-    return "אחי, מצטער, המוח הטכני שלי רגע בהפסקה. אני זמין לשאלות בטלפון או בווטסאפ המשרדי ונסדר לך הכל.";
+    // החזרת תשובה "אנושית" גם במקרה של תקלה טכנית
+    return `אהלן ${customerId}, כאן גימני. אחי, יש לי רגע תקלה טכנית קטנה בחיבור למוח המרכזי. אל תדאג, תכתוב לי שוב עוד דקה או תרים טלפון למשרד ונסדר אותך מיד.`;
   }
 }
