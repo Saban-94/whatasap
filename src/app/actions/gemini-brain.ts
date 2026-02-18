@@ -9,73 +9,74 @@ export async function getSabanSmartResponse(prompt: string, customerId: string) 
   // --- מלשינון בדיקת מפתח ---
   const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
   
-  console.log("--- SABAN-AI CHECK UP ---");
+  console.log("--- 🛠️ בדיקת מערכות SABAN-AI (עדכון 2026) ---");
+  
   if (!apiKey) {
-    console.error("❌ מלשינון: המפתח (API KEY) חסר לגמרי ב-Vercel!");
-    return "אחי, כאן גימני. נראה ששכחו להזין לי את המפתח בשרת. תבדוק ב-Vercel שהגדרת GEMINI_API_KEY.";
+    console.error("❌ מלשינון: המפתח (API KEY) חסר! המערכת תישאר במצב רובוטי.");
+    return "אחי, כאן גימני. נראה שהמפתח שלי לא מוגדר ב-Vercel. תבדוק את GEMINI_API_KEY.";
   }
-  console.log(`✅ מלשינון: מפתח זוהה (מתחיל ב: ${apiKey.substring(0, 4)}...)`);
-  // -----------------------
+  
+  console.log(`✅ מלשינון: מפתח זוהה (סיומת: ...${apiKey.slice(-4)})`);
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // הגדרת מודל בגרסה יציבה v1
+    /**
+     * עדכון מודל 2026:
+     * לפי העדכונים האחרונים, gemini-3-flash-preview הוא המודל החזק והמהיר ביותר 
+     * המיועד לסוכנים (Agentic capabilities) וקידוד.
+     */
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash"
-    }, { apiVersion: 'v1' });
+      model: "gemini-3-flash-preview" // המודל המעודכן ביותר לפי ינואר 2026
+    });
 
-    console.log("🚀 מלשינון: מנסה ליצור קשר עם המוח של גוגל...");
+    console.log("🚀 מלשינון: יוצר קשר עם Gemini 3 Flash...");
 
-    // 1. משיכת נתונים מה-CRM
+    // 1. שליפת נתוני CRM
     let crmData: any = {};
     try {
       const crmSnap = await getDoc(doc(db, 'customer_memory', customerId));
       crmData = crmSnap.exists() ? crmSnap.data() : {};
     } catch (e) {
-      console.warn("⚠️ מלשינון: לא הצלחתי למשוך נתוני CRM, ממשיך ככה.");
+      console.warn("⚠️ מלשינון: CRM לא זמין, ממשיך עם ידע כללי.");
     }
     
     const customerName = crmData.name || 'אחי';
 
-    // 2. הכנת ה-Prompt
+    // 2. הגדרת ה-Prompt עם ה"נשמה" של סבן
     const systemPrompt = `
-      אתה "גימני", היועץ האישי והנשמה של חברת "ח. סבן". 
-      אתה מדבר עם ${customerName}.
+      אתה "גימני", המומחה הלוגיסטי והיועץ האישי של "ח. סבן".
+      אתה משתמש במודל Gemini 3 החדש כדי לתת תשובות חכמות ומהירות.
       
-      אישיות:
-      - פתח בברכה חמה: "אהלן ${customerName} אחי, בוקר אור!".
-      - דבר בגובה העיניים, מקצועי וחברי (סלנג: "חביבי", "סגור פינה").
-      - אתה מומחה לבנייה - אם חסר משהו טכני, תעיר את תשומת ליבו.
+      הלקוח: ${customerName}.
+      
+      הנחיות אישיות:
+      - תהיה חבר! תפתח ב-"אהלן ${customerName} אחי, בוקר אור".
+      - אתה מומחה בנייה - תן כמויות מדויקות (דבק, גבס, מלט).
+      - אם הלקוח בשיפוץ מקלחת, תזכיר לו גבס ירוק ואיטום.
+      - דבר בסלנג מקצועי ישראלי ("סגור פינה", "חביבי", "נשמה").
 
-      מידע טכני מהמחסן: ${JSON.stringify(sabanMasterBrain.slice(0, 10))}
-      היסטוריית לקוח: ${JSON.stringify(crmData.orderHistory || [])}
+      מלאי נוכחי: ${JSON.stringify(sabanMasterBrain.slice(0, 15))}
+      היסטוריה: ${JSON.stringify(crmData.orderHistory || [])}
     `;
 
-    // 3. ביצוע הקריאה
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: systemPrompt + "\n\nשאלה מהלקוח: " + prompt }] }]
-    });
-
+    // 3. שליחה וקבלת תשובה
+    const result = await model.generateContent(systemPrompt + "\n\nשאלה מהלקוח: " + prompt);
     const response = await result.response;
     const text = response.text();
 
-    console.log("✅ מלשינון: תשובה התקבלה בהצלחה מגוגל!");
+    console.log("✅ מלשינון: Gemini 3 הגיב בהצלחה!");
     return text;
 
   } catch (error: any) {
-    console.error("❌ מלשינון - שגיאה קריטית:");
-    console.error("קוד שגיאה:", error.status);
+    console.error("❌ מלשינון - תקלה במוח המרכזי:");
     console.error("הודעה:", error.message);
 
-    if (error.message?.includes("API_KEY_INVALID")) {
-      return "אחי, המפתח של גוגל לא תקין (Invalid). תבדוק שהעתקת אותו נכון בלי רווחים.";
+    // טיפול ספציפי בשגיאת מודל לא נמצא (אם גוגל שינו משהו הבוקר)
+    if (error.message?.includes("not found")) {
+      return "אחי, גוגל עדכנו את המודלים והשם 'gemini-3-flash-preview' עדיין לא פתוח אצלך. נסה לשנות ל-gemini-2.0-flash.";
     }
 
-    if (error.status === 404) {
-      return "אחי, גוגל אומר שהמודל לא נמצא. כנראה יש בעיה בגרסת ה-API.";
-    }
-
-    return `אהלן ${customerName}, כאן גימני. אחי, יש לי רגע 'קצר' בחיבור למוח המרכזי. תנסה שוב עוד דקה או תרים טלפון למשרד ונסדר אותך!`;
+    return `אהלן ${customerName}, כאן גימני. אחי, יש לי רגע 'קצר' בחיבור. תנסה שוב עוד דקה או תרים טלפון למשרד ונסדר אותך!`;
   }
 }
