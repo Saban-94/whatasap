@@ -97,7 +97,7 @@ export default function SabanOSChat() {
         name: currentInput,
         sku: "99999", // כאן אפשר להוסיף לוגיקה לבדיקת מלאי מקומי
         image: media.image,
-        videoUrl: media.video,
+        videoUrl: media.video || undefined,
         specs: specs || undefined
       },
       timestamp: new Date()
