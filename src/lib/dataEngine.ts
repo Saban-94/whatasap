@@ -1,29 +1,35 @@
 import products from "@/data/products.json";
 import knowledge from "@/data/technical_knowledge.json";
-// שימוש בשם הפונקציה הנכון מהקובץ customerMemory
+// שימוש בשם הפונקציה המעודכן מהזיכרון של המערכת
 import { fetchCustomerBrain } from "@/lib/customerMemory";
 import { getSabanSmartResponse } from "@/app/actions/gemini-brain";
 
+/**
+ * מנוע הנתונים המאוחד של ח. סבן
+ * מעבד הזמנות, מחשב לוגיסטיקה ומפעיל את ה-AI
+ */
 export async function processSmartOrder(customerId: string, text: string) {
-  // 1. שליפת זיכרון לקוח מה-CRM - הגדרת הטיפוס כ-any כדי למנוע שגיאת Build
+  // 1. שליפת זיכרון לקוח מה-CRM - הגדרה כ-any למניעת שגיאת טיפוס ב-Build
   const memory: any = await fetchCustomerBrain(customerId);
   
-  // חילוץ שם בטוח למניעת קריסה
+  // חילוץ שם בטוח (Fallback ל"לקוח" אם לא נמצא)
   let name = "לקוח";
   if (memory && typeof memory === 'object' && 'name' in memory) {
     name = memory.name;
   }
 
   // 2. הפעלת המוח של Gemini לקבלת ייעוץ אישי
-  let aiResponse = "";
+  let aiResponse: string = ""; 
   try {
-    aiResponse = await getSabanSmartResponse(text, customerId);
+    // הבטחת קבלת מחרוזת טקסט למניעת שגיאת Type 'undefined'
+    const response = await getSabanSmartResponse(text, customerId);
+    aiResponse = response || `שלום ${name}, אני זמין לשירותך. איך אוכל לעזור במחסן היום?`;
   } catch (err) {
     console.error("AI Engine Error:", err);
-    aiResponse = `שלום ${name}, אני מנתח את הבקשה שלך לפי המפרט הטכני של המחסן.`;
+    aiResponse = `אהלן ${name}, יש עומס רגעי במערכת ה-AI. אני בודק לך את הפרטים ידנית.`;
   }
 
-  // 3. לוגיקה לוגיסטית וחישוב משקלים עבור ח. סבן
+  // 3. לוגיקה לוגיסטית וחישוב משקלים (ח. סבן לוגיסטיקה)
   const isBathroom = text.includes("מקלחת") || text.includes("אמבטיה") || text.includes("רטוב");
   
   let recommendations: any[] = [];
@@ -33,12 +39,12 @@ export async function processSmartOrder(customerId: string, text: string) {
     needsCrane: false
   };
 
+  // דוגמה ללוגיקת חישוב שתורחב עם קובץ ה-100 מוצרים החדש
   if (isBathroom) {
-    // חילוץ שטח מהטקסט (למשל "10 מ"ר")
     const areaMatch = text.match(/(\d+)\s*מ"ר/);
     const area = areaMatch ? parseInt(areaMatch[1]) : 10; 
 
-    // חישוב כמויות לוחות גבס ודבק
+    // חישוב לפי נתוני מומחה (לוח גבס ודבק)
     const boards = Math.ceil(area / 3.12);
     const adhesive = Math.ceil(area * 1.5);
 
@@ -49,7 +55,7 @@ export async function processSmartOrder(customerId: string, text: string) {
 
     logistics.totalWeightKg = (boards * 25) + (adhesive * 25);
     
-    // קביעת סוג רכב לפי משקל
+    // החלטה על סוג רכב לפי משקל כולל
     if (logistics.totalWeightKg > 1000) {
       logistics.truckType = "משאית עם מנוף";
       logistics.needsCrane = true;
