@@ -3,117 +3,61 @@ import { fetchCustomerBrain } from "@/lib/customerMemory";
 import { getSabanSmartResponse } from "@/app/actions/gemini-brain";
 
 /**
- * פונקציה לעיצוב התוכן בסגנון "ח. סבן"
- * מנקה סימני Markdown, מוסיפה אימוג'ים ומסדרת רשימות
+ * מנקה את הטקסט ומעצב אותו בצורה מקצועית ללא כוכביות
  */
-function formatSabanStyle(text: string) {
-  if (!text) return "";
-
+function cleanAndStyleText(text: string) {
   return text
-    // 1. ניקוי כוכביות Markdown (הדגשות)
-    .replace(/\*\*/g, '') 
-    // 2. הפיכת רשימות כוכביות לסעיפים מעוצבים
-    .replace(/^\* /gm, '🔹 ')
-    .replace(/\n\* /g, '\n🔹 ')
-    // 3. הוספת אימוג'ים תואמים למושגים טכניים
-    .replace(/(סיקה|Sika|סיקה 107)/gi, '🏗️ $1')
-    .replace(/(מ"ר|מר|מטר מרובע)/g, '📐 $1')
-    .replace(/(קילו|ק"ג|קג)/g, '⚖️ $1')
-    .replace(/(שק|שקים|שקית)/g, '📦 $1')
-    .replace(/(הובלה|משאית|מנוף|טנדר)/g, '🚚 $1')
-    .replace(/(מחיר|עלות|ש"ח|₪)/g, '💰 $1')
-    // 4. הדגשת כותרות (הוספת קו מפריד או אימוג'י בולט)
-    .replace(/(סיכום|טיפים|הוראות|שים לב):/g, '\n📌 $1:')
-    .replace(/\n\n/g, '\n'); // מניעת רווחים כפולים מיותרים
+    .replace(/\*\*/g, '') // הסרת כוכביות
+    .replace(/🏗️|⚖️|📐|📦|🚚|💰/g, '') // ניקוי אימוג'ים קיימים כדי לשלוט בהם מחדש
+    .trim();
 }
 
 export async function processSmartOrder(customerId: string, text: string) {
-  // 1. שליפת זיכרון לקוח מה-CRM
   const memory: any = await fetchCustomerBrain(customerId);
-  let name = "לקוח";
-  if (memory && typeof memory === 'object' && 'name' in memory) {
-    name = memory.name;
-  }
-
-  // 2. חילוץ המערך מתוך האובייקט (התאמה למבנה החדש)
+  const name = (memory && typeof memory === 'object' && memory.name) ? memory.name : "אלוף";
+  
   const inventory = (productsData as any).inventory || [];
 
-  // 3. חיפוש מוצרים רלוונטיים ב-Inventory
+  // חיפוש מוצרים
   const foundProducts = inventory.filter((p: any) => 
-    p.description && 
-    p.name &&
-    text.toLowerCase().includes(p.name.split(' ')[0].toLowerCase())
+    p.name && text.toLowerCase().includes(p.name.split(' ')[0].toLowerCase())
   );
 
-  // 4. בניית הזרקת ידע (Context Injection) לגימני
-  let expertContext = "";
-  if (foundProducts.length > 0) {
-    expertContext = foundProducts.map((p: any) => 
-      `מוצר: ${p.name}. תיאור: ${p.description}. לוגיקת חישוב: ${p.calculation_logic}. מפרט: ${JSON.stringify(p.technical_specs)}`
-    ).join('\n');
-  }
+  let expertContext = foundProducts.map((p: any) => 
+    `מוצר: ${p.name}. מפרט: ${p.description}. חישוב: ${p.calculation_logic}`
+  ).join('\n');
 
-  // 5. הפעלת המוח של Gemini
-  let aiResponse: string = ""; 
+  let aiResponse = ""; 
   try {
-    const promptWithContext = foundProducts.length > 0 
-      ? `אתה המומחה של ח. סבן. השתמש בידע הבא כדי לענות ללקוח ${name}:\n${expertContext}\n\nשאלה: ${text}`
-      : text;
+    const prompt = `אתה המומחה של ח. סבן. ענה ל${name} בצורה מקצועית ונקייה. 
+    בלי כוכביות (**). השתמש באימוג'י אחד בלבד לכל נושא. 
+    אם יש חישוב, הצג אותו בשורות נפרדות.
+    ידע זמין: ${expertContext}\n\nשאלה: ${text}`;
 
-    const rawResponse = await getSabanSmartResponse(promptWithContext, customerId);
-    
-    // הפעלת העיצוב המקצועי על התשובה
-    aiResponse = formatSabanStyle(rawResponse || "");
-    
-    if (!aiResponse) {
-      aiResponse = `שלום ${name}, המערכת בעומס קל. איך אוכל לעזור?`;
-    }
+    const raw = await getSabanSmartResponse(prompt, customerId);
+    aiResponse = cleanAndStyleText(raw || "");
   } catch (err) {
-    console.error("AI Engine Error:", err);
-    aiResponse = `אהלן ${name}, אני בודק לך את הפרטים במפרט הטכני.`;
+    aiResponse = `שלום ${name}, אני בודק את המפרט הטכני עבורך.`;
   }
 
-  // 6. חישוב לוגיסטי דינמי
-  let recommendations: any[] = [];
-  let totalWeight = 0;
-  let hasHeavyItems = false;
-
-  foundProducts.forEach((p: any) => {
-    const areaMatch = text.match(/(\d+)\s*(מ"ר|מר|מטר)/);
-    let qty = 1;
+  // הכנת המלצות צבעוניות לממשק
+  const recommendations = foundProducts.map((p: any) => {
+    const areaMatch = text.match(/(\d+)/);
+    const area = areaMatch ? parseInt(areaMatch[0]) : 1;
     
-    if (areaMatch && p.calculation_logic) {
-      const ratioMatch = p.calculation_logic.match(/(\d+(\.\d+)?)/);
-      if (ratioMatch) {
-        const area = parseInt(areaMatch[1]);
-        const ratio = parseFloat(ratioMatch[1]);
-        // חישוב שקים (לפי 25 ק"ג ממוצע לשק)
-        qty = Math.ceil((area * ratio) / 25);
-      }
-    }
-
-    recommendations.push({
+    return {
+      id: p.barcode,
       name: p.name,
-      qty,
-      description: p.description,
-      calculation: p.calculation_logic
-    });
-
-    const weight = p.technical_specs?.unit_weight ? parseFloat(p.technical_specs.unit_weight) : 25;
-    totalWeight += (qty * weight);
-    if (p.logistics_tag === 'heavy' || weight >= 20) hasHeavyItems = true;
+      qty: 1, // ברירת מחדל, הלקוח יוכל לערוך
+      price: p.price || "לפי מחירון",
+      color: p.department === 'איטום' ? '#3b82f6' : '#10b981', // כחול לאיטום, ירוק לאחרים
+      image: p.image_url
+    };
   });
 
   return {
     text: aiResponse,
-    meta: {
-      recommendations,
-      logistics: {
-        totalWeightKg: totalWeight,
-        truckType: totalWeight > 1000 ? "משאית מנוף" : totalWeight > 0 ? "טנדר חלוקה" : "משלוח רגיל",
-        needsCrane: totalWeight > 1000 || hasHeavyItems
-      },
-      customerName: name
-    }
+    orderList: recommendations,
+    customerName: name
   };
 }
