@@ -16,16 +16,14 @@ export async function getSabanSmartResponse(prompt: string, customerId: string) 
     return "אחי, כאן גימני. המפתח שלי לא מוגדר בשרת.";
   }
 
-  // אסטרטגיה: שימוש במודלים ב-v1beta למניעת 404 ומעקף מכסות
+  // שמות מודלים בסיסיים ללא תוספות - אלו השמות הכי עמידים
   const modelStrategy = [
-    { name: "gemini-1.5-flash-latest", version: "v1beta" },
-    { name: "gemini-1.5-pro-latest", version: "v1beta" },
-    { name: "gemini-1.5-flash", version: "v1beta" }
+    { name: "gemini-1.5-flash", version: "v1beta" },
+    { name: "gemini-1.5-pro", version: "v1beta" }
   ];
 
   const genAI = new GoogleGenerativeAI(apiKey);
 
-  // 1. תיקון הקריאה ל-CRM (הסרת ה-doc הכפול)
   try {
     const docRef = doc(db, 'customer_memory', customerId);
     const crmSnap = await getDoc(docRef);
@@ -37,14 +35,11 @@ export async function getSabanSmartResponse(prompt: string, customerId: string) 
     console.warn("⚠️ מלשינון: CRM לא זמין.");
   }
 
-  // 2. לולאת Fallback למודלים
   for (const config of modelStrategy) {
     try {
-      console.log(`🚀 מלשינון: מנסה ${config.name}...`);
+      console.log(`🚀 מלשינון: מנסה לקרוא למודל ${config.name}...`);
       
-      const model = genAI.getGenerativeModel({ 
-        model: config.name 
-      }, { apiVersion: config.version });
+      const model = genAI.getGenerativeModel({ model: config.name });
 
       const systemPrompt = `
         אתה "גימני", המומחה של חברת "ח. סבן".
@@ -53,18 +48,20 @@ export async function getSabanSmartResponse(prompt: string, customerId: string) 
         מלאי סבן: ${JSON.stringify(sabanMasterBrain.slice(0, 10))}
       `;
 
-      const result = await model.generateContent({
-        contents: [{ role: "user", parts: [{ text: systemPrompt + "\n\nשאלה: " + prompt }] }]
-      });
-
+      // שימוש בפורמט הפשוט ביותר של generateContent
+      const result = await model.generateContent(systemPrompt + "\n\nשאלה: " + prompt);
       const response = await result.response;
-      console.log(`✅ מלשינון: ${config.name} עובד!`);
-      return response.text();
+      const text = response.text();
+
+      if (text) {
+        console.log(`✅ מלשינון: מודל ${config.name} הצליח!`);
+        return text;
+      }
 
     } catch (error: any) {
       console.warn(`⚠️ מלשינון: ${config.name} נכשל: ${error.message}`);
     }
   }
 
-  return `אהלן ${customerName}, יש עומס רגעי. תנסה שוב עוד דקה או תרים טלפון למשרד.`;
+  return `אהלן ${customerName}, יש עומס רגעי בגוגל. תנסה שוב עוד דקה אחי.`;
 }
