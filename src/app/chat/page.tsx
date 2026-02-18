@@ -2,19 +2,26 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Paperclip, MoreVertical, Search, CheckCheck, X, Info } from "lucide-react";
+import { Send, Paperclip, MoreVertical, Search, CheckCheck, X, Sun, Moon, Info } from "lucide-react";
 import clsx from "clsx";
 
 export default function SabanChatPage() {
-  const [messages, setMessages] = useState<any[]>([
-    { id: "1", from: "bot", text: "אהלן רמי, כאן יועץ המכירות של סבן. השתמש בחימוש גוגל המובנה למציאת מוצרים וסרטונים.", timestamp: new Date() }
-  ]);
+  const [mounted, setMounted] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [messages, setMessages] = useState<any[]>([]);
   const [inputText, setInputText] = useState("");
-  const [showSearch, setShowSearch] = useState(false); // מצב תצוגת חיפוש גוגל
+  const [showSearch, setShowSearch] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // טעינת הסקריפט של גוגל פעם אחת
+  // מניעת שגיאת Hydration - רנדור רק לאחר טעינה בדפדפן
   useEffect(() => {
+    setMounted(true);
+    // הודעת פתיחה רק לאחר טעינה
+    setMessages([
+      { id: "1", from: "bot", text: "אהלן רמי, SabanOS מוכנה. איך אפשר לעזור היום?", timestamp: new Date() }
+    ]);
+
+    // טעינת סקריפט גוגל
     const script = document.createElement("script");
     script.src = "https://cse.google.com/cse.js?cx=1340c66f5e73a4076";
     script.async = true;
@@ -25,86 +32,128 @@ export default function SabanChatPage() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  if (!mounted) return null;
+
   const handleSend = () => {
     if (!inputText.trim()) return;
-    setMessages(prev => [...prev, { id: Date.now().toString(), from: "user", text: inputText, timestamp: new Date() }]);
+    const newMsg = { id: Date.now().toString(), from: "user", text: inputText, timestamp: new Date() };
+    setMessages(prev => [...prev, newMsg]);
     setInputText("");
     
-    // סימולציית תגובה
     setTimeout(() => {
       setMessages(prev => [...prev, { 
         id: (Date.now()+1).toString(), 
         from: "bot", 
-        text: "חיפשתי את מה שביקשת במנוע של גוגל. בדוק את תוצאות החיפוש בחלון הייעודי.", 
+        text: "ההודעה התקבלה במערכת סבן. בודק מלאי וזמינות הובלה...", 
         timestamp: new Date() 
       }]);
-      setShowSearch(true);
     }, 1000);
   };
 
   return (
-    <div className="flex h-screen bg-[#0b141a] text-[#e9edef] font-sans overflow-hidden" dir="rtl">
+    <div className={clsx(
+      "flex h-screen font-sans overflow-hidden transition-colors duration-500",
+      isDarkMode ? "bg-[#0b141a] text-[#e9edef]" : "bg-[#f0f2f5] text-[#111b21]"
+    )} dir="rtl">
       
       {/* 1. Sidebar שמאל - רשימת שיחות */}
-      <div className="w-[25%] bg-[#111b21] border-l border-[#222d34] hidden md:flex flex-col">
-        <header className="h-[60px] bg-[#202c33] flex items-center px-4 justify-between">
-          <div className="w-10 h-10 rounded-full bg-[#00a884] flex items-center justify-center font-bold">ס</div>
-          <div className="flex gap-4 text-[#8696a0]">
-            <CheckCheck size={20} />
-            <MoreVertical size={20} />
+      <div className={clsx(
+        "w-[25%] hidden md:flex flex-col border-l transition-colors",
+        isDarkMode ? "bg-[#111b21] border-[#222d34]" : "bg-white border-[#d1d7db]"
+      )}>
+        <header className={clsx(
+          "h-[60px] flex items-center px-4 justify-between transition-colors",
+          isDarkMode ? "bg-[#202c33]" : "bg-[#f0f2f5]"
+        )}>
+          <div className="w-10 h-10 rounded-full bg-[#00a884] flex items-center justify-center font-bold text-white shadow-lg">ס</div>
+          <div className="flex gap-4 items-center">
+            {/* כפתור החלפת Theme */}
+            <button 
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className="p-2 rounded-full hover:bg-black/10 transition-all"
+            >
+              {isDarkMode ? <Sun size={20} className="text-[#8696a0]" /> : <Moon size={20} className="text-[#54656f]" />}
+            </button>
+            <CheckCheck size={20} className={isDarkMode ? "text-[#8696a0]" : "text-[#54656f]"} />
+            <MoreVertical size={20} className={isDarkMode ? "text-[#8696a0]" : "text-[#54656f]"} />
           </div>
         </header>
-        <div className="p-4 overflow-y-auto">
-          <p className="text-xs text-gray-500 font-bold mb-4 uppercase tracking-widest">חיפוש מוצר מהיר</p>
-          {/* כאן ניתן להוסיף רשימת מוצרים מהירה */}
+        <div className="p-4">
+          <div className={clsx(
+            "rounded-lg flex items-center px-4 py-1.5 gap-4 transition-colors",
+            isDarkMode ? "bg-[#202c33]" : "bg-[#f0f2f5]"
+          )}>
+            <Search size={18} className="text-[#8696a0]" />
+            <input placeholder="חפש שיחה..." className="bg-transparent outline-none text-sm w-full" />
+          </div>
         </div>
       </div>
 
       {/* 2. חלון צ'אט מרכזי */}
-      <div className="flex-1 flex flex-col relative border-r border-[#222d34] shadow-2xl">
-        <header className="h-[60px] bg-[#202c33] flex items-center px-4 border-b border-[#0b141a] z-20">
+      <div className="flex-1 flex flex-col relative shadow-2xl border-r border-black/5">
+        <header className={clsx(
+          "h-[60px] flex items-center px-4 z-20 border-b transition-colors",
+          isDarkMode ? "bg-[#202c33] border-[#0b141a]" : "bg-[#f0f2f5] border-[#d1d7db]"
+        )}>
           <div className="mr-3">
-            <h2 className="font-bold text-sm text-[#e9edef]">SabanOS AI Advisor</h2>
-            <p className="text-[11px] text-[#00a884]">Google Search Enabled</p>
+            <h2 className="font-bold text-sm">SabanOS - יועץ לוגיסטי</h2>
+            <p className="text-[11px] text-[#00a884]">מחובר למערכת המלאי</p>
           </div>
           <button 
             onClick={() => setShowSearch(!showSearch)} 
-            className={clsx("mr-auto p-2 rounded-xl transition-all", showSearch ? "bg-[#00a884] text-white" : "bg-[#2a3942] text-gray-400")}
+            className={clsx("mr-auto p-2 rounded-xl transition-all", showSearch ? "bg-[#00a884] text-white" : "text-gray-400")}
           >
             <Search size={20} />
           </button>
         </header>
 
-        {/* גוף ההודעות */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-[#0b141a] custom-scroll relative">
-          {messages.map((msg) => (
-            <motion.div key={msg.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={clsx("flex flex-col", msg.from === "user" ? "mr-auto items-start" : "ml-auto items-end")}>
-              <div className={clsx("p-3 rounded-2xl shadow-lg max-w-[80%]", msg.from === "user" ? "bg-[#005c4b]" : "bg-[#202c33]")}>
-                <p className="text-[14px] leading-tight">{msg.text}</p>
-                <span className="text-[9px] text-gray-400 mt-1 block">{msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-              </div>
-            </motion.div>
-          ))}
+        {/* גוף ההודעות עם רקע ווטסאפ קלאסי */}
+        <div className={clsx(
+          "flex-1 overflow-y-auto p-6 space-y-4 relative custom-scroll",
+          isDarkMode ? "bg-[#0b141a]" : "bg-[#efe7de]"
+        )}>
+          {/* תמונת רקע ווטסאפ עדינה */}
+          <div className="absolute inset-0 opacity-[0.06] pointer-events-none bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat"></div>
+
+          <AnimatePresence>
+            {messages.map((msg) => (
+              <motion.div 
+                key={msg.id} 
+                initial={{ opacity: 0, scale: 0.9 }} 
+                animate={{ opacity: 1, scale: 1 }}
+                className={clsx("flex flex-col relative z-10", msg.from === "user" ? "mr-auto items-start" : "ml-auto items-end")}
+              >
+                <div className={clsx(
+                  "p-3 rounded-2xl shadow-sm max-w-[85%] relative",
+                  msg.from === "user" 
+                    ? (isDarkMode ? "bg-[#005c4b] text-white" : "bg-[#d9fdd3] text-[#111b21]")
+                    : (isDarkMode ? "bg-[#202c33] text-[#e9edef]" : "bg-white text-[#111b21]")
+                )}>
+                  <p className="text-[14.5px] leading-tight ml-4">{msg.text}</p>
+                  <span className="text-[9px] opacity-60 mt-1 block text-left font-mono">
+                    {msg.timestamp?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
           <div ref={chatEndRef} />
 
-          {/* 3. רכיב החיפוש של גוגל - מוטמע כ-Overlay */}
+          {/* חיפוש גוגל בשכבה צפה */}
           <AnimatePresence>
             {showSearch && (
               <motion.div 
-                initial={{ x: "100%" }} 
-                animate={{ x: 0 }} 
-                exit={{ x: "100%" }} 
-                transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="absolute inset-0 z-30 bg-[#0b141a] p-4 flex flex-col"
+                initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
+                className={clsx(
+                  "absolute inset-0 z-30 p-4 flex flex-col transition-colors",
+                  isDarkMode ? "bg-[#0b141a]" : "bg-[#f0f2f5]"
+                )}
               >
-                <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-2">
-                  <h3 className="font-bold text-[#00a884]">חיפוש מוצרים וסרטונים</h3>
-                  <button onClick={() => setShowSearch(false)} className="text-gray-500 hover:text-white">
-                    <X size={24} />
-                  </button>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-bold text-[#00a884]">חיפוש מוצרים - גוגל</h3>
+                  <button onClick={() => setShowSearch(false)} className="text-gray-500"><X size={24} /></button>
                 </div>
-                <div className="flex-1 overflow-y-auto custom-scroll google-search-container">
-                  {/* הרכיב של גוגל */}
+                <div className="flex-1 overflow-y-auto gcse-container">
                   <div className="gcse-search"></div>
                 </div>
               </motion.div>
@@ -112,33 +161,30 @@ export default function SabanChatPage() {
           </AnimatePresence>
         </div>
 
-        {/* פוטר כתיבה */}
-        <footer className="bg-[#202c33] p-3 flex items-center gap-3">
+        {/* שדה כתיבה */}
+        <footer className={clsx(
+          "p-3 flex items-center gap-3 transition-colors",
+          isDarkMode ? "bg-[#202c33]" : "bg-[#f0f2f5]"
+        )}>
           <Paperclip className="text-[#8696a0] cursor-pointer" size={24} />
-          <div className="flex-1 bg-[#2a3942] rounded-xl px-4 py-2">
+          <div className={clsx(
+            "flex-1 rounded-xl px-4 py-2 transition-colors",
+            isDarkMode ? "bg-[#2a3942]" : "bg-white shadow-sm"
+          )}>
             <input 
               value={inputText} 
               onChange={(e) => setInputText(e.target.value)} 
               onKeyDown={(e) => e.key === "Enter" && handleSend()} 
               placeholder="כתוב הודעה..." 
-              className="bg-transparent outline-none w-full text-sm text-white" 
+              className="bg-transparent outline-none w-full text-sm" 
             />
           </div>
-          <button onClick={handleSend} className="bg-[#00a884] p-2.5 rounded-full text-[#0b141a]">
+          <button onClick={handleSend} className="bg-[#00a884] p-2.5 rounded-full text-white shadow-lg active:scale-90 transition-all">
             <Send size={20} fill="currentColor" />
           </button>
         </footer>
       </div>
 
-      {/* 4. Sidebar ימין - סיכום הזמנה */}
-      <div className="w-[20%] bg-[#111b21] hidden lg:flex flex-col p-4">
-        <h3 className="text-xs font-black text-gray-500 uppercase tracking-widest border-b border-white/5 pb-2 mb-4">סל הזמנה</h3>
-        <div className="flex-1 italic text-[11px] text-gray-600 text-center mt-10">
-          חפש מוצרים בגוגל והוסף אותם לכאן ידנית או דרך היועץ.
-        </div>
-      </div>
-
-      {/* עיצוב משלים לחיפוש של גוגל כדי שיתאים ל-Dark Mode */}
       <style jsx global>{`
         .gcse-search { min-height: 400px; }
         .gsc-control-cse { 
@@ -146,11 +192,11 @@ export default function SabanChatPage() {
           border: none !important; 
           padding: 0 !important;
         }
-        .gsc-search-button-v2 { background-color: #00a884 !important; border: none !important; }
-        .gsc-input-box { background-color: #2a3942 !important; border: 1px solid #222d34 !important; color: white !important; }
-        .gsc-input { color: white !important; }
-        .gs-title, .gs-snippet { color: #e9edef !important; }
-        .gs-promotion { background-color: #202c33 !important; }
+        .gsc-input-box { 
+          background-color: ${isDarkMode ? '#2a3942' : 'white'} !important; 
+          border-radius: 12px !important;
+        }
+        .gs-title, .gs-snippet { color: ${isDarkMode ? '#e9edef' : '#111b21'} !important; }
       `}</style>
     </div>
   );
