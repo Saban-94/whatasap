@@ -7,60 +7,60 @@ import sabanMasterBrain from "@/data/saban_master_brain.json";
 
 export async function getSabanSmartResponse(prompt: string, customerId: string) {
   let customerName = 'אחי';
-  const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+  
+  // רשימת המפתחות מה-Vercel
+  const apiKeys = [
+    process.env.GEMINI_API_KEY,
+    process.env.GEMINI_API_KEY_2,
+    process.env.GEMINI_API_KEY_3
+  ].filter(key => !!key); // משאיר רק מפתחות שבאמת קיימים
 
-  console.log("--- 🏗️ SABAN-AI EMERGENCY REPAIR ---");
+  console.log(`--- 🏗️ SABAN-AI MULTI-KEY SYSTEM (Total: ${apiKeys.length}) ---`);
 
-  if (!apiKey) {
-    console.error("❌ מלשינון: API KEY חסר!");
-    return "אחי, המפתח שלי לא מוגדר בשרת. בדוק את הגדרות Vercel.";
-  }
-
-  // אסטרטגיה: שימוש בשמות מודלים מלאים בגרסה v1 היציבה
-  const modelStrategy = [
-    { name: "models/gemini-1.5-flash" },
-    { name: "models/gemini-1.5-pro" }
-  ];
-
-  const genAI = new GoogleGenerativeAI(apiKey);
-
+  // משיכת שם לקוח מה-CRM
   try {
     const docRef = doc(db, 'customer_memory', customerId);
     const crmSnap = await getDoc(docRef);
     if (crmSnap.exists()) {
-      const data = crmSnap.data();
-      customerName = data?.name || 'אחי';
+      customerName = crmSnap.data()?.name || 'אחי';
     }
   } catch (e) {
-    console.warn("⚠️ מלשינון: CRM לא זמין.");
+    console.warn("⚠️ CRM Offline");
   }
 
-  for (const config of modelStrategy) {
+  // לולאת המפתחות - עוברת אחד אחד אם יש כישלון
+  for (let i = 0; i < apiKeys.length; i++) {
+    const currentKey = apiKeys[i]!;
+    
     try {
-      console.log(`🚀 מלשינון: מנסה פורמט מלא למודל ${config.name}...`);
+      console.log(`🚀 מלשינון: מנסה מפתח מספר ${i + 1}...`);
+      const genAI = new GoogleGenerativeAI(currentKey);
       
-      // שימוש בגרסת v1 היציבה במקום v1beta
-      const model = genAI.getGenerativeModel({ model: config.name }, { apiVersion: 'v1' });
+      // שימוש במודל הכי חדש מינואר 2026
+      const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
 
       const systemPrompt = `
-        אתה "גימני", המומחה של חברת "ח. סבן". הלקוח: ${customerName}.
+        אתה "גימני" מ-ח. סבן. הלקוח: ${customerName}.
         סגנון: חברי, מקצועי, סלנג בנייה.
         מלאי: ${JSON.stringify(sabanMasterBrain.slice(0, 5))}
       `;
 
-      const result = await model.generateContent(systemPrompt + "\n\nשאלה: " + prompt);
+      const result = await model.generateContent(systemPrompt + "\n\n" + prompt);
       const response = await result.response;
       const text = response.text();
 
       if (text) {
-        console.log(`✅ מלשינון: הצלחה עם ${config.name}!`);
+        console.log(`✅ הצלחה! מפתח ${i + 1} עובד.`);
         return text;
       }
-
     } catch (error: any) {
-      console.warn(`⚠️ מלשינון: ${config.name} נכשל: ${error.message}`);
+      console.error(`❌ מפתח ${i + 1} נכשל: ${error.message}`);
+      // אם הגענו למפתח האחרון וכולם נכשלו
+      if (i === apiKeys.length - 1) {
+        return `אהלן ${customerName}, יש עומס רגעי אצל גוגל. תנסה לשלוח שוב בעוד דקה.`;
+      }
+      // אחרת - הלולאה ממשיכה למפתח הבא אוטומטית
+      console.log("🔄 עובר למפתח הגיבוי הבא...");
     }
   }
-
-  return `אהלן ${customerName}, יש עומס זמני בגוגל. תנסה לשלוח שוב בעוד כמה שניות.`;
 }
