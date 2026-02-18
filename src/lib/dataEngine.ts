@@ -4,49 +4,48 @@ import { getSabanSmartResponse } from "@/app/actions/gemini-brain";
 
 export async function processSmartOrder(customerId: string, text: string) {
   const memory: any = await fetchCustomerBrain(customerId);
-  const name = (memory && typeof memory === 'object' && memory.name) ? memory.name : "אלוף";
+  const name = (memory && typeof memory === 'object' && memory.name) ? memory.name : "אחי";
+  
+  // גישה למלאי המובנה
   const inventory = (productsData as any).inventory || [];
 
+  // חיפוש מוצרים בטקסט (לפי מילה ראשונה בשם המוצר)
   const foundProducts = inventory.filter((p: any) => 
     p.name && text.toLowerCase().includes(p.name.split(' ')[0].toLowerCase())
   );
 
-  let expertContext = foundProducts.map((p: any) => 
-    `מוצר: ${p.name}. חישוב: ${p.calculation_logic}`
-  ).join('\n');
-
   let aiResponse = ""; 
   try {
-    const prompt = `אתה המומחה של ח. סבן. ענה ל${name} בצורה מקצועית. 
-    בלי כוכביות (**). השתמש באימוג'י אחד בלבד לכל נושא.
-    אם יש חישוב, הצג אותו בשורות נפרדות וברורות.
-    ידע: ${expertContext}\n\nשאלה: ${text}`;
+    const expertContext = foundProducts.map((p: any) => 
+      `- ${p.name}: ${p.description}. חישוב: ${p.calculation_logic}`
+    ).join('\n');
+
+    const prompt = `אתה המומחה של ח. סבן. ענה ל${name} בצורה מקצועית, נקייה ומודגשת. 
+    בלי כוכביות (**). השתמש באימוג'י אחד בלבד לכל נושא. 
+    ידע זמין: ${expertContext}\n\nשאלה: ${text}`;
 
     const raw = await getSabanSmartResponse(prompt, customerId);
-    // ניקוי כוכביות והדגשות ידניות
+    // ניקוי כוכביות וטקסט דהוי
     aiResponse = (raw || "").replace(/\*\*/g, '').trim();
   } catch (err) {
-    aiResponse = `שלום ${name}, אני בודק את הפרטים עבורך.`;
+    aiResponse = `אהלן ${name}, אני בודק את המפרט הטכני בשבילך...`;
   }
 
-  // יצירת מטה-דאטה עבור דף הניהול והצ'אט
-  const meta = {
-    customerName: name,
-    recommendations: foundProducts.map((p: any) => ({
-      id: p.barcode,
-      name: p.name,
-      qty: 1,
-      price: p.price || "לפי מחירון",
-      color: p.department === 'איטום' ? '#3b82f6' : '#10b981', // כחול לאיטום, ירוק לבנייה
-      logistics: p.logistics_tag
-    })),
-    totalWeight: foundProducts.length * 25 // חישוב גס להדגמה
-  };
+  // הכנת רשימת המוצרים לימין (ה-Sidebar)
+  const orderList = foundProducts.map((p: any) => ({
+    id: p.barcode,
+    name: p.name,
+    qty: 1, // ברירת מחדל
+    price: p.price || "לפי מחירון",
+    image: p.image_url,
+    // צבע לפי מחלקה: כחול לאיטום, ירוק לכל השאר
+    color: p.department?.includes('איטום') ? '#3b82f6' : '#10b981'
+  }));
 
   return {
     text: aiResponse,
-    orderList: meta.recommendations,
+    orderList: orderList, // הרשימה שתעבור לימין
     customerName: name,
-    meta: meta // הוספת meta כדי לפתור את שגיאת ה-Build
+    meta: { recommendations: orderList } // תאימות לדף הניהול
   };
 }
