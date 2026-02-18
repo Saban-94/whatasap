@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Paperclip, MoreVertical, Search, CheckCheck, X, info } from "lucide-react";
+import { Send, Paperclip, MoreVertical, Search, CheckCheck, X, Info } from "lucide-react";
 import clsx from "clsx";
 
 export default function SabanChatPage() {
