@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-// תיקון: Truck חייב להיות באות גדולה (PascalCase) ב-lucide-react
+// תיקון: Truck חייב להיות PascalCase
 import { Clock, Truck, User } from 'lucide-react';
 
 interface TimelineEvent {
@@ -20,7 +20,6 @@ export default function TimelineView() {
   useEffect(() => {
     async function fetchTimeline() {
       try {
-        // משיכת נתונים מטרבלת הנהגים/פעילות בסופבייס
         const { data, error } = await supabase
           .from('driver_activities') 
           .select('*')
@@ -38,13 +37,13 @@ export default function TimelineView() {
 
     fetchTimeline();
 
-    // האזנה לשינויים בזמן אמת (Real-time)
+    // האזנה לשינויים בזמן אמת (Real-time) עם הגדרת סוג ל-payload
     const subscription = supabase
       .channel('schema-db-changes')
       .on('postgres_changes', 
         { event: 'INSERT', schema: 'public', table: 'driver_activities' }, 
-        payload => {
-          setEvents(prev => [payload.new as TimelineEvent, ...prev].slice(0, 10));
+        (payload: { new: TimelineEvent }) => { // תיקון: הגדרת Type ל-payload
+          setEvents(prev => [payload.new, ...prev].slice(0, 10));
         }
       )
       .subscribe();
@@ -54,7 +53,6 @@ export default function TimelineView() {
     };
   }, []);
 
-  // פונקציית עזר לפרמוט זמן בטוח
   const formatTime = (dateStr: string) => {
     try {
       return new Date(dateStr).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
@@ -81,7 +79,6 @@ export default function TimelineView() {
         <div className="space-y-4">
           {events.map((event) => (
             <div key={event.id} className="relative pr-6 border-r-2 border-slate-600 pb-4 last:pb-0">
-              {/* הנקודה בציר הזמן */}
               <div className="absolute -right-[9px] top-1 w-4 h-4 bg-sky-500 rounded-full border-4 border-slate-800"></div>
               
               <div className="bg-slate-700/50 p-3 rounded-lg border border-slate-600 hover:border-sky-500 transition-colors">
