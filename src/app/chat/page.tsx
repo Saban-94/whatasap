@@ -1,10 +1,11 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import ProductCard from "@/src/components/chat/ProductCard";
-import OrderSidebar from "@/src/components/chat/OrderSidebar";
-import { useGoogleSearch } from "@/src/hooks/useGoogleSearch";
+import ProductCard from "../../components/chat/ProductCard";
+import OrderSidebar from "../../components/chat/OrderSidebar";
+import { useGoogleSearch } from "../../hooks/useGoogleSearch";
 import { Send, X } from "lucide-react";
+import clsx from "clsx";
 
 export default function ChatPage() {
   const [mounted, setMounted] = useState(false);
