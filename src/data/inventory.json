@@ -1,0 +1,31 @@
+[
+  {
+    "sku": "SIKA-107",
+    "name": "סיקה טופ סיל 107",
+    "description": "חומר איטום צמנטי דו-רכיבי למניעת חדירת מים.",
+    "specs": {
+      "consumptionPerM2": "2.0 ק\"ג למ\"ר (שתי שכבות)",
+      "dryingTime": "24 שעות לייבוש סופי",
+      "basis": "צמנטי"
+    },
+    "media": {
+      "imageUrl": "https://www.sika.com/content/dam/dms/il01/k/sika-top-seal-107.jpg",
+      "videoUrl": "https://www.youtube.com/watch?v=VIDEO_ID_HERE"
+    },
+    "category": "איטום"
+  },
+  {
+    "sku": "EVO-FLEX",
+    "name": "אלסטופלקס",
+    "description": "חומר איטום ביטומני משופר.",
+    "specs": {
+      "consumptionPerM2": "1.5-3.0 ק\"ג למ\"ר",
+      "dryingTime": "6-12 שעות",
+      "basis": "ביטומני"
+    },
+    "media": {
+      "imageUrl": "https://example.com/evo-flex.jpg",
+      "videoUrl": "https://www.youtube.com/watch?v=ANOTHER_ID"
+    }
+  }
+]
