@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { fetchProducts, deleteProduct } from '@/lib/api';
+import { fetchProducts, deleteProduct, createProduct } from '@/lib/api';
 import { Product } from '@/lib/types';
 import ProductCard from '@/components/ProductCard';
 import { Plus, Search, Loader2 } from 'lucide-react';
