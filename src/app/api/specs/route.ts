@@ -11,10 +11,19 @@ export async function POST(req: NextRequest) {
       generationConfig: { responseMimeType: "application/json" }
     });
 
-    const prompt = `Return JSON for construction product "${query}": { "consumptionPerM2": "string", "dryingTime": "string", "basis": "string", "confidence": number }`;
+    const prompt = `You are a construction expert. For the product "${query}", return strictly this JSON:
+    {
+      "consumptionPerM2": "string with units",
+      "dryingTime": "string with units",
+      "basis": "material base description",
+      "confidence": number between 0-1
+    }`;
+
     const result = await model.generateContent(prompt);
-    return NextResponse.json(JSON.parse(result.response.text()));
+    const text = result.response.text();
+    return NextResponse.json(JSON.parse(text));
   } catch (error) {
-    return NextResponse.json({ error: "Failed specs" }, { status: 500 });
+    console.error("Gemini API Error:", error);
+    return NextResponse.json({ error: "Failed specs extraction" }, { status: 500 });
   }
 }
