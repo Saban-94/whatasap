@@ -1,45 +1,60 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// הגדרת המפתח
-const apiKey = (process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || "").split(",")[0].trim();
-
-// יצירת מופע של ה-AI
-const genAI = new GoogleGenerativeAI(apiKey);
+export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
     const { query } = await req.json();
     if (!query) return NextResponse.json({ error: "Missing query" }, { status: 400 });
 
-    // פתרון השגיאה: שימוש במודל היציב ביותר
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash", // שם המודל המעודכן
-    });
+    // 1. חילוץ המפתחות מה-ENV (מופרדים בפסיק)
+    const keys = (process.env.GEMINI_API_KEYS || "").split(",").map(k => k.trim()).filter(Boolean);
+    
+    if (keys.length === 0) {
+      return NextResponse.json({ error: "No API Keys configured" }, { status: 500 });
+    }
 
-    const prompt = `You are a construction materials expert. 
-    Provide technical specifications for: "${query}". 
-    Return ONLY a JSON object with these keys: 
-    "consumptionPerM2", "dryingTime", "basis", "confidence" (number 0-1).`;
+    let lastError: any = null;
 
-    // ביצוע הקריאה עם הגדרת JSON
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseMimeType: "application/json",
-      },
-    });
+    // 2. לולאה שמנסה כל מפתח לפי הסדר (Rotation)
+    for (const key of keys) {
+      try {
+        const genAI = new GoogleGenerativeAI(key);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    const responseText = result.response.text();
-    return NextResponse.json(JSON.parse(responseText));
+        const prompt = `You are a construction materials expert. Return ONLY a JSON object for: "${query}" with:
+        "consumptionPerM2", "dryingTime", "basis", "confidence" (0-1).`;
+
+        const result = await model.generateContent({
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.1,
+            responseMimeType: "application/json",
+          },
+        });
+
+        const responseText = result.response.text();
+        const cleanJson = responseText.replace(/```json|```/g, "").trim();
+        
+        // אם הצלחנו - מחזירים מיד את התשובה ועוצרים את הלולאה
+        return NextResponse.json(JSON.parse(cleanJson));
+
+      } catch (error: any) {
+        console.warn(`מפתח נכשל, מנסה את המפתח הבא... שגיאה: ${error.message}`);
+        lastError = error;
+        // ממשיך למפתח הבא בלולאה
+        continue;
+      }
+    }
+
+    // 3. אם הגענו לכאן, סימן שכל המפתחות נכשלו
+    return NextResponse.json({ 
+      error: "All API keys exhausted or failed", 
+      message: lastError?.message 
+    }, { status: 502 });
 
   } catch (error: any) {
-    console.error("Specs API Error Detailed:", error);
-    
-    // אם המודל עדיין לא נמצא, ננסה fallback למודל פרו (לפעמים המפתחות מוגבלים אליו)
-    return NextResponse.json({ 
-      error: "Model connection failed", 
-      details: error.message 
-    }, { status: 500 });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
