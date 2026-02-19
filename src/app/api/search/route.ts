@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(req: NextRequest) {
   try {
     const { query, type } = await req.json();
-    const apiKey = process.env.GOOGLE_API_KEYS?.split(',')[0];
+    const apiKey = (process.env.GOOGLE_API_KEYS || "").split(",")[0].trim();
     const cx = process.env.GOOGLE_CX || "635bc3eeee0194b16";
     const isVideo = type === "video";
 
@@ -15,6 +15,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(isVideo ? { videoUrl: link } : { imageUrl: link });
   } catch (error) {
+    console.error("Search API Error:", error);
     return NextResponse.json({ error: "Search failed" }, { status: 500 });
   }
 }
