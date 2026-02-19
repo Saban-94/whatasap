@@ -52,7 +52,7 @@ export default function ProductStudioPage() {
         <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
         <input
           type="text"
-          placeholder="חיפוש לפי שם או מק\"ט..."
+          placeholder='חיפוש לפי שם או מק"ט...'
           className="w-full bg-[#202c33] border-none rounded-2xl py-4 pr-12 pl-4 text-white focus:ring-2 focus:ring-[#C9A227] text-right"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
