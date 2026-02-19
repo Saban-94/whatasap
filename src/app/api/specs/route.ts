@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEYS?.split(',')[0] || "");
+// שימוש במפתח הראשון מרשימה או מפתח בודד
+const keys = (process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || "").split(",");
+const genAI = new GoogleGenerativeAI(keys[0].trim());
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,19 +13,14 @@ export async function POST(req: NextRequest) {
       generationConfig: { responseMimeType: "application/json" }
     });
 
-    const prompt = `You are a construction expert. For the product "${query}", return strictly this JSON:
-    {
-      "consumptionPerM2": "string with units",
-      "dryingTime": "string with units",
-      "basis": "material base description",
-      "confidence": number between 0-1
-    }`;
-
+    const prompt = `Return JSON for construction product "${query}": 
+    { "consumptionPerM2": "string", "dryingTime": "string", "basis": "string", "confidence": number }`;
+    
     const result = await model.generateContent(prompt);
-    const text = result.response.text();
-    return NextResponse.json(JSON.parse(text));
+    const responseText = result.response.text();
+    return NextResponse.json(JSON.parse(responseText));
   } catch (error) {
-    console.error("Gemini API Error:", error);
-    return NextResponse.json({ error: "Failed specs extraction" }, { status: 500 });
+    console.error("Specs API Error:", error);
+    return NextResponse.json({ error: "Service Unavailable" }, { status: 500 });
   }
 }
