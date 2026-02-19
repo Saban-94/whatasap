@@ -1,37 +1,52 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
+import { supabase } from '@/lib/supabase';
 
-const dataPath = path.join(process.cwd(), 'src/lib/inventory.json');
-
-// פונקציית עזר לקריאת הקובץ
-async function getInventory() {
-  const fileData = await fs.readFile(dataPath, 'utf8');
-  return JSON.parse(fileData);
-}
-
+// שליפת כל המוצרים
 export async function GET() {
   try {
-    const data = await getInventory();
-    return NextResponse.json({ ok: true, data: data.inventory || data });
-  } catch (error) {
-    return NextResponse.json({ ok: false, error: 'Failed to load inventory' }, { status: 500 });
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return NextResponse.json(data);
+  } catch (error: any) {
+    console.error('SabanOS API Error:', error);
+    return NextResponse.json({ error: 'Failed to load inventory', details: error.message }, { status: 500 });
   }
 }
 
-export async function POST(req: Request) {
+// יצירת מוצר חדש
+export async function POST(request: Request) {
   try {
-    const newProduct = await req.json();
-    const data = await getInventory();
+    const body = await request.json();
     
-    // הוספת המוצר החדש
-    const updatedInventory = [...(data.inventory || data), newProduct];
-    
-    // הערה: ב-Local זה ישמור לקובץ. ב-Vercel זה דורש DB חיצוני (כמו Supabase)
-    // await fs.writeFile(dataPath, JSON.stringify({ inventory: updatedInventory }, null, 2));
-    
-    return NextResponse.json({ ok: true, data: newProduct });
-  } catch (error) {
-    return NextResponse.json({ ok: false, error: 'Failed to save product' }, { status: 500 });
+    // מוודא שיש את השדות המינימליים
+    if (!body.sku || !body.name) {
+      return NextResponse.json({ error: 'Missing SKU or Name' }, { status: 400 });
+    }
+
+    const { data, error } = await supabase
+      .from('products')
+      .insert([
+        {
+          sku: body.sku,
+          name: body.name,
+          description: body.description,
+          category: body.category,
+          image: body.image,
+          stock_quantity: body.stock?.quantity || 0,
+          unit: body.stock?.unit || 'יח',
+          metadata: body // שומר את כל האובייקט לגיבוי
+        }
+      ])
+      .select();
+
+    if (error) throw error;
+    return NextResponse.json(data[0]);
+  } catch (error: any) {
+    console.error('SabanOS Save Error:', error);
+    return NextResponse.json({ error: 'Failed to save product', details: error.message }, { status: 500 });
   }
 }
