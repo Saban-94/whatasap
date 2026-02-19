@@ -4,6 +4,7 @@ import { fetchProducts, deleteProduct } from '@/lib/api';
 import { Product } from '@/lib/types';
 import ProductCard from '@/components/ProductCard';
 import { Plus, Search, Loader2 } from 'lucide-react';
+import ProductForm from '@/components/ProductForm';
 
 export default function ProductStudioPage() {
   const [items, setItems] = useState<Product[]>([]);
