@@ -24,7 +24,28 @@ export default function ProductStudioPage() {
       setLoading(false);
     }
   }
+// הוסף את ה-States האלו בתוך הפונקציה ProductStudioPage
+const [isModalOpen, setIsModalOpen] = useState(false);
 
+// ועדכן את הכפתור ב-JSX:
+<button 
+  onClick={() => setIsModalOpen(true)} // פותח את המודל
+  className="bg-emerald-600 text-white px-6 py-3 rounded-2xl font-black flex items-center gap-2 shadow-lg shadow-emerald-100 hover:bg-emerald-700"
+>
+  <Plus size={20}/> מוצר חדש
+</button>
+
+// ולמטה, לפני סגירת ה-main:
+{isModalOpen && (
+  <ProductForm 
+    onCancel={() => setIsModalOpen(false)} 
+    onSubmit={async (data) => {
+      await createProduct(data); // קריאה ל-API שבנינו קודם
+      setIsModalOpen(false);
+      loadData(); // ריענון הרשימה
+    }} 
+  />
+)}
   const filtered = items.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
 
   if (loading) return <div className="h-screen flex items-center justify-center bg-white"><Loader2 className="animate-spin text-emerald-600" size={40}/></div>;
