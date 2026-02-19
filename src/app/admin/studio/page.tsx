@@ -4,7 +4,7 @@ import { fetchProducts, deleteProduct, createProduct, updateProduct } from '@/li
 import { Product } from '@/lib/types';
 import ProductCard from '@/components/ProductCard';
 import ProductForm from '@/components/ProductForm';
-import { Plus, Search, Loader2, RefreshCw } from 'lucide-react';
+import { Plus, Search, Loader2, RefreshCw, package as PackageIcon } from 'lucide-react';
 
 export default function ProductStudioPage() {
   const [items, setItems] = useState<Product[]>([]);
@@ -29,110 +29,109 @@ export default function ProductStudioPage() {
     }
   }
 
-  async function handleCreate(data: Product) {
-    try {
-      await createProduct(data);
-      await loadData();
-      setIsModalOpen(false);
-    } catch (e) {
-      alert("שגיאה בשמירת מוצר");
-    }
-  }
-
-  async function handleUpdate(data: Product) {
-    try {
-      await updateProduct(data.sku, data);
-      await loadData();
-      setEditingProduct(null);
-    } catch (e) {
-      alert("שגיאה בעדכון מוצר");
-    }
-  }
-
   const filtered = items.filter(p => 
-    p.name.toLowerCase().includes(search.toLowerCase()) || 
-    p.sku.toLowerCase().includes(search.toLowerCase())
+    p.name?.toLowerCase().includes(search.toLowerCase()) || 
+    p.sku?.toLowerCase().includes(search.toLowerCase())
   );
 
   if (loading && items.length === 0) {
     return (
-      <div className="h-screen flex items-center justify-center bg-white">
-        <Loader2 className="animate-spin text-emerald-600" size={40}/>
+      <div className="h-screen flex flex-col items-center justify-center bg-slate-50">
+        <Loader2 className="animate-spin text-emerald-600 mb-4" size={40}/>
+        <p className="text-slate-900 font-black">טוען נתונים מ-SabanOS...</p>
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[#F8FAFC] p-4 md:p-8" dir="rtl">
+    <main className="min-h-screen bg-slate-50 p-4 md:p-8 text-slate-900" dir="rtl">
       <div className="max-w-6xl mx-auto">
-        <header className="flex flex-col md:flex-row justify-between items-center mb-10 bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 gap-4">
+        
+        {/* Header - צבעים חזקים */}
+        <header className="flex flex-col md:flex-row justify-between items-center mb-10 bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-200 gap-4">
           <div>
-            <h1 className="text-3xl font-black text-slate-900">SabanOS Studio</h1>
-            <p className="text-slate-500 font-bold text-sm">ניהול קטלוג ומלאי ח. סבן</p>
+            <h1 className="text-4xl font-black text-slate-900 mb-1">SabanOS Studio</h1>
+            <p className="text-slate-600 font-bold text-lg">ניהול קטלוג ומלאי ח. סבן</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-4">
             <button 
               onClick={loadData}
-              className="p-3 text-slate-400 hover:text-emerald-600 transition-colors"
+              className="p-4 bg-slate-100 text-slate-600 rounded-2xl hover:bg-slate-200 transition-all"
+              title="רענן נתונים"
             >
-              <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
+              <RefreshCw size={24} className={loading ? 'animate-spin' : ''} />
             </button>
             <button 
               onClick={() => setIsModalOpen(true)}
-              className="bg-emerald-600 text-white px-6 py-3 rounded-2xl font-black flex items-center gap-2 shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all active:scale-95"
+              className="bg-emerald-600 text-white px-8 py-4 rounded-2xl font-black text-lg flex items-center gap-3 shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition-all active:scale-95"
             >
-              <Plus size={20}/> מוצר חדש
+              <Plus size={24} strokeWidth={3} /> מוצר חדש
             </button>
           </div>
         </header>
 
-        <div className="relative mb-8">
+        {/* Search Bar - טקסט שחור וברור */}
+        <div className="relative mb-12 shadow-sm">
           <input 
             type="text" 
             placeholder="חפש מוצר לפי שם או מק״ט..." 
-            className="w-full bg-white border border-slate-200 rounded-2xl px-6 py-4 pr-12 font-bold outline-none focus:ring-2 ring-emerald-500/20 shadow-sm"
+            className="w-full bg-white border-2 border-slate-200 rounded-[2rem] px-8 py-5 pr-14 font-bold text-slate-900 text-xl outline-none focus:border-emerald-500 transition-all placeholder:text-slate-400"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={20}/>
+          <Search className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400" size={28}/>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Grid - כרטיסים */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filtered.map(p => (
             <ProductCard 
               key={p.sku} 
               product={p} 
               onEdit={(prod) => setEditingProduct(prod)} 
               onDelete={async (sku) => {
-                if(confirm('בטוח שברצונך למחוק?')) {
+                if(confirm(`למחוק את ${p.name}?`)) {
                   await deleteProduct(sku);
                   loadData();
                 }
               }} 
             />
           ))}
+          
+          {/* Empty State */}
           {filtered.length === 0 && !loading && (
-            <div className="col-span-full text-center py-20 bg-white rounded-[2rem] border border-dashed text-slate-400 font-bold">
-              לא נמצאו מוצרים תואמים
+            <div className="col-span-full text-center py-32 bg-white rounded-[3rem] border-4 border-dashed border-slate-200">
+              <div className="bg-slate-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Search size={40} className="text-slate-300" />
+              </div>
+              <h3 className="text-2xl font-black text-slate-900 mb-2">לא מצאנו כלום, אחי</h3>
+              <p className="text-slate-500 font-bold text-lg">נסה לחפש מק"ט אחר או הוסף מוצר חדש</p>
             </div>
           )}
         </div>
       </div>
 
-      {/* מודל הוספה */}
+      {/* מודלים */}
       {isModalOpen && (
         <ProductForm 
           onCancel={() => setIsModalOpen(false)} 
-          onSubmit={handleCreate} 
+          onSubmit={async (data) => {
+            await createProduct(data);
+            setIsModalOpen(false);
+            loadData();
+          }} 
         />
       )}
 
-      {/* מודל עריכה */}
       {editingProduct && (
         <ProductForm 
           initial={editingProduct}
           onCancel={() => setEditingProduct(null)} 
-          onSubmit={handleUpdate} 
+          onSubmit={async (data) => {
+            await updateProduct(data.sku, data);
+            setEditingProduct(null);
+            loadData();
+          }} 
         />
       )}
     </main>
