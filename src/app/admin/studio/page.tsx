@@ -1,100 +1,117 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { Save, Plus, Trash2, CheckCircle, AlertCircle, Loader2, Image as ImageIcon } from "lucide-react";
+import { Plus, Minus, Info, Droplets, Tool, CheckCircle, AlertCircle, ChevronDown } from "lucide-react";
 
-export default function SabanStudioLight() {
+export default function SabanStudioProfessional() {
   const [items, setItems] = useState<any[]>([]);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [status, setStatus] = useState({ type: "", message: "" }); // ה"מלשינון"
 
   useEffect(() => {
-    loadData();
+    // טעינת הקטלוג מה-API שבנינו
+    fetch("/api/specs", { method: "POST", body: JSON.stringify({ mode: "studio" }) })
+      .then(res => res.json())
+      .then(data => {
+        setItems(data);
+        setLoading(false);
+      });
   }, []);
 
-  const loadData = async () => {
-    try {
-      const res = await fetch("/api/specs", { method: "POST", body: JSON.stringify({ mode: "studio" }) });
-      const data = await res.json();
-      setItems(Array.isArray(data) ? data : data.inventory || []);
-    } catch (e) {
-      logStatus("error", "שגיאה בטעינת המלאי");
-    } finally {
-      setLoading(false);
-    }
+  const toggleExpand = (id: string) => {
+    setExpandedId(expandedId === id ? null : id);
   };
 
-  const logStatus = (type: "success" | "error", msg: string) => {
-    setStatus({ type, message: msg });
-    setTimeout(() => setStatus({ type: "", message: "" }), 5000);
-  };
-
-  const handleSave = async () => {
-    logStatus("error", "Vercel בסביבת JSON לא ניתן לערוך קובץ - יש לחבר בסיס נתונים (Supabase)");
-    // כאן בעתיד תבוא הקריאה ל-Database
-  };
-
-  if (loading) return <div className="h-screen flex items-center justify-center bg-white text-emerald-600"><Loader2 className="animate-spin" size={40} /></div>;
+  if (loading) return <div className="h-screen flex items-center justify-center bg-white font-black text-emerald-600">טוען קטלוג מקצועי...</div>;
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-heebo p-6" dir="rtl">
-      <div className="max-w-6xl mx-auto">
-        {/* Header - Light Design */}
-        <header className="flex justify-between items-center mb-8 bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-          <div>
-            <h1 className="text-3xl font-black text-slate-800">ניהול קטלוג - ח. סבן</h1>
-            <p className="text-slate-500 font-bold uppercase text-xs tracking-widest mt-1">Saban Logistics Studio</p>
-          </div>
-          <div className="flex gap-3">
-            <button className="bg-white border border-slate-200 text-slate-600 px-5 py-3 rounded-2xl font-black flex items-center gap-2 hover:bg-slate-50 transition-all">
-              <Plus size={20} /> מוצר חדש
-            </button>
-            <button onClick={handleSave} className="bg-emerald-600 text-white px-8 py-3 rounded-2xl font-black flex items-center gap-2 shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition-all">
-              <Save size={20} /> שמור שינויים
-            </button>
-          </div>
-        </header>
+    <div className="min-h-screen bg-[#FDFDFD] text-slate-800 font-heebo p-4 md:p-10" dir="rtl">
+      <header className="max-w-5xl mx-auto mb-12 flex justify-between items-end border-b pb-6">
+        <div>
+          <h1 className="text-4xl font-black text-slate-900">סטודיו מוצרים</h1>
+          <p className="text-emerald-600 font-bold italic">SabanOS — Technical Catalog Builder</p>
+        </div>
+        <button className="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black flex items-center gap-2 hover:bg-emerald-600 transition-all shadow-lg">
+          <Plus size={20} /> הוסף מוצר חדש
+        </button>
+      </header>
 
-        {/* Inventory Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {items.map((item, i) => (
-            <div key={i} className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-all relative group">
-              <button className="absolute top-4 left-4 text-slate-300 hover:text-red-500 transition-colors">
-                <Trash2 size={18} />
-              </button>
-              
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center overflow-hidden border border-slate-50">
-                   {item.image ? <img src={item.image} className="object-cover w-full h-full" /> : <ImageIcon className="text-slate-300" />}
+      <div className="max-w-5xl mx-auto space-y-6">
+        {items.map((product) => (
+          <div key={product.barcode} className="bg-white rounded-[2rem] border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-all">
+            {/* Header המוצר - תמיד גלוי */}
+            <div className="p-6 flex items-center justify-between">
+              <div className="flex items-center gap-6">
+                <div className="w-24 h-24 bg-slate-50 rounded-2xl border flex items-center justify-center overflow-hidden">
+                  <img src={product.image || "/api/placeholder/200/200"} className="object-cover w-full h-full" alt="" />
                 </div>
                 <div>
-                  <input className="font-black text-lg text-slate-800 outline-none focus:text-emerald-600 w-full" defaultValue={item.name} />
-                  <div className="text-[10px] font-bold text-slate-400">ברקוד: {item.barcode || "N/A"}</div>
+                  <h2 className="text-2xl font-black text-slate-900">{product.name}</h2>
+                  <p className="text-slate-500 font-bold text-sm max-w-xl">{product.description || "לחץ על + למידע טכני מפורט"}</p>
+                  <div className="mt-2 flex gap-2">
+                    <span className="bg-slate-100 text-slate-600 text-[10px] font-black px-3 py-1 rounded-full">ברקוד: {product.barcode}</span>
+                    <span className="bg-emerald-50 text-emerald-700 text-[10px] font-black px-3 py-1 rounded-full">מחלקה: {product.department}</span>
+                  </div>
                 </div>
               </div>
-
-              <div className="space-y-3">
-                <div className="bg-slate-50 p-3 rounded-xl">
-                  <label className="block text-[10px] font-black text-slate-400 mb-1">נתוני צריכה</label>
-                  <input className="w-full bg-transparent font-bold text-sm outline-none" defaultValue={item.specs?.consumptionPerM2 || item.consumption} />
-                </div>
-                <div className="bg-slate-50 p-3 rounded-xl">
-                  <label className="block text-[10px] font-black text-slate-400 mb-1">קישור לתמונה/מדיה</label>
-                  <input className="w-full bg-transparent font-bold text-xs text-blue-600 outline-none" defaultValue={item.image || item.media?.imageUrl} />
-                </div>
-              </div>
+              
+              <button 
+                onClick={() => toggleExpand(product.barcode)}
+                className={`p-4 rounded-full transition-all ${expandedId === product.barcode ? 'bg-emerald-600 text-white rotate-180' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
+              >
+                {expandedId === product.barcode ? <Minus size={24} /> : <Plus size={24} />}
+              </button>
             </div>
-          ))}
-        </div>
 
-        {/* המלשינון (Status Logger) */}
-        {status.message && (
-          <div className={`fixed bottom-8 right-8 flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl border animate-bounce z-50 ${
-            status.type === "success" ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-red-50 border-red-200 text-red-700"
-          }`}>
-            {status.type === "success" ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
-            <span className="font-black text-sm">{status.message}</span>
+            {/* פרטי מוצר מוסתרים - נפתחים בלחיצה */}
+            {expandedId === product.barcode && (
+              <div className="p-8 bg-slate-50 border-t border-slate-100 animate-in slide-in-from-top duration-300">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  
+                  {/* עמודה 1: מאפיינים ושימושים */}
+                  <div className="space-y-6">
+                    <div>
+                      <h4 className="flex items-center gap-2 font-black text-emerald-700 mb-3"><Info size={18}/> מאפיינים ויתרונות</h4>
+                      <ul className="text-sm space-y-2 text-slate-600 font-bold">
+                        {/* כאן יבואו נתונים מה-JSON */}
+                        <li className="flex gap-2">• דו-רכיבי ומוכן לשימוש: ערכת נוזל ואבקה.</li>
+                        <li className="flex gap-2">• גמישות: אינו נסדקת ועמידה בטמפרטורות קיצון.</li>
+                        <li className="flex gap-2">• הידבקות מעולה לתשתיות בטון וטיח.</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="flex items-center gap-2 font-black text-blue-700 mb-3"><Droplets size={18}/> שימושים עיקריים</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {["חדרים רטובים", "מרתפים", "מאגרי מים", "בריכות"].map(tag => (
+                          <span key={tag} className="bg-white border border-blue-100 text-blue-700 px-3 py-1 rounded-lg text-xs font-bold">{tag}</span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* עמודה 2: הוראות יישום */}
+                  <div className="bg-white p-6 rounded-3xl border border-slate-200">
+                    <h4 className="flex items-center gap-2 font-black text-slate-800 mb-4"><Tool size={18}/> הוראות יישום בסיסיות</h4>
+                    <div className="space-y-4">
+                      <div className="flex gap-3">
+                        <div className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px] shrink-0">1</div>
+                        <p className="text-xs font-bold text-slate-500">הכנת תשתית נקייה, יציבה ולחה.</p>
+                      </div>
+                      <div className="flex gap-3">
+                        <div className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px] shrink-0">2</div>
+                        <p className="text-xs font-bold text-slate-500">ערבוב מכני איטי של רכיב A ו-B עד לקבלת תערובת אחידה.</p>
+                      </div>
+                      <div className="flex gap-3">
+                        <div className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px] shrink-0">3</div>
+                        <p className="text-xs font-bold text-slate-500">מריחת שתי שכבות (אופקי ואנכי) בהפרש של 2-6 שעות.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        ))}
       </div>
     </div>
   );
