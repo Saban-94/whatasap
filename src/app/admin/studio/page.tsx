@@ -1,74 +1,96 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { fetchProducts, deleteProduct, createProduct } from '@/lib/api';
+import { fetchProducts, deleteProduct, createProduct, updateProduct } from '@/lib/api';
 import { Product } from '@/lib/types';
 import ProductCard from '@/components/ProductCard';
-import { Plus, Search, Loader2 } from 'lucide-react';
 import ProductForm from '@/components/ProductForm';
+import { Plus, Search, Loader2, RefreshCw } from 'lucide-react';
 
 export default function ProductStudioPage() {
   const [items, setItems] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   useEffect(() => {
     loadData();
   }, []);
 
   async function loadData() {
+    setLoading(true);
     try {
       const data = await fetchProducts();
       setItems(data);
     } catch (e) {
-      console.error("Error loading products");
+      console.error("Error loading products:", e);
     } finally {
       setLoading(false);
     }
   }
-// הוסף את ה-States האלו בתוך הפונקציה ProductStudioPage
-const [isModalOpen, setIsModalOpen] = useState(false);
 
-// ועדכן את הכפתור ב-JSX:
-<button 
-  onClick={() => setIsModalOpen(true)} // פותח את המודל
-  className="bg-emerald-600 text-white px-6 py-3 rounded-2xl font-black flex items-center gap-2 shadow-lg shadow-emerald-100 hover:bg-emerald-700"
->
-  <Plus size={20}/> מוצר חדש
-</button>
-
-// ולמטה, לפני סגירת ה-main:
-{isModalOpen && (
-  <ProductForm 
-    onCancel={() => setIsModalOpen(false)} 
-    onSubmit={async (data) => {
-      await createProduct(data); // קריאה ל-API שבנינו קודם
+  async function handleCreate(data: Product) {
+    try {
+      await createProduct(data);
+      await loadData();
       setIsModalOpen(false);
-      loadData(); // ריענון הרשימה
-    }} 
-  />
-)}
-  const filtered = items.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
+    } catch (e) {
+      alert("שגיאה בשמירת מוצר");
+    }
+  }
 
-  if (loading) return <div className="h-screen flex items-center justify-center bg-white"><Loader2 className="animate-spin text-emerald-600" size={40}/></div>;
+  async function handleUpdate(data: Product) {
+    try {
+      await updateProduct(data.sku, data);
+      await loadData();
+      setEditingProduct(null);
+    } catch (e) {
+      alert("שגיאה בעדכון מוצר");
+    }
+  }
+
+  const filtered = items.filter(p => 
+    p.name.toLowerCase().includes(search.toLowerCase()) || 
+    p.sku.toLowerCase().includes(search.toLowerCase())
+  );
+
+  if (loading && items.length === 0) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-white">
+        <Loader2 className="animate-spin text-emerald-600" size={40}/>
+      </div>
+    );
+  }
 
   return (
-    <main className="min-h-screen bg-[#F8FAFC] p-8" dir="rtl">
+    <main className="min-h-screen bg-[#F8FAFC] p-4 md:p-8" dir="rtl">
       <div className="max-w-6xl mx-auto">
-        <header className="flex justify-between items-center mb-10 bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
+        <header className="flex flex-col md:flex-row justify-between items-center mb-10 bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 gap-4">
           <div>
             <h1 className="text-3xl font-black text-slate-900">SabanOS Studio</h1>
-            <p className="text-slate-500 font-bold text-sm">ניהול קטלוג מקצועי - ח. סבן</p>
+            <p className="text-slate-500 font-bold text-sm">ניהול קטלוג ומלאי ח. סבן</p>
           </div>
-          <button className="bg-emerald-600 text-white px-6 py-3 rounded-2xl font-black flex items-center gap-2 shadow-lg shadow-emerald-100 hover:bg-emerald-700">
-            <Plus size={20}/> מוצר חדש
-          </button>
+          <div className="flex gap-2">
+            <button 
+              onClick={loadData}
+              className="p-3 text-slate-400 hover:text-emerald-600 transition-colors"
+            >
+              <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
+            </button>
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="bg-emerald-600 text-white px-6 py-3 rounded-2xl font-black flex items-center gap-2 shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all active:scale-95"
+            >
+              <Plus size={20}/> מוצר חדש
+            </button>
+          </div>
         </header>
 
         <div className="relative mb-8">
           <input 
             type="text" 
             placeholder="חפש מוצר לפי שם או מק״ט..." 
-            className="w-full bg-white border border-slate-200 rounded-2xl px-6 py-4 pr-12 font-bold outline-none focus:ring-2 ring-emerald-500/20"
+            className="w-full bg-white border border-slate-200 rounded-2xl px-6 py-4 pr-12 font-bold outline-none focus:ring-2 ring-emerald-500/20 shadow-sm"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -80,15 +102,39 @@ const [isModalOpen, setIsModalOpen] = useState(false);
             <ProductCard 
               key={p.sku} 
               product={p} 
-              onEdit={(prod) => console.log('Edit', prod)} 
+              onEdit={(prod) => setEditingProduct(prod)} 
               onDelete={async (sku) => {
-                await deleteProduct(sku);
-                loadData();
+                if(confirm('בטוח שברצונך למחוק?')) {
+                  await deleteProduct(sku);
+                  loadData();
+                }
               }} 
             />
           ))}
+          {filtered.length === 0 && !loading && (
+            <div className="col-span-full text-center py-20 bg-white rounded-[2rem] border border-dashed text-slate-400 font-bold">
+              לא נמצאו מוצרים תואמים
+            </div>
+          )}
         </div>
       </div>
+
+      {/* מודל הוספה */}
+      {isModalOpen && (
+        <ProductForm 
+          onCancel={() => setIsModalOpen(false)} 
+          onSubmit={handleCreate} 
+        />
+      )}
+
+      {/* מודל עריכה */}
+      {editingProduct && (
+        <ProductForm 
+          initial={editingProduct}
+          onCancel={() => setEditingProduct(null)} 
+          onSubmit={handleUpdate} 
+        />
+      )}
     </main>
   );
 }
