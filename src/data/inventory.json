@@ -2,15 +2,15 @@
   {
     "sku": "SIKA-107",
     "name": "סיקה טופ סיל 107",
-    "description": "חומר איטום צמנטי דו-רכיבי למניעת חדירת מים.",
+    "description": "- חומר איטום צמנטי דו-רכיבי למניעת חדירת מים.",
     "specs": {
       "consumptionPerM2": "2.0 ק\"ג למ\"ר (שתי שכבות)",
       "dryingTime": "24 שעות לייבוש סופי",
       "basis": "צמנטי"
     },
     "media": {
-      "imageUrl": "https://www.sika.com/content/dam/dms/il01/k/sika-top-seal-107.jpg",
-      "videoUrl": "https://www.youtube.com/watch?v=VIDEO_ID_HERE"
+      "imageUrl": "https://gilar.co.il/wp-content/uploads/2016/07/GLR_SikaTop-Seal-107-Whitek-400x400.png",
+      "videoUrl": "https://youtu.be/_0VYn-IqRv4?si=K55Mq1dxIGjn9Ia1"
     },
     "category": "איטום"
   },
