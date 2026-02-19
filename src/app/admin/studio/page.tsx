@@ -4,8 +4,7 @@ import { fetchProducts, deleteProduct, createProduct, updateProduct } from '@/li
 import { Product } from '@/lib/types';
 import ProductCard from '@/components/ProductCard';
 import ProductForm from '@/components/ProductForm';
-import { Plus, Search, Loader2, RefreshCw, package as PackageIcon } from 'lucide-react';
-
+import { Plus, Search, Loader2, RefreshCw, Package as PackageIcon } from 'lucide-react';
 export default function ProductStudioPage() {
   const [items, setItems] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
