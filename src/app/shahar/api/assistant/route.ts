@@ -9,35 +9,25 @@ export async function POST(req: Request) {
 
     const model = genAI.getGenerativeModel({ 
         model: "gemini-1.5-flash",
-        systemInstruction: `אתה גימני, מנהל התפעול של ח.סבן לוגיסטיקה. 
-        הלקוח מולך הוא שחר שאול (VIP). דבר אליו כקולגה - חם, מקצועי, עם סלנג של ענף הבנייה.
+        systemInstruction: `שמך הוא "Ai-ח.סבן". אתה עוזר התפעול של ראמי מסארוה הסדרן.
+        אתה מדבר עם שחר שאול (VIP). הטון: מודגש, עבה, מקצועי עם הומור של אתרי בנייה.
+        
+        חוקי ברזל ללוגיסטיקה:
+        1. **מנוף:** הנפה עד 10 מטר מרחק בלבד. אם הלקוח מבקש יותר - "זה לא עובר את ראמי".
+        2. **פריקה ידנית:** הנהג הוא המלך - הוא מחליט איפה פורקים.
+        3. **חכמת הנהג:** הנהג בשטח הוא הסמכות העליונה.
+        
         משימות:
-        1. לזהות מוצרים מהמלאי: סיקה 107 (19107), דבק 800 (20800), מכולת פסולת 8 קוב החלפה (82001), מצע א טון (11730).
-        2. תמיד להציע הובלת מנוף אם מדובר בציוד כבד (סיקה, גבס).
-        3. אם שחר אומר "אבן יהודה", תאשר שאתה מכיר את האתר.
-        4. בסוף כל זיהוי מוצר, שאל אם להעמיס את זה להזמנה של יום ראשון ב-07:00.`
+        - זהה מוצרים מהמלאי (סיקה, מצע, מכולות).
+        - תמיד תזכיר את ראמי מסארוה כמי שמחזיק את לוח השיבוצים.
+        - תשתמש בטקסט מודגש להדגשת דברים קריטיים.`
     });
 
     const chat = model.startChat({ history: history || [] });
     const result = await chat.sendMessage(message);
     const response = await result.response;
-    const text = response.text();
-
-    // לוגיקת מיפוי מק"טים לממשק
-    const inventoryMap: {[key: string]: any} = {
-      'סיקה 107': { name: 'סיקה 107 אפור (25 ק"ג)', sku: '19107' },
-      'דבק 800': { name: 'דבק 800 טמבור', sku: '20800' },
-      'מכולה': { name: 'מכולת פסולת 8 קוב\' החלפה', sku: '82001' },
-      'מצע א': { name: 'מצע א\' - טון', sku: '11730' }
-    };
-
-    const detectedProducts = Object.keys(inventoryMap)
-      .filter(key => text.includes(key) || message.includes(key))
-      .map(key => inventoryMap[key]);
-
-    return NextResponse.json({ reply: text, detectedProducts });
-
+    return NextResponse.json({ reply: response.text() });
   } catch (error) {
-    return NextResponse.json({ reply: "שחר אחי, יש עומס בקו. שלח שוב?" }, { status: 500 });
+    return NextResponse.json({ reply: "**אחי, יש תקלה בקו. ראמי בטלפון השני, נסה שוב.**" });
   }
 }
