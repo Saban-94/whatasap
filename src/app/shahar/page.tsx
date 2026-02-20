@@ -1,103 +1,74 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-import { Send, Plus, Trash2, Edit3, Share2, History, PackageCheck } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+// ... שאר ה-Imports
 
-export default function ShaharAppV2() {
-  const [projects, setProjects] = useState([
-    { id: 1, name: 'אבן יהודה', address: 'האתרוג 44, אבן יהודה' },
-    { id: 2, name: 'כפר מונש', address: 'הרימון 5' }
-  ]);
-  const [messages, setMessages] = useState<any[]>([]);
-  const [cart, setCart] = useState<any[]>([]);
-  const [step, setStep] = useState('idle');
-  const [tempProjectName, setTempProjectName] = useState('');
-  const [selectedProject, setSelectedProject] = useState(projects[0]);
+// תמונות פרופיל מעודכנות
+const SHAHAR_PROFILE_PIC = "https://api.dicebear.com/7.x/pixel-art/svg?seed=ShaharShaul";
+const SABAN_AI_PROFILE_PIC = "https://media-mrs2-1.cdn.whatsapp.net/v/t61.24694-24/524989315_1073256511118475_7315275522833323073_n.jpg?ccb=11-4&oh=01_Q5Aa3wFxRPXggH-pzRFes-D1aIk6klzJrTv9Ks5RbOrhtvKfvQ&oe=69A5059E&_nc_sid=5e03e0&_nc_cat=111";
 
-  // פונקציית שליחה לוואטסאפ
-  const sendToWhatsApp = () => {
-    const clientID = "621100";
-    const phone = "972508860896";
-    
-    let messageText = `*מאפליקציית שחר שאול*\n`;
-    messageText += `מספר לקוח ID: ${clientID}\n`;
-    messageText += `*פרויקט:* ${selectedProject.name}\n`;
-    messageText += `*כתובת:* ${selectedProject.address}\n`;
-    messageText += `--------------------------\n`;
-    
-    cart.forEach((item, index) => {
-      messageText += `${index + 1}. ${item.qty} - ${item.name} - מק"ט: ${item.sku || '9999'}\n`;
-    });
-
-    // תיעוד ב-Firebase (סימולציה)
-    saveOrderToFirebase({ clientID, project: selectedProject.name, items: cart });
-
-    const encoded = encodeURIComponent(messageText);
-    window.open(`https://wa.me/${phone}?text=${encoded}`, '_blank');
-  };
-
-  const saveOrderToFirebase = async (orderData: any) => {
-     // כאן תבוא הפקודה ל-Firebase: addDoc(collection(db, "orders"), orderData)
-     console.log("Order saved to database:", orderData);
-  };
-
-  const handleCreateProject = (name: string, address: string) => {
-    const newP = { id: Date.now(), name, address };
-    setProjects([...projects, newP]);
-    setSelectedProject(newP);
-  };
+export default function ShaharUnifiedApp() {
+  // ... שאר ה-State והלוגיקה
 
   return (
-    <div className="flex h-screen bg-[#0b141a] text-white overflow-hidden text-right" dir="rtl">
+    <div className={`${isDarkMode ? 'bg-[#0b141a] text-white' : 'bg-[#f0f2f5] text-black'} flex h-screen w-full transition-colors`} dir="rtl">
       
-      {/* Sidebar - ניהול פרויקטים */}
-      <div className="w-80 bg-[#111b21] border-l border-[#202c33] p-4 flex flex-col">
-        <h2 className="text-[#C9A227] font-black text-xl mb-6 flex items-center gap-2">
-          <PackageCheck size={24} /> האתרים שלי
-        </h2>
-        
-        <div className="flex-1 space-y-3 overflow-y-auto">
-          {projects.map(p => (
-            <div key={p.id} className={`p-4 rounded-2xl border transition-all ${selectedProject.id === p.id ? 'border-[#00a884] bg-[#202c33]' : 'border-transparent bg-[#111b21] hover:bg-[#202c33]'}`}>
-              <div className="flex justify-between items-start mb-1">
-                <p className="font-bold text-sm">{p.name}</p>
-                <div className="flex gap-2">
-                  <Edit3 size={14} className="text-gray-500 cursor-pointer hover:text-white" />
-                  <Trash2 size={14} className="text-red-900 cursor-pointer hover:text-red-500" onClick={() => setProjects(projects.filter(x => x.id !== p.id))} />
-                </div>
+      {/* Sidebar */}
+      <div className={`w-80 border-l ${isDarkMode ? 'border-[#202c33] bg-[#111b21]' : 'border-gray-200 bg-white'} hidden lg:flex flex-col`}>
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-6">
+             <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2 rounded-full hover:bg-gray-500/10">
+                {isDarkMode ? <Sun size={20} className="text-yellow-500" /> : <Moon size={20} />}
+             </button>
+             {/* תמונת פרופיל שחר */}
+             <img src={SHAHAR_PROFILE_PIC} className="w-10 h-10 rounded-full border-2 border-[#C9A227] bg-[#202c33]" />
+          </div>
+
+          {/* ... כרטיס VIP ופרויקטים ... */}
+        </div>
+      </div>
+
+      {/* אזור הצ'אט */}
+      <div className="flex-1 flex flex-col relative">
+        <header className={`${isDarkMode ? 'bg-[#202c33]' : 'bg-white shadow-sm'} h-16 px-4 flex items-center justify-between z-10`}>
+          <div className="flex items-center gap-3">
+             {/* תמונת פרופיל גימני החדשה */}
+             <div className="relative">
+                <img src={SABAN_AI_PROFILE_PIC} className="w-10 h-10 rounded-full border border-[#00a884] object-cover" />
+                <div className="absolute bottom-0 right-0 w-3 h-3 bg-[#00a884] border-2 border-[#202c33] rounded-full"></div>
+             </div>
+             <div>
+               <p className="text-sm font-bold tracking-tight">גימני - יועץ ח.סבן</p>
+               <p className="text-[10px] text-[#00a884] font-medium">מחובר למלאי בזמן אמת</p>
+             </div>
+          </div>
+          {/* ... כפתורי Header ... */}
+        </header>
+
+        {/* זרימת הודעות */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-10 space-y-6 bg-[url('https://i.ibb.co/S6mXvY7/whatsapp-bg.png')] bg-opacity-10">
+          {messages.map(msg => (
+            <div key={msg.id} className={`flex ${msg.sender === 'ai' ? 'justify-start' : 'justify-end'} items-end gap-2`}>
+              {msg.sender === 'ai' && (
+                <img src={SABAN_AI_PROFILE_PIC} className="w-6 h-6 rounded-full border border-[#C9A227]/30 mb-1" />
+              )}
+              <div className={`max-w-[85%] md:max-w-[60%] p-4 rounded-2xl shadow-lg relative ${msg.sender === 'ai' ? (isDarkMode ? 'bg-[#202c33] rounded-tr-none' : 'bg-white text-black') : 'bg-[#005c4b] rounded-tl-none text-white'}`}>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                
+                {/* ... כרטיסי מוצרים ... */}
+                
+                <span className="text-[9px] mt-2 opacity-40 block text-left">{msg.time}</span>
               </div>
-              <p className="text-[10px] text-gray-500 italic">{p.address}</p>
-              <button onClick={() => setSelectedProject(p)} className="mt-2 text-[10px] text-[#00a884] font-bold">בחר אתר זה</button>
+              {msg.sender === 'user' && (
+                <img src={SHAHAR_PROFILE_PIC} className="w-6 h-6 rounded-full border border-[#00a884]/30 mb-1" />
+              )}
             </div>
           ))}
-          <button onClick={() => setStep('waiting_for_name')} className="w-full py-3 rounded-xl border-2 border-dashed border-[#C9A227]/30 text-[#C9A227] flex items-center justify-center gap-2 mt-4 hover:bg-[#C9A227]/5">
-            <Plus size={18} /> הוסף פרויקט חדש
-          </button>
+          {/* ... אפקט הקלדה ו-Scroll ... */}
         </div>
 
-        {/* קישורים לדפים פנימיים */}
-        <div className="pt-4 border-t border-[#202c33] space-y-2">
-           <button className="w-full p-3 rounded-xl bg-[#202c33] flex items-center gap-3 text-xs hover:bg-[#2a3942]">
-              <History size={16} className="text-[#C9A227]" /> היסטוריית הזמנות
-           </button>
-        </div>
+        {/* ... פוטר הקלדה ... */}
       </div>
-
-      {/* אזור הצ'אט וההזמנה */}
-      <div className="flex-1 flex flex-col">
-         {/* ... (הצ'אט שכתבנו קודם) ... */}
-         
-         {/* כפתור סגירת הזמנה */}
-         {cart.length > 0 && (
-           <div className="absolute bottom-20 left-6">
-              <button 
-                onClick={sendToWhatsApp}
-                className="bg-[#00a884] text-white px-6 py-4 rounded-full shadow-2xl flex items-center gap-3 animate-bounce font-black"
-              >
-                <Share2 size={20} /> שלח הזמנה לוואטסאפ
-              </button>
-           </div>
-         )}
-      </div>
+      {/* ... מודאל סיכום ו-Sidebar הזמנה ... */}
     </div>
   );
 }
