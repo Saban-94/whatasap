@@ -8,8 +8,8 @@ import {
 import OrderSidebar from './components/OrderSidebar';
 
 // תמונות פרופיל
-const SHAHAR_PROFILE_PIC = "https://api.dicebear.com/7.x/pixel-art/svg?seed=ShaharShaul";
-const SABAN_AI_PROFILE_PIC = "https://media-mrs2-1.cdn.whatsapp.net/v/t61.24694-24/524989315_1073256511118475_7315275522833323073_n.jpg?ccb=11-4&oh=01_Q5Aa3wFxRPXggH-pzRFes-D1aIk6klzJrTv9Ks5RbOrhtvKfvQ&oe=69A5059E&_nc_sid=5e03e0&_nc_cat=111";
+const SHAHAR_PROFILE_PIC = "https://media-mrs2-1.cdn.whatsapp.net/v/t61.24694-24/524989315_1073256511118475_7315275522833323073_n.jpg?stp=dst-jpg_s96x96_tt6&ccb=11-4&oh=01_Q5Aa3wEdYEkQedjfHMyKEvUOGoJo1PSvWHB36kS9JNJ-FcMWOg&oe=69A5059E&_nc_sid=5e03e0&_nc_cat=111";
+const SABAN_AI_PROFILE_PIC = "https://i.postimg.cc/t4hFSdPm/ai.png";
 
 export default function ShaharUnifiedApp() {
   const router = useRouter();
