@@ -1,44 +1,51 @@
 import { NextResponse } from 'next/server';
 
-const catalog = [
-  { name: 'דבק 800 טמבור', sku: '20800', price: 45 },
-  { name: 'דבק 500 עוז', sku: '20500', price: 38 },
-  { name: 'סיקה 107 אפור', sku: '19107', price: 120 },
-  { name: 'פריימר 004', sku: '14004', price: 85 }
-];
-
 export async function POST(req: Request) {
   try {
-    const { message, context } = await req.json();
+    const { message } = await req.json();
     const text = message.toLowerCase();
-    let reply = "";
-    let detectedProducts: any[] = [];
-    let action = "none";
-    let updatedContext = { ...context };
 
-    // זיהוי רשימת מוצרים (הצלבה מאחורי הקלעים)
-    catalog.forEach(item => {
-      if (text.includes(item.sku) || text.includes(item.name.split(' ')[1])) {
-        detectedProducts.push(item);
+    // רשימת מוצרים לזיהוי חכם
+    const knowledgeBase = [
+      { name: "עמוד קוטר 50 (3 מ')", sku: "POST-50-3", keywords: ['עמודים', 'קוטר 50'] },
+      { name: "ראש פוטר לפטישון", sku: "DRILL-HEAD", keywords: ['ראש פוטר', 'פטישון'] },
+      { name: "כפפות עבודה", sku: "GLOVES-24", keywords: ['כפפות'] },
+      { name: "מסמרי פלדה", sku: "STEEL-NAILS", keywords: ['מסמרים פלדה'] },
+      { name: "חוט שזור 50 ק\"ג", sku: "WIRE-50", keywords: ['חוט שזור'] },
+      { name: "ג'מבו קוטר 16", sku: "JUMBO-16", keywords: ['גמבו', 'ג'מבו'] },
+      { name: "קו בנאי", sku: "LINE-CONST", keywords: ['קו בנאי'] }
+    ];
+
+    let detectedProducts: any[] = [];
+    
+    // סריקה חכמה של ההודעה
+    knowledgeBase.forEach(item => {
+      if (item.keywords.some(k => text.includes(k))) {
+        // ניסיון לחלץ כמות מהטקסט (למשל: "5 יח")
+        const regex = new RegExp(`(\\d+)\\s*(?:יחידות|יח|יח'|קג|ק"ג)?\\s*${item.keywords[0]}`, 'g');
+        const match = text.match(/(\d+)/); // פשוט לוקח את המספר הקרוב
+        detectedProducts.push({
+          ...item,
+          tempQty: match ? match[0] : 1
+        });
       }
     });
 
-    if (text.includes('פרויקט חדש') || text.includes('פתח אתר')) {
-      reply = "בשמחה אחי! תן לי שם לאתר וכתובת, אני מעלה אותו למערכת עכשיו.";
-      action = "request_project_name";
-    } 
-    else if (detectedProducts.length > 0) {
-      reply = `שחר, קלטתי את הרשימה. הצלבתי מק"טים מהקטלוג שלנו. הנה מה שזיהיתי:`;
-      updatedContext.step = 'ordering';
-    }
-    else if (text.includes('תזמין') || text.includes('סיימתי')) {
-      reply = "בחרנו רשימת מוצרים פצצה. לאן תרצה לשלוח אחי את המוצרים? כתוב לי פה רחוב, מספר ועיר, ואיזה תאריך ושעה הכי נוח לך שמחלקת ההזמנות של ח.סבן תעמיס ותצא?";
-      action = "ask_delivery_details";
-    }
-    else {
-      reply = "הבנתי אחי. בוא נתמקד - מה חסר לך כרגע בשטח?";
+    if (detectedProducts.length > 0) {
+      return NextResponse.json({
+        reply: `אחלה רשימה שחר. הצלבתי את הנתונים עם המלאי בסבן. זיהיתי ${detectedProducts.length} פריטים. לאן לשלוח את כל זה, לאתר באבן יהודה?`,
+        detectedProducts,
+        action: "list_parsed"
+      });
     }
 
-    return NextResponse.json({ reply, detectedProducts, action, updatedContext });
-  } catch (e) { return NextResponse.json({ error: "API Fail" }, { status: 500 }); }
+    return NextResponse.json({
+      reply: "הבנתי אחי, אבל אני צריך להיות בטוח לגבי המק\"טים. תוכל לכתוב לי שוב מה הכי דחוף?",
+      detectedProducts: [],
+      action: "none"
+    });
+
+  } catch (e) {
+    return NextResponse.json({ error: "Failed to parse" }, { status: 500 });
+  }
 }
