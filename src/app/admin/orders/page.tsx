@@ -1,47 +1,63 @@
 'use client';
+import React, { useState, useEffect } from 'react';
+import { Bell, Truck, CheckCircle, Printer, Clock } from 'lucide-react';
 
-import React, { useEffect, useState } from 'react';
-import { db } from '@/lib/firebase';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
-import { Truck, Package, User, Calendar } from 'lucide-react';
-
-export default function OrdersDashboard() {
+export default function AdminOrders() {
   const [orders, setOrders] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
 
+  // אפקט צלצול כשמגיעה הזמנה חדשה
   useEffect(() => {
-    // משיכת הניתוחים הלוגיסטיים של ח. סבן
-    const q = query(collection(db, 'logistic_orders'), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const ordersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setOrders(ordersData);
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
+    const audio = new Audio('/sounds/notification.mp3'); // תוודא שיש לך קובץ כזה
+    // כאן תבוא לוגיקת האזנה ל-Firebase Realtime DB
+    // audio.play();
+  }, [orders]);
 
-  if (loading) return <div className="p-10 text-white bg-black h-screen">טוען נתונים...</div>;
+  const updateStatus = (orderId: string, newStatus: string) => {
+    // עדכון ב-Firebase ושליחת פוש לשחר
+    console.log(`עדכון הזמנה ${orderId} לסטטוס: ${newStatus}`);
+  };
 
   return (
-    <div className="min-h-screen bg-black text-white p-6 font-sans" dir="rtl">
-      <h1 className="text-2xl font-bold text-green-500 mb-6">לוח בקרה - ח. סבן</h1>
-      <div className="space-y-4">
-        {orders.map((order) => (
-          <div key={order.id} className="bg-[#111b21] p-4 rounded-xl border border-gray-800">
-            <div className="flex justify-between items-center mb-2">
-              <span className="font-bold flex items-center gap-2"><User size={16}/> {order.customerName}</span>
-              <span className="text-xs text-gray-500">{order.logistics?.truckType}</span>
+    <div className="min-h-screen bg-gray-900 text-white p-8" dir="rtl">
+      <div className="flex justify-between items-center mb-10 border-b border-gray-800 pb-5">
+        <h1 className="text-3xl font-black flex items-center gap-3">
+          <Bell className="text-yellow-500 animate-swing" /> חמ"ל הזמנות ח.סבן
+        </h1>
+        <div className="flex gap-4">
+           <span className="bg-green-500/20 text-green-400 px-4 py-2 rounded-full text-xs font-bold">4 נהגים מחוברים</span>
+        </div>
+      </div>
+
+      <div className="grid gap-6">
+        {/* כרטיס הזמנה לדוגמה */}
+        <div className="bg-gray-800 border-r-4 border-yellow-500 p-6 rounded-xl shadow-2xl">
+          <div className="flex justify-between items-start">
+            <div>
+              <h3 className="text-xl font-bold">שחר שאול - אבן יהודה</h3>
+              <p className="text-gray-400 text-sm">הזמנה #8829 | 10:45</p>
             </div>
-            <div className="text-sm text-gray-400 mb-3 italic">"{order.originalPrompt}"</div>
-            <div className="flex flex-wrap gap-2">
-              {order.recommendations?.map((item: any, i: number) => (
-                <span key={i} className="text-[11px] bg-gray-800 px-2 py-1 rounded border border-gray-700">
-                  {item.name} x{item.qty}
-                </span>
-              ))}
+            <span className="bg-yellow-500 text-black px-3 py-1 rounded-lg text-[10px] font-black italic">ממתין לשיבוץ נהג</span>
+          </div>
+
+          <div className="my-6 space-y-2">
+            <div className="flex justify-between text-sm border-b border-gray-700 pb-2">
+              <span>סיקה 107 אפור</span>
+              <span className="font-bold underline">10 יחידות</span>
             </div>
           </div>
-        ))}
+
+          <div className="flex gap-3 mt-6">
+            <button onClick={() => updateStatus('1', 'בדרך לאתר')} className="flex-1 bg-blue-600 hover:bg-blue-700 p-3 rounded-lg flex items-center justify-center gap-2 text-sm font-bold transition-all">
+              <Truck size={18} /> יצא לדרך
+            </button>
+            <button className="bg-white text-black p-3 rounded-lg hover:bg-gray-200 transition-all">
+              <Printer size={18} />
+            </button>
+            <button onClick={() => updateStatus('1', 'סופק')} className="bg-green-600 p-3 rounded-lg hover:bg-green-700">
+              <CheckCircle size={18} />
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
