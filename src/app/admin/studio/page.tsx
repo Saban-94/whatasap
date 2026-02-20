@@ -1,94 +1,63 @@
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Loader2, Package } from 'lucide-react';
+import { Plus, Search, Loader2 } from 'lucide-react';
 import ProductCard from '@/components/ProductCard';
 import ProductForm from '@/components/ProductForm';
 
-interface Product {
-  id: string;
-  sku: string;
-  name: string;
-  category?: string;
-  stock_quantity: number;
-  unit: string;
-}
-
 export default function SabanStudio() {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingProduct, setEditingProduct] = useState<any>(null);
   const [showForm, setShowForm] = useState(false);
   const [query, setQuery] = useState('');
 
-  const loadInventory = useCallback(async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
-    try {
-      const response = await fetch('/api/products');
-      const data = await response.json();
-      setProducts(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error("Load failed");
-    } finally {
-      setLoading(false);
-    }
+    const res = await fetch('/api/products');
+    const data = await res.json();
+    setProducts(Array.isArray(data) ? data : []);
+    setLoading(false);
   }, []);
 
-  useEffect(() => {
-    loadInventory();
-  }, [loadInventory]);
+  useEffect(() => { loadData(); }, [loadData]);
 
-  const filtered = products.filter(p => 
-    (p.name || '').toLowerCase().includes(query.toLowerCase()) || 
-    (p.sku || '').toLowerCase().includes(query.toLowerCase())
-  );
+  const handleDelete = async (id: string) => {
+    if (!confirm('למחוק מהמלאי?')) return;
+    await fetch(`/api/products/${id}`, { method: 'DELETE' });
+    loadData();
+  };
 
   return (
-    <div className="min-h-screen bg-[#0b141a] text-white p-6" dir="rtl">
+    <div className="min-h-screen bg-[#0b141a] text-white p-6 pb-32" dir="rtl">
       <header className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-black text-[#C9A227]">SABAN STUDIO</h1>
-          <p className="text-gray-400">ניהול מלאי בזמן אמת</p>
-        </div>
-        <button 
-          onClick={() => setShowForm(true)}
-          className="bg-[#C9A227] text-black px-6 py-3 rounded-2xl font-bold flex items-center gap-2 transition-transform active:scale-95"
-        >
-          <Plus size={20} /> הוספת מוצר
-        </button>
+        <h1 className="text-3xl font-black text-[#C9A227] tracking-tighter">SABAN STUDIO</h1>
+        <button onClick={() => setShowForm(true)} className="bg-[#C9A227] text-black px-6 py-3 rounded-2xl font-bold flex items-center gap-2"><Plus size={20}/> הוסף</button>
       </header>
 
+      {/* שורת חיפוש */}
       <div className="relative mb-8">
-        <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500" size={20} />
-        <input 
-          type="text" 
-          placeholder="חיפוש מוצר..."
-          className="w-full bg-[#202c33] border-none rounded-2xl py-4 pr-12 pl-4 focus:ring-2 focus:ring-[#C9A227]"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
+        <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500" />
+        <input className="w-full bg-[#202c33] border-none rounded-2xl py-4 pr-12 text-white" placeholder="חיפוש..." onChange={e => setQuery(e.target.value)} />
       </div>
 
-      {loading ? (
-        <div className="flex flex-col items-center justify-center py-20">
-          <Loader2 className="animate-spin text-[#C9A227]" size={40} />
-        </div>
-      ) : (
+      {loading ? <Loader2 className="animate-spin mx-auto mt-20 text-[#C9A227]" size={50} /> : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filtered.map(item => (
+          {products.filter(p => p.name.includes(query)).map(product => (
             <ProductCard 
-              key={item.id} 
-              product={item} 
-              onEdit={() => {}} 
-              onDelete={() => {}} 
+              key={product.id} 
+              product={product} 
+              onEdit={() => setEditingProduct(product)} 
+              onDelete={() => handleDelete(product.id)} 
             />
           ))}
         </div>
       )}
 
-      {/* חיבור 100% תואם לממשק של ProductForm */}
-      {showForm && (
+      {(showForm || editingProduct) && (
         <ProductForm 
-          onClose={() => setShowForm(false)} 
-          onSuccess={loadInventory} 
+          product={editingProduct} 
+          onClose={() => { setShowForm(false); setEditingProduct(null); }} 
+          onSuccess={loadData} 
         />
       )}
     </div>
