@@ -1,34 +1,25 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Paperclip, Smile, MoreVertical, ShoppingCart, Package, Plus, Bell, ShieldCheck, CreditCard } from 'lucide-react';
+import { Send, Paperclip, Smile, MoreVertical, ShoppingCart, Package, Plus, Bell, ShieldCheck, CreditCard, CheckCircle2 } from 'lucide-react';
 import OrderSidebar from './components/OrderSidebar';
 
-const SHAHAR_PROFILE_PIC = "https://media-mrs2-1.cdn.whatsapp.net/v/t61.24694-24/524989315_1073256511118475_7315275522833323073_n.jpg?ccb=11-4&oh=01_Q5Aa3wFxRPXggH-pzRFes-D1aIk6klzJrTv9Ks5RbOrhtvKfvQ&oe=69A5059E&_nc_sid=5e03e0&_nc_cat=111";
+const SHAHAR_PROFILE_PIC = "https://api.dicebear.com/7.x/pixel-art/svg?seed=ShaharShaul";
 const SABAN_AI_PROFILE_PIC = "https://api.dicebear.com/7.x/bottts/svg?seed=SabanAI";
 
 export default function ShaharChatPage() {
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState('');
   const [isOrderOpen, setIsOrderOpen] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
   const [cart, setCart] = useState<any[]>([]);
+  const [context, setContext] = useState({ project: 'אבן יהודה' });
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [showFinalSummary, setShowFinalSummary] = useState(false);
-  // התקנת OneSignal והתראות
-  useEffect(() => {
-    // שליפת הודעה ראשונית
-    setMessages([{ id: 1, text: "שלום שחר, מערכת ההתראות הופעלה. תקבל עדכון על כל שינוי בסטטוס ההזמנה.", sender: 'ai', time: '09:00' }]);
-    
-    // סימולציית OneSignal (בהנחה והסקריפט ב-layout)
-    if (typeof window !== 'undefined' && (window as any).OneSignal) {
-      (window as any).OneSignal.push(() => {
-        (window as any).OneSignal.showNativePrompt();
-      });
-    }
-  }, []);
 
   useEffect(() => {
-    scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    setMessages([{ id: 1, text: "אהלן שחר אחי, גימני כאן. ראיתי שאתה באבן יהודה היום, מה חסר לך במחסן?", sender: 'ai', time: '09:00' }]);
+  }, []);
+
+  useEffect(() => { scrollRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
   const handleSendMessage = async () => {
     if (!input.trim()) return;
@@ -41,23 +32,21 @@ export default function ShaharChatPage() {
       const res = await fetch('/shahar/api/assistant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: currentInput }),
+        body: JSON.stringify({ message: currentInput, currentContext: context }),
       });
       const data = await res.json();
       
-      const aiMsg = { 
-        id: Date.now() + 1, 
-        text: data.reply, 
-        sender: 'ai', 
+      setMessages(prev => [...prev, { 
+        id: Date.now() + 1, text: data.reply, sender: 'ai', 
         time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
         products: data.detectedProducts 
-      };
-      setMessages(prev => [...prev, aiMsg]);
-      
-      // השמעת צליל התראה (WhatsApp Web style)
+      }]);
+
+      if (data.newContext) setContext(data.newContext);
+      if (data.action === 'show_summary') setShowSummary(true);
+
       const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3');
       audio.play().catch(() => {});
-      
     } catch (e) { console.error(e); }
   };
 
@@ -67,115 +56,107 @@ export default function ShaharChatPage() {
   };
 
   return (
-    <div className="flex w-full h-screen relative bg-[#0b141a] overflow-hidden text-right" dir="rtl">
+    <div className="flex w-full h-screen bg-[#0b141a] overflow-hidden text-right" dir="rtl">
       
-      {/* Sidebar - ID Card Section */}
-      <div className="w-80 border-l border-[#202c33] hidden lg:flex flex-col bg-[#111b21]">
-        <div className="p-6 space-y-6">
-          {/* תעודת זהות אפליקטיבית */}
-          <div className="bg-gradient-to-br from-[#C9A227] to-[#8e721b] p-4 rounded-2xl shadow-xl relative overflow-hidden text-black">
-            <div className="absolute top-[-10px] right-[-10px] opacity-10"><CreditCard size={100} /></div>
-            <div className="flex justify-between items-start mb-8">
-              <ShieldCheck size={24} />
-              <span className="text-[10px] font-black uppercase tracking-widest">Saban Logistics VIP</span>
-            </div>
-            <div className="space-y-1">
-              <p className="text-[10px] uppercase opacity-80">שם הלקוח</p>
-              <p className="font-bold text-lg">שחר שאול</p>
-            </div>
-            <div className="mt-4 flex justify-between items-end">
-              <div>
-                <p className="text-[10px] uppercase opacity-80">מספר לקוח</p>
-                <p className="font-mono font-bold">#621100</p>
-              </div>
-              <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
-                <img src={SHAHAR_PROFILE_PIC} alt="Avatar" className="w-8 h-8" />
-              </div>
-            </div>
+      {/* Sidebar - ID Card */}
+      <div className="w-80 border-l border-[#202c33] hidden lg:flex flex-col bg-[#111b21] p-6 space-y-6">
+        <div className="bg-gradient-to-br from-[#C9A227] to-[#8e721b] p-5 rounded-3xl shadow-2xl text-black relative">
+          <CreditCard className="absolute -top-4 -left-4 opacity-10 w-32 h-32" />
+          <div className="flex justify-between items-start mb-10">
+            <ShieldCheck size={28} />
+            <span className="text-[10px] font-black uppercase tracking-widest bg-black/10 px-2 py-1 rounded">VIP CUSTOMER</span>
           </div>
-
-          <div className="space-y-2">
-             <h3 className="text-[#8696a0] text-xs font-bold px-2">פרויקטים פעילים</h3>
-             {['אבן יהודה', 'כפר מונש'].map(p => (
-               <div key={p} className="bg-[#202c33] p-3 rounded-xl flex items-center gap-3 border border-transparent hover:border-[#00a884] cursor-pointer transition-all">
-                 <div className="w-2 h-2 rounded-full bg-[#00a884]" />
-                 <span className="text-sm font-medium text-white">{p}</span>
-               </div>
-             ))}
+          <p className="text-[10px] uppercase opacity-70">שם הלקוח</p>
+          <p className="font-black text-xl mb-4">שחר שאול</p>
+          <div className="flex justify-between items-end">
+            <div>
+              <p className="text-[10px] opacity-70">פרויקט פעיל</p>
+              <p className="font-bold text-sm">{context.project}</p>
+            </div>
+            <img src={SHAHAR_PROFILE_PIC} className="w-12 h-12 bg-white/20 rounded-full border-2 border-black/10" />
           </div>
         </div>
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col relative">
-        <header className="h-16 bg-[#202c33] px-4 flex items-center justify-between z-20">
+      <div className="flex-1 flex flex-col relative border-r border-[#202c33]">
+        <header className="h-16 bg-[#202c33] px-4 flex items-center justify-between shadow-md">
           <div className="flex items-center gap-3">
              <img src={SABAN_AI_PROFILE_PIC} className="w-10 h-10 rounded-full border border-[#00a884]" />
              <div>
-               <p className="text-sm font-bold">גימני - שירות אישי</p>
-               <div className="flex items-center gap-1">
-                 <div className="w-1.5 h-1.5 bg-[#00a884] rounded-full animate-pulse" />
-                 <p className="text-[10px] text-[#8696a0]">שחר שאול מחובר</p>
-               </div>
+               <p className="text-sm font-bold">גימני - סבן לוגיסטיקה</p>
+               <p className="text-[10px] text-[#00a884] animate-pulse">שחר שאול מחובר כעת</p>
              </div>
           </div>
           <div className="flex gap-4 text-[#aebac1]">
-            <Bell size={20} className="cursor-pointer hover:text-white" />
             <div className="relative cursor-pointer" onClick={() => setIsOrderOpen(true)}>
               <ShoppingCart size={22} />
-              {cart.length > 0 && <span className="absolute -top-1 -right-1 bg-[#C9A227] text-black text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">{cart.length}</span>}
+              {cart.length > 0 && <span className="absolute -top-2 -right-2 bg-[#C9A227] text-black text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold border-2 border-[#202c33]">{cart.length}</span>}
             </div>
+            <MoreVertical size={22} />
           </div>
         </header>
 
-        {/* Chat Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[url('https://i.ibb.co/S6mXvY7/whatsapp-bg.png')]">
+        {/* Messages with WhatsApp Wallpaper */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-opacity-5">
           {messages.map((msg) => (
             <div key={msg.id} className={`flex ${msg.sender === 'ai' ? 'justify-start' : 'justify-end'}`}>
-              <div className={`max-w-[85%] md:max-w-[60%] p-3 rounded-2xl shadow-lg relative ${msg.sender === 'ai' ? 'bg-[#202c33]' : 'bg-[#005c4b]'}`}>
-                <p className="text-sm">{msg.text}</p>
-                
-                {/* הצגת מוצרים עם תמונות */}
+              <div className={`max-w-[80%] p-3 rounded-2xl shadow-md relative ${msg.sender === 'ai' ? 'bg-[#202c33]' : 'bg-[#005c4b]'}`}>
+                <p className="text-sm leading-relaxed">{msg.text}</p>
                 {msg.products?.map((p: any) => (
-                  <div key={p.sku} className="mt-4 bg-[#111b21] rounded-xl overflow-hidden border border-[#C9A227]/20">
-                    <img 
-                      src={`https://saban-logistics.vercel.app/api/products/image?sku=${p.sku}`} 
-                      alt={p.name}
-                      className="w-full h-32 object-cover bg-[#2a3942]"
-                      onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/300x150?text=Product+Image')}
-                    />
-                    <div className="p-3">
-                      <p className="text-xs font-bold text-[#C9A227]">{p.name}</p>
-                      <div className="flex justify-between items-center mt-3">
-                         <div className="flex items-center gap-2 bg-[#202c33] rounded-lg px-2 py-1">
-                            <button onClick={() => { p.tempQty = (p.tempQty || 1) + 1; setMessages([...messages]); }} className="text-white">+</button>
-                            <span className="text-xs">{p.tempQty || 1}</span>
-                            <button onClick={() => { p.tempQty = Math.max(1, (p.tempQty || 1) - 1); setMessages([...messages]); }} className="text-white">-</button>
-                         </div>
-                         <button onClick={() => addToCart(p)} className="bg-[#C9A227] text-black text-[10px] font-bold px-3 py-2 rounded-lg">הוסף לסל</button>
-                      </div>
+                  <div key={p.sku} className="mt-3 bg-[#111b21] rounded-2xl border border-[#C9A227]/30 overflow-hidden">
+                    <img src={`/api/products/image?sku=${p.sku}`} className="w-full h-24 object-cover opacity-80" onError={(e) => e.currentTarget.src="https://via.placeholder.com/150"} />
+                    <div className="p-3 flex justify-between items-center">
+                      <span className="text-[10px] font-bold">{p.name}</span>
+                      <button onClick={() => addToCart(p)} className="bg-[#C9A227] text-black text-[10px] font-bold px-3 py-1 rounded-lg">הוסף</button>
                     </div>
                   </div>
                 ))}
-                <p className="text-[9px] text-gray-400 mt-1 text-left">{msg.time}</p>
+                <span className="text-[9px] text-gray-400 block mt-1">{msg.time}</span>
               </div>
             </div>
           ))}
           <div ref={scrollRef} />
         </div>
 
-        {/* Input */}
         <footer className="bg-[#202c33] p-3 flex items-center gap-2">
           <input 
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
+            value={input} onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-            placeholder="שלח הודעה לגימני..." 
-            className="flex-1 bg-[#2a3942] rounded-full py-2 px-4 outline-none text-sm text-white"
+            placeholder="דבר עם גימני..." 
+            className="flex-1 bg-[#2a3942] rounded-full py-2.5 px-5 outline-none text-sm"
           />
           <button onClick={handleSendMessage} className="bg-[#00a884] p-3 rounded-full text-white shadow-lg"><Send size={18} /></button>
         </footer>
       </div>
+
+      {/* Summary Modal */}
+      {showSummary && (
+        <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
+          <div className="bg-[#202c33] w-full max-w-sm rounded-3xl border border-[#C9A227] overflow-hidden shadow-2xl animate-in zoom-in duration-200">
+            <div className="bg-[#C9A227] p-4 text-black text-center font-black flex items-center justify-center gap-2">
+              <CheckCircle2 size={20} /> סיכום הזמנה לשחר שאול
+            </div>
+            <div className="p-6 space-y-4 text-sm">
+              <div className="flex justify-between border-b border-gray-700 pb-2">
+                <span className="text-gray-400">אתר אספקה:</span>
+                <span className="font-bold text-white">{context.project}</span>
+              </div>
+              <div className="max-h-40 overflow-y-auto space-y-2">
+                {cart.map(item => (
+                  <div key={item.sku} className="flex justify-between bg-black/20 p-2 rounded">
+                    <span>{item.qty} x {item.name}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2 pt-4">
+                <button onClick={() => setShowSummary(false)} className="flex-1 py-3 rounded-xl border border-gray-600 font-bold">תיקון</button>
+                <button onClick={() => { alert("שולח לקבוצת הוואטסאפ..."); setShowSummary(false); setCart([]); }} className="flex-1 py-3 rounded-xl bg-[#00a884] text-white font-black">שלח לקבוצה</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <OrderSidebar isOpen={isOrderOpen} setIsOpen={setIsOrderOpen} cart={cart} setCart={setCart} />
     </div>
