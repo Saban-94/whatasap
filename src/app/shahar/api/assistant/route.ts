@@ -2,33 +2,37 @@ import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
   try {
-    const { message, history, currentContext } = await req.json();
+    const { message, currentContext } = await req.json();
     const text = message.toLowerCase();
 
     let reply = "";
     let detectedProducts: any[] = [];
     let action = "none";
-    let newContext = currentContext || { step: 'idle', project: '' };
+    let newContext = currentContext || { project: 'אבן יהודה' };
 
-    // לוגיקה דינמית לפי מצב השיחה (State Management)
-    if (text.includes('הזמנה') || text.includes('סיימתי') || text.includes('תזמין')) {
-      reply = "סגור אחי. הנה סיכום ההזמנה לפרויקט " + (newContext.project || "אבן יהודה") + ". תאשר לי שזה תקין וזה עף לקבוצה.";
-      action = "show_summary";
+    // --- מנוע זיהוי מוצרים מדויק ---
+    const catalog = [
+      { name: 'דבק 800 טמבור - פנים', sku: '20800', keywords: ['800'] },
+      { name: 'דבק 500 עוז - פנים', sku: '20500', keywords: ['500'] },
+      { name: 'סיקה 107 אפור', sku: '19107', keywords: ['107', 'סיקה'] },
+      { name: 'פריימר 004', sku: '14004', keywords: ['004', 'פריימר'] }
+    ];
+
+    // חיפוש מוצר לפי מילת מפתח
+    const matchedProduct = catalog.find(p => p.keywords.some(k => text.includes(k)));
+
+    if (matchedProduct) {
+      detectedProducts = [matchedProduct];
+      reply = `סגור אחי, מצאתי ${matchedProduct.name}. להוסיף להזמנה לאתר ב${newContext.project}?`;
     } 
-    else if (text.includes('אבן יהודה') || text.includes('מונש')) {
-      newContext.project = text.includes('יהודה') ? 'אבן יהודה' : 'כפר מונש';
-      reply = `סגור, מעדכן שההזמנה הזו הולכת ל${newContext.project}. מה להוסיף לסל?`;
+    // טיפול בסיכום הזמנה
+    else if (text.includes('תזמין') || text.includes('סיימתי') || text.includes('אישור')) {
+      reply = `מעולה שחר. מכין לך סיכום הזמנה זריז ל${newContext.project}.`;
+      action = "show_summary";
     }
-    else if (text.includes('500') || text.includes('דבק')) {
-      detectedProducts = [{ name: 'דבק 500 עוז - להדבקה פנימית', sku: '20500', price: 0 }];
-      reply = "דבק 500 זה אחלה מוצר. להוסיף לך אותו להזמנה?";
-    }
-    else if (text.includes('חדש') || text.includes('פרויקט')) {
-      reply = "בשמחה אחי. איפה האתר החדש? תן לי כתובת ואני פותח אותו במערכת.";
-      action = "open_project";
-    }
+    // שיחה כללית
     else {
-      reply = "הבנתי שחר. תגיד לי אם להוסיף מוצרים או שאנחנו סוגרים את ההזמנה לאתר?";
+      reply = `הבנתי שחר. בודק לך במלאי לגבי "${message}". תרצה להוסיף עוד משהו או שנסגור את ההזמנה?`;
     }
 
     return NextResponse.json({ reply, detectedProducts, action, newContext });
