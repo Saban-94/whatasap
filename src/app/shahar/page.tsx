@@ -1,40 +1,118 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, ShoppingCart, Moon, Sun, BrainCircuit, CheckCircle2, Loader2, Truck } from 'lucide-react';
-import OrderSidebar from './components/OrderSidebar';
+import { Send, ShoppingCart, Truck, Loader2, Moon, Sun } from 'lucide-react';
 
-const SABAN_LOGO = "https://media-mrs2-1.cdn.whatsapp.net/v/t61.24694-24/524989315_1073256511118475_7315275522833323073_n.jpg?ccb=11-4&oh=01_Q5Aa3wFxRPXggH-pzRFes-D1aIk6klzJrTv9Ks5RbOrhtvKfvQ&oe=69A5059E&_nc_sid=5e03e0&_nc_cat=111";
+// הגדרת סוגים כדי למנוע Type Error ב-Vercel
+interface Message {
+  id: number;
+  text: string;
+  sender: 'user' | 'ai';
+}
 
 export default function ShaharHyperApp() {
   const [isDarkMode, setIsDarkMode] = useState(true);
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
-  const [cart, setCart] = useState<any[]>([]);
   const [isThinking, setIsThinking] = useState(false);
-  const [isOrderOpen, setIsOrderOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const selectedProject = { name: 'אבן יהודה', address: 'האתרוג 44' };
 
-  // --- ברכת זמן ביום יזומה ---
   useEffect(() => {
-    const getGreeting = () => {
-      const hour = new Date().getHours();
-      if (hour < 12) return "**בוקר אור שחר יא תותח! הקפה כבר נשפך על התוכניות?** ☕";
-      if (hour < 18) return "**צהריים טובים שחר אחי. השמש דופקת, אבל המנופים עובדים!** ☀️";
-      return "**ערב טוב שחר. סוגרים פינות למחר? ראמי כבר על הלוח.** 🌙";
-    };
-
     if (messages.length === 0) {
-      setTimeout(() => {
-        addBotMessage(`${getGreeting()} \n\n **Ai-ח.סבן** כאן. מה מעמיסים היום ל${selectedProject.name}?`);
-      }, 1000);
+      const hour = new Date().getHours();
+      const greeting = hour < 12 ? "**בוקר אור שחר אחי! הקפה מוכן? בוא נתחיל להעמיס.** ☕" : "**צהריים טובים שחר יא תותח. השמש בשיא, אבל אנחנו לא עוצרים!** ☀️";
+      addBotMessage(`${greeting} \n\n **Ai-ח.סבן** כאן. ראמי מסארוה כבר בלוח השיבוצים, מה חסר לך ב${selectedProject.name}?`);
     }
   }, []);
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isThinking]);
+
+  const addBotMessage = (text: string) => {
+    setMessages(prev => [...prev, { id: Date.now(), text, sender: 'ai' }]);
+    setIsThinking(false);
+  };
+
+  const handleSend = async () => {
+    if (!input.trim()) return;
+    const userMsg: Message = { id: Date.now(), text: input, sender: 'user' };
+    setMessages(prev => [...prev, userMsg]);
+    const currentInput = input;
+    setInput('');
+    setIsThinking(true);
+
+    try {
+      const res = await fetch('/shahar/api/assistant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: currentInput }),
+      });
+      const data = await res.json();
+      
+      addBotMessage(data.reply);
+
+      // אם יש חריגת מנוף (למשל 15 מטר) - Ai-ח.סבן מעדכן שזה עובר לראמי
+      if (data.status === 'WAITING_FOR_RAMI') {
+        setTimeout(() => {
+          addBotMessage("**ראמי מסארוה** בודק עכשיו את זמינות המנוף הארוך... תשובה תופיע כאן מיד. ⏳");
+        }, 1500);
+      }
+    } catch (e) {
+      addBotMessage("**אחי, יש תקלה בתקשורת מול החמ"ל. שלח שוב.**");
+    }
+  };
+
+  return (
+    <div className={`${isDarkMode ? 'bg-[#0b141a] text-[#e9edef]' : 'bg-[#f0f2f5] text-black'} flex flex-col h-screen w-full font-sans overflow-hidden`} dir="rtl">
+      
+      <header className={`${isDarkMode ? 'bg-[#202c33]' : 'bg-white'} p-4 flex items-center justify-between border-b border-white/5`}>
+        <div className="flex items-center gap-3">
+           <div className="w-12 h-12 bg-[#00a884] rounded-full flex items-center justify-center font-black text-white shadow-lg">Ai</div>
+           <div>
+              <h1 className="text-lg font-black tracking-tight">Ai-ח.סבן</h1>
+              <span className="text-[10px] text-[#00a884] font-bold uppercase">סדרן: ראמי מסארוה</span>
+           </div>
+        </div>
+        <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2 bg-white/5 rounded-full">
+            {isDarkMode ? <Sun size={24} /> : <Moon size={24} />}
+        </button>
+      </header>
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-32">
+        {messages.map((msg) => (
+          <div key={msg.id} className={`flex ${msg.sender === 'ai' ? 'justify-start' : 'justify-end'} items-end gap-2`}>
+            <div className={`max-w-[85%] p-4 rounded-2xl shadow-md ${msg.sender === 'ai' ? (isDarkMode ? 'bg-[#202c33] border border-white/5' : 'bg-white') : 'bg-[#005c4b] text-white'}`}>
+              <p className="text-[15px] text-right whitespace-pre-line leading-relaxed">
+                {/* התיקון ל-Type Error כאן: הגדרת part כ-string */}
+                {msg.text.split('**').map((part: string, i: number) => 
+                  i % 2 === 1 ? <strong key={i} className="font-black text-[#C9A227]">{part}</strong> : part
+                )}
+              </p>
+            </div>
+          </div>
+        ))}
+        {isThinking && <div className="text-[10px] font-bold animate-pulse text-[#00a884]">Ai-ח.סבן מעבד נתונים...</div>}
+        <div ref={scrollRef} />
+      </div>
+
+      <footer className="p-4 bg-[#0b141a] pb-10">
+        <div className="max-w-4xl mx-auto flex items-center gap-3 bg-[#2a3942] p-2 rounded-[2rem]">
+          <input 
+            value={input} onChange={(e)=>setInput(e.target.value)} 
+            onKeyDown={(e)=>e.key==='Enter' && handleSend()}
+            placeholder="שאל את Ai-ח.סבן (מנוף, דבק, מצע...)" 
+            className="flex-1 bg-transparent p-4 outline-none text-white text-sm font-bold" 
+          />
+          <button onClick={handleSend} className="bg-[#00a884] p-4 rounded-full text-white">
+              <Send size={24} />
+          </button>
+        </div>
+      </footer>
+    </div>
+  );
+}  }, [messages, isThinking]);
 
   const addBotMessage = (text: string) => {
     setMessages(prev => [...prev, { id: Date.now(), text, sender: 'ai' }]);
