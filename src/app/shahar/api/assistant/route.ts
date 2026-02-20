@@ -1,51 +1,43 @@
 import { NextResponse } from 'next/server';
 
+const catalog = [
+  { name: 'דבק 800 טמבור', sku: '20800', keywords: ['800'] },
+  { name: 'דבק 500 עוז', sku: '20500', keywords: ['500'] },
+  { name: 'סיקה 107 אפור', sku: '19107', keywords: ['107', 'סיקה'] },
+  { name: 'פריימר 004', sku: '14004', keywords: ['004', 'פריימר'] }
+];
+
 export async function POST(req: Request) {
   try {
     const { message } = await req.json();
-    const text = message.toLowerCase();
-
-    // רשימת מוצרים לזיהוי חכם
-    const knowledgeBase = [
-      { name: "עמוד קוטר 50 (3 מ')", sku: "POST-50-3", keywords: ['עמודים', 'קוטר 50'] },
-      { name: "ראש פוטר לפטישון", sku: "DRILL-HEAD", keywords: ['ראש פוטר', 'פטישון'] },
-      { name: "כפפות עבודה", sku: "GLOVES-24", keywords: ['כפפות'] },
-      { name: "מסמרי פלדה", sku: "STEEL-NAILS", keywords: ['מסמרים פלדה'] },
-      { name: "חוט שזור 50 ק\"ג", sku: "WIRE-50", keywords: ['חוט שזור'] },
-      { name: "ג'מבו קוטר 16", sku: "JUMBO-16", keywords: ['גמבו', 'ג'מבו'] },
-      { name: "קו בנאי", sku: "LINE-CONST", keywords: ['קו בנאי'] }
-    ];
-
-    let detectedProducts: any[] = [];
+    // פירוק הרשימה לפי שורות או פסיקים
+    const lines = message.split(/[\n,|-]/).filter((l: string) => l.trim().length > 1);
     
-    // סריקה חכמה של ההודעה
-    knowledgeBase.forEach(item => {
-      if (item.keywords.some(k => text.includes(k))) {
-        // ניסיון לחלץ כמות מהטקסט (למשל: "5 יח")
-        const regex = new RegExp(`(\\d+)\\s*(?:יחידות|יח|יח'|קג|ק"ג)?\\s*${item.keywords[0]}`, 'g');
-        const match = text.match(/(\d+)/); // פשוט לוקח את המספר הקרוב
+    let detectedProducts: any[] = [];
+
+    lines.forEach((line: string) => {
+      const cleanLine = line.trim().toLowerCase();
+      
+      // ניסיון הצלבה עם הקטלוג
+      const match = catalog.find(p => p.keywords.some(k => cleanLine.includes(k)));
+      
+      if (match) {
+        detectedProducts.push({ ...match, tempQty: 1 });
+      } else {
+        // --- המוצר לא זוהה? מקבל מק"ט 9999 ---
         detectedProducts.push({
-          ...item,
-          tempQty: match ? match[0] : 1
+          name: line.trim(), // השם המקורי ששחר כתב
+          sku: '9999',       // מק"ט גנרי
+          tempQty: 1,
+          isManual: true     // סימון למערכת שזה מוצר ידני
         });
       }
     });
 
-    if (detectedProducts.length > 0) {
-      return NextResponse.json({
-        reply: `אחלה רשימה שחר. הצלבתי את הנתונים עם המלאי בסבן. זיהיתי ${detectedProducts.length} פריטים. לאן לשלוח את כל זה, לאתר באבן יהודה?`,
-        detectedProducts,
-        action: "list_parsed"
-      });
-    }
+    const reply = `שחר אחי, עברתי על הרשימה. זיהיתי ${detectedProducts.filter(p => p.sku !== '9999').length} מוצרים מהקטלוג, ועוד ${detectedProducts.filter(p => p.sku === '9999').length} פריטים שהגדרתי כמק"ט ידני (9999). להוסיף הכל להזמנה לאתר?`;
 
-    return NextResponse.json({
-      reply: "הבנתי אחי, אבל אני צריך להיות בטוח לגבי המק\"טים. תוכל לכתוב לי שוב מה הכי דחוף?",
-      detectedProducts: [],
-      action: "none"
-    });
-
+    return NextResponse.json({ reply, detectedProducts });
   } catch (e) {
-    return NextResponse.json({ error: "Failed to parse" }, { status: 500 });
+    return NextResponse.json({ error: "Fail" }, { status: 500 });
   }
 }
