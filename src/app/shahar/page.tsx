@@ -12,7 +12,7 @@ export default function ShaharChatPage() {
   const [isOrderOpen, setIsOrderOpen] = useState(false);
   const [cart, setCart] = useState<any[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
-
+  const [showFinalSummary, setShowFinalSummary] = useState(false);
   // התקנת OneSignal והתראות
   useEffect(() => {
     // שליפת הודעה ראשונית
