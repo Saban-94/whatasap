@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Send, Paperclip, MoreVertical, Search, Smile, 
   CheckCheck, ShoppingCart, Plus, X, Package, 
-  ChevronRight, Info, Loader2
+  ChevronRight, Info, Loader2, CheckCircle2 // הוספתי את האייקון החסר כאן
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -96,15 +96,15 @@ export default function WhatsAppOrderApp() {
           {messages.map((msg) => (
             <div key={msg.id} className={`flex ${msg.sender === 'me' ? 'justify-start' : 'justify-end'}`}>
               <div className={`max-w-[65%] p-2 rounded-xl shadow-sm relative group ${msg.sender === 'me' ? 'bg-[#005c4b] rounded-tr-none' : 'bg-[#202c33] rounded-tl-none'}`}>
-                <p className="text-sm ml-8 leading-relaxed">{msg.text}</p>
+                <p className="text-sm ml-8 leading-relaxed text-right">{msg.text}</p>
                 <div className="flex items-center justify-end gap-1 mt-1">
                   <span className="text-[10px] text-[#8696a0]">{msg.time}</span>
                   {msg.sender === 'me' && <CheckCheck size={14} className="text-[#53bdeb]" />}
                 </div>
                 {/* כלי ליקוט מהיר למוצרים שמוזכרים בהודעה */}
-                {msg.text.includes('107') && (
+                {(msg.text.includes('107') || msg.text.includes('004')) && (
                   <button 
-                    onClick={() => addToCartFromChat("סיקה 107", "19107")}
+                    onClick={() => addToCartFromChat(msg.text.includes('107') ? "סיקה 107" : "פריימר 004", msg.text.includes('107') ? "19107" : "14004")}
                     className="hidden group-hover:flex absolute -left-12 top-0 bg-[#C9A227] text-black p-1.5 rounded-full shadow-lg items-center gap-1 text-[10px] font-bold"
                   >
                     <Plus size={14}/> לקט
@@ -125,7 +125,7 @@ export default function WhatsAppOrderApp() {
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
             placeholder="הקלד הודעה..." 
-            className="flex-1 bg-[#2a3942] border-none rounded-xl py-2.5 px-4 text-sm focus:outline-none"
+            className="flex-1 bg-[#2a3942] border-none rounded-xl py-2.5 px-4 text-sm focus:outline-none text-right"
           />
           <button onClick={handleSend} className="bg-[#00a884] p-2.5 rounded-full text-white">
             <Send size={20} />
@@ -153,16 +153,20 @@ export default function WhatsAppOrderApp() {
                 </div>
               ) : (
                 cart.map((item) => (
-                  <div key={item.id} className="bg-[#202c33] p-3 rounded-xl border border-gray-800">
+                  <div key={item.id} className="bg-[#202c33] p-3 rounded-xl border border-gray-800 text-right">
                     <div className="flex justify-between items-start">
                       <p className="font-bold text-sm">{item.name}</p>
                       <button onClick={() => setCart(cart.filter(c => c.id !== item.id))}><X size={14} className="text-red-500"/></button>
                     </div>
                     <div className="flex justify-between items-center mt-3">
                       <div className="flex items-center gap-2 bg-[#111b21] rounded-lg p-1">
-                        <button className="px-2" onClick={() => {/* logic */}}>+</button>
-                        <span className="text-xs font-bold">{item.qty} שק</span>
-                        <button className="px-2" onClick={() => {/* logic */}}>-</button>
+                        <button className="px-2" onClick={() => {
+                           setCart(cart.map(c => c.id === item.id ? {...c, qty: c.qty + 1} : c))
+                        }}>+</button>
+                        <span className="text-xs font-bold">{item.qty} יח'</span>
+                        <button className="px-2" onClick={() => {
+                           if(item.qty > 1) setCart(cart.map(c => c.id === item.id ? {...c, qty: c.qty - 1} : c))
+                        }}>-</button>
                       </div>
                       <span className="text-[10px] text-gray-500">מק"ט: {item.sku}</span>
                     </div>
@@ -171,10 +175,10 @@ export default function WhatsAppOrderApp() {
               )}
             </div>
 
-            <div className="p-4 bg-[#202c33] border-t border-gray-800">
+            <div className="p-4 bg-[#202c33] border-t border-gray-800 text-right">
               <div className="flex justify-between mb-4">
                 <span className="text-sm">סה"כ פריטים:</span>
-                <span className="font-bold text-[#C9A227]">{cart.length}</span>
+                <span className="font-bold text-[#C9A227]">{cart.reduce((acc, curr) => acc + curr.qty, 0)}</span>
               </div>
               <button className="w-full bg-[#C9A227] text-black font-black py-4 rounded-xl hover:scale-95 transition-transform flex items-center justify-center gap-2">
                 <CheckCircle2 size={18} /> סגור הזמנה ושלח
