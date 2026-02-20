@@ -1,38 +1,40 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
-export async function GET() {
+// מחיקת מוצר
+export async function DELETE(req: Request, { params }: { params: { id: string } }) {
   try {
-    const { data, error } = await supabase
-      .from('products')
-      .select('*')
-      .order('name', { ascending: true });
-
+    const { error } = await supabase.from('products').delete().eq('id', params.id);
     if (error) throw error;
-    return NextResponse.json(data || []);
+    return NextResponse.json({ success: true });
   } catch (error: any) {
-    return NextResponse.json({ error: 'Failed to load inventory' }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-export async function POST(request: Request) {
+// עריכת מוצר
+export async function PUT(req: Request, { params }: { params: { id: string } }) {
   try {
-    const body = await request.json();
+    const body = await req.json();
     const { data, error } = await supabase
       .from('products')
-      .upsert({
-        sku: body.sku,
+      .update({
         name: body.name,
+        sku: body.sku,
         description: body.description,
         category: body.category,
-        stock_quantity: body.stock_quantity || 0,
-        unit: body.unit || 'יח'
+        stock_quantity: body.stock_quantity,
+        unit: body.unit,
+        media_urls: body.media_urls, // מערך של תמונות/סרטונים
+        pdf_url: body.pdf_url
       })
-      .select();
+      .eq('id', params.id)
+      .select()
+      .single();
 
     if (error) throw error;
-    return NextResponse.json(data[0]);
+    return NextResponse.json(data);
   } catch (error: any) {
-    return NextResponse.json({ error: 'Failed to save product' }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
