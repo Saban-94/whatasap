@@ -60,7 +60,7 @@ const [drivers, setDrivers] = useState<any[]>([])
               <div className="flex items-center gap-3">
                 <Avatar className="h-10 w-10 border-2 border-primary/10">
                   <AvatarFallback className="bg-primary/5 text-primary">
-                    {driver.full_name.split(' ').map(n => n[0]).join('')}
+                    {driver.full_name.split(' ').map((n: string) => n[0]).join('')}
                   </AvatarFallback>
                 </Avatar>
                 <div>
