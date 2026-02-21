@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Activity, MapPin, Truck, Clock } from "lucide-react"
 
 export default function MonitoringView() {
-const [drivers, setDrivers] = useState([])
+const [drivers, setDrivers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   // 1. פונקציה למשיכת נהגים
