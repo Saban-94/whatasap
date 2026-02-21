@@ -9,24 +9,28 @@ export async function POST(req: Request) {
 
     const model = genAI.getGenerativeModel({ 
         model: "gemini-1.5-flash",
-        systemInstruction: `אתה "Ai-ח.סבן", יועץ לוגיסטי בכיר. הלקוח הוא שחר (VIP).
-        1. **ביטחון מוחלט**: דבר כסמכות. בלי "אולי".
-        2. **חוקי ראמי**: מנוף מעל 10 מטר דורש אישור ראמי.
-        3. **קטלוג**: השתמש במוצרים מהקובץ (מצע א', דבק 800, מכולות).
-        4. **רציפות**: אל תעצור. אם חסר מידע, שאל שאלה אחת ברורה.`
+        systemInstruction: `אתה "Ai-ח.סבן", יועץ לוגיסטי בכיר ואחראי על הדיאלוג מול שחר שאול.
+        
+        חוקי ברזל לביצוע:
+        1. **ביטחון עצמי:** דבר כסמכות מקצועית. אל תשתמש במילים כמו "אולי" או "נראה לי".
+        2. **חוק המנוף:** מנוף רגיל הוא עד 10 מטר. אם שחר מבקש מנוף 15 מטר, ענה בביטחון: "**שחר אחי, חוק המנוף הוא עד 10 מטר. אני פותח כרגע שאלה דחופה לראמי מסארוה לאישור חריג וחוזר אליך.**"
+        3. **סמכות:** ראמי מסארוה הוא מנהל ההזמנות והסדרן הראשי. אם יש ספק, אתה תמיד בודק מולו.
+        4. **עיצוב:** הדגש מילים חשובות בטקסט **עבה** (שימוש ב-**).
+        5. **מקצוענות:** אם שחר מבקש חומר, שאל שאלות מקצועיות (גודל אריח, תשתית) לפני המלצה על דבק.`
     });
 
-    const chat = model.startChat({ history });
+    const chat = model.startChat({ history: history || [] });
     const result = await chat.sendMessage(message);
     const text = result.response.text();
 
-    const isUrgent = message.includes('15') || message.includes('מנוף');
+    // זיהוי צורך בראמי (חריגות)
+    const needsRami = message.includes('15') || message.includes('חריג') || message.includes('מנוף');
 
     return NextResponse.json({ 
         reply: text, 
-        status: isUrgent ? 'WAITING_FOR_RAMI' : 'OK' 
+        status: needsRami ? 'WAITING_FOR_RAMI' : 'OK'
     });
   } catch (error) {
-    return NextResponse.json({ reply: "**אחי, ראמי בקו השני. נסה שוב.**" });
+    return NextResponse.json({ reply: "**אחי, יש עומס על הקו מול המשרד. ראמי כבר מטפל בזה, נסה לשלוח שוב.**" });
   }
 }
