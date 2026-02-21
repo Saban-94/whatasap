@@ -4,7 +4,7 @@ import { db } from "@/lib/firebase";
 import { collection, query, where, onSnapshot, orderBy, limit } from "firebase/firestore";
 import { Truck, Trash2, Bell, MessageCircle, Sun, Moon, Coffee, ShieldCheck, Home, History } from 'lucide-react';
 import Link from 'next/link';
-
+import { motion, AnimatePresence } from "framer-motion"
 export default function SabanLiveDashboard() {
   const [activeTask, setActiveTask] = useState<any>(null);
   const [greeting, setGreeting] = useState({ text: '', sub: '', icon: <Coffee /> });
