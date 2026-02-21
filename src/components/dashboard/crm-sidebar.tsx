@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils"
 import { Brain, Activity, MessageSquare, Settings, ChevronRight, Truck } from "lucide-react"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 
 export type CrmView = "training" | "monitoring"
 
