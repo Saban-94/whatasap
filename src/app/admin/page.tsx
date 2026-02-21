@@ -3,132 +3,139 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { 
-  Users, Activity, Database, RefreshCw, Layers, 
-  ShieldCheck, Brain, Zap, Search, ChevronLeft 
+  Users, Layers, RefreshCw, MessageSquare, 
+  Truck, Brain, Search, MapPin, Phone, ShieldCheck 
 } from 'lucide-react';
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function GlobalAdmin() {
   const [customers, setCustomers] = useState<any[]>([]);
+  const [drivers, setDrivers] = useState<any[]>([]);
   const [isSynced, setIsSynced] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
 
+  // פונקציה מאוחדת למשיכת כל הנתונים (נהגים + לקוחות)
+  const fetchData = async () => {
+    setLoading(true);
+    
+    // משיכת לקוחות
+    const { data: custData } = await supabase.from('customers').select('*').order('name');
+    // משיכת נהגים (הכלי החדש!)
+    const { data: drivData } = await supabase.from('drivers').select('*').order('full_name');
+
+    setCustomers(custData || []);
+    setDrivers(drivData || []);
+    setIsSynced(true);
+    setLoading(false);
+  };
+
   useEffect(() => {
-    const fetchCustomers = async () => {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('customers')
-        .select('*')
-        .order('last_update', { ascending: false });
+    fetchData();
 
-      if (!error && data) {
-        setCustomers(data);
-        setIsSynced(true);
-      } else {
-        console.error("Sync Error:", error);
-        setIsSynced(false);
-      }
-      setLoading(false);
-    };
-
-    fetchCustomers();
-
-    const channel = supabase
-      .channel('global-admin-sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, fetchCustomers)
+    // האזנה לשינויים בזמן אמת לשני המאגרים
+    const channel = supabase.channel('admin-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'drivers' }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, fetchData)
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  const filteredCustomers = customers.filter(c => 
-    c.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    c.acc_num?.toString().includes(searchTerm)
-  );
+  const sendWhatsApp = (phone: string, name: string) => {
+    const cleanPhone = phone?.replace(/\D/g, '');
+    if (!cleanPhone) return alert("אין מספר טלפון תקין");
+    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent('היי ' + name + ', יש משימה חדשה לבדיקתך.')}`, '_blank');
+  };
 
   return (
-    <div className="min-h-screen bg-[#F1F5F9] p-6 lg:p-10 text-right font-sans" dir="rtl">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className="min-h-screen bg-[#F8FAFC] p-4 lg:p-8 text-right font-sans" dir="rtl">
+      <div className="max-w-7xl mx-auto space-y-6">
         
-        <header className="bg-[#0F172A] text-white p-8 rounded-[40px] shadow-2xl relative overflow-hidden">
-          <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="flex items-center gap-6">
-              <div className="bg-blue-500/20 p-4 rounded-3xl backdrop-blur-md border border-white/10">
-                <Layers size={40} className={isSynced ? 'text-blue-400 animate-pulse' : 'text-red-400'} />
-              </div>
-              <div>
-                <h1 className="text-3xl font-black tracking-tight">ניהול מוחות סבן</h1>
-                <div className="flex items-center gap-2 mt-1">
-                  <Badge variant="outline" className="text-blue-300 border-blue-500/30 bg-blue-500/10">
-                    סנכרון פעיל: CRM ↔ Whatasap
-                  </Badge>
-                </div>
-              </div>
+        {/* Header - מרכז בקרה מאוחד */}
+        <header className="bg-slate-900 text-white p-6 rounded-[35px] shadow-xl flex justify-between items-center border-b-4 border-blue-500">
+          <div className="flex items-center gap-4">
+            <div className="bg-blue-500/20 p-3 rounded-2xl backdrop-blur-sm">
+              <Layers size={32} className="text-blue-400" />
             </div>
-            
-            <div className="flex items-center gap-4 bg-white/5 p-2 rounded-2xl border border-white/10">
-              <div className="px-4 py-2 text-center">
-                <p className="text-[10px] text-slate-400 uppercase">לקוחות פעילים</p>
-                <p className="text-xl font-black">{customers.length}</p>
-              </div>
-              <RefreshCw className={isSynced ? "animate-spin text-blue-400 mx-4" : "opacity-20 mx-4"} size={24} />
+            <div>
+              <h1 className="text-2xl font-black italic">SABAN CONTROL CENTER</h1>
+              <p className="text-[10px] text-blue-300 font-bold tracking-widest uppercase">ניהול צולב: נהגים ↔ לקוחות ↔ CRM</p>
             </div>
           </div>
+          <RefreshCw className={isSynced ? "animate-spin text-blue-400" : ""} size={20} />
         </header>
 
-        <div className="flex flex-col md:flex-row gap-4 items-center">
-          <div className="relative w-full md:w-96">
-            <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <Input 
-              placeholder="חפש לקוח, ח'פ או מספר חשבון..." 
-              className="pr-12 h-14 rounded-2xl border-none shadow-sm bg-white text-lg focus-visible:ring-blue-500"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </div>
+        <Tabs defaultValue="drivers" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-8 bg-white border rounded-2xl p-1 h-16 shadow-sm">
+            <TabsTrigger value="drivers" className="rounded-xl font-bold text-lg data-[state=active]:bg-blue-600 data-[state=active]:text-white transition-all">
+              <Truck className="ml-2" size={20} /> ניטור נהגים (חדש)
+            </TabsTrigger>
+            <TabsTrigger value="customers" className="rounded-xl font-bold text-lg data-[state=active]:bg-blue-600 data-[state=active]:text-white transition-all">
+              <Users className="ml-2" size={20} /> ניהול לקוחות ומוח
+            </TabsTrigger>
+          </TabsList>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <AnimatePresence>
-            {filteredCustomers.map((c, index) => (
-              <motion.div 
-                key={c.id} 
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="bg-white rounded-[40px] shadow-sm hover:shadow-xl transition-all border border-slate-100 group overflow-hidden"
-              >
-                <div className="p-6 pb-0 flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <img 
-                      src={c.profile_image || 'https://via.placeholder.com/150'} 
-                      className="w-16 h-16 rounded-3xl border-2 border-slate-50 object-cover shadow-inner" 
-                    />
-                    <div>
-                      <h2 className="text-xl font-bold text-slate-800 leading-tight">{c.name}</h2>
-                      <p className="text-xs font-mono text-blue-600 font-bold">#ACC-{c.acc_num}</p>
+          {/* טאב נהגים - הכלי החדש שהטמענו */}
+          <TabsContent value="drivers">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {drivers.map(driver => (
+                <motion.div key={driver.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white p-5 rounded-[30px] shadow-sm border border-slate-100 hover:shadow-md transition-all">
+                  <div className="flex justify-between items-start mb-4">
+                    <Badge className={driver.status === 'active' ? 'bg-green-100 text-green-600 border-none' : 'bg-orange-100 text-orange-600 border-none'}>
+                      {driver.status === 'active' ? '● פנוי' : '● עסוק'}
+                    </Badge>
+                    <div className="text-left">
+                      <h3 className="font-black text-slate-800">{driver.full_name}</h3>
+                      <p className="text-[11px] text-slate-400">{driver.vehicle_type}</p>
                     </div>
                   </div>
-                  <ChevronLeft className="text-slate-300 group-hover:text-blue-500" />
-                </div>
-
-                <div className="p-6 space-y-4">
-                  <div className="bg-slate-50 rounded-3xl p-4 border border-slate-100">
-                    <div className="flex items-center gap-2 mb-2 text-blue-600 font-bold text-xs uppercase tracking-wider">
-                      <Brain size={14} /> תובנת AI סבן
+                  
+                  <div className="space-y-3 mb-5 bg-slate-50 p-3 rounded-2xl">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold">{driver.location || 'לא ידוע'}</span>
+                      <MapPin size={14} className="text-blue-500" />
                     </div>
-                    <p className="text-xs text-slate-600 leading-relaxed italic">
-                      {c.ai_insight || "המערכת מנתחת היסטוריית רכישות..."}
-                    </p>
+                    <div className="flex items-center justify-between text-xs text-slate-500">
+                      <span>{new Date(driver.last_update).toLocaleTimeString('he-IL')}</span>
+                      <span className="font-medium">עדכון אחרון</span>
+                    </div>
                   </div>
+
+                  <Button 
+                    onClick={() => sendWhatsApp(driver.phone, driver.full_name)}
+                    className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white rounded-2xl font-bold gap-2 py-6"
+                  >
+                    <MessageSquare size={18} /> וואטסאפ מהיר
+                  </Button>
+                </motion.div>
+              ))}
+            </div>
+          </TabsContent>
+
+          {/* טאב לקוחות - המוח וההצלבה */}
+          <TabsContent value="customers">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {customers.map(c => (
+                <div key={c.id} className="bg-white p-6 rounded-[35px] shadow-sm border-r-8 border-blue-900 flex gap-4 items-center">
+                  <div className="bg-slate-100 p-4 rounded-3xl text-blue-900"><Brain size={32} /></div>
+                  <div className="flex-1">
+                    <h2 className="text-xl font-black">{c.name}</h2>
+                    <div className="flex gap-2 mt-1">
+                      <Badge variant="outline" className="text-[10px]">לקוח: {c.acc_num}</Badge>
+                      <Badge variant="outline" className="text-[10px] bg-yellow-50 text-yellow-700 border-none">זיהוי מוח: פוטנציאל הזמנה</Badge>
+                    </div>
+                  </div>
+                  <Button variant="ghost" className="rounded-full w-12 h-12 p-0"><Phone size={20} className="text-slate-400" /></Button>
                 </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
+              ))}
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
