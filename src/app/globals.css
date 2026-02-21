@@ -7,7 +7,24 @@
   --color-whatsapp-green: #25D366;
   --color-whatsapp-light: #DCF8C6;
 }
+/* עיצוב גלילה סטייל וואטסאפ */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
 
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+/* העלמת כפתור יועץ חכם צף במידה וקיים מהמאגר */
+#smart-advisor-btn, 
+.floating-advisor,
+[data-testid="advisor-button"] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
 :root {
   background-color: var(--color-saban-cream);
   color: #333;
