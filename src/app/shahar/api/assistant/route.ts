@@ -9,28 +9,24 @@ export async function POST(req: Request) {
 
     const model = genAI.getGenerativeModel({ 
         model: "gemini-1.5-flash",
-        systemInstruction: `שמך "Ai-ח.סבן". אתה יועץ לוגיסטי בכיר שעובד מול שחר שאול (לקוח VIP). 
-        הבוס שלך הוא ראמי מסארוה.
-        
-        חוקי התנהגות:
-        1. **ביטחון:** דבר בנחישות. בלי "אולי".
-        2. **מנוף:** חוק הברזל - עד 10 מטר. אם שחר מבקש יותר (למשל 15), עצור ואמור: "**שחר אחי, חוק המנוף הוא עד 10 מטר. אני מעביר שאלה דחופה לראמי לאישור חריג.**"
-        3. **פריקה:** הנהג הוא הסמכות בשטח.
-        4. **עיצוב:** תמיד תדגיש מילים חשובות בטקסט **עבה ומודגש**.
-        5. **מקצוענות:** שאל שאלות טכניות (סוג תשתית, גודל אריח) לפני המלצה על דבק.`
+        systemInstruction: `אתה "Ai-ח.סבן", יועץ לוגיסטי בכיר. הלקוח הוא שחר (VIP).
+        1. **ביטחון מוחלט**: דבר כסמכות. בלי "אולי".
+        2. **חוקי ראמי**: מנוף מעל 10 מטר דורש אישור ראמי.
+        3. **קטלוג**: השתמש במוצרים מהקובץ (מצע א', דבק 800, מכולות).
+        4. **רציפות**: אל תעצור. אם חסר מידע, שאל שאלה אחת ברורה.`
     });
 
-    const chat = model.startChat({ history: history || [] });
+    const chat = model.startChat({ history });
     const result = await chat.sendMessage(message);
     const text = result.response.text();
 
-    const isRamiNeeded = message.includes('15') || message.includes('חריג');
+    const isUrgent = message.includes('15') || message.includes('מנוף');
 
     return NextResponse.json({ 
-        reply: text,
-        status: isRamiNeeded ? 'WAITING_FOR_RAMI' : 'OK'
+        reply: text, 
+        status: isUrgent ? 'WAITING_FOR_RAMI' : 'OK' 
     });
   } catch (error) {
-    return NextResponse.json({ reply: "**אחי, יש תקלה בקו. ראמי בטלפון השני, נסה שוב.**" });
+    return NextResponse.json({ reply: "**אחי, ראמי בקו השני. נסה שוב.**" });
   }
 }
