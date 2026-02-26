@@ -1,23 +1,41 @@
-// דוגמה למוצר מעובד לפי הממשק שלך
-const processedProduct: Product = {
-  sku: "SBN-9021",
-  name: "משאבת מים טבולה - סדרת הנדסה",
-  description: "משאבה מקצועית לעבודה מאומצת, עמידה בפני קורוזיה...",
-  barcode: "7290001234567",
-  category: "Pumps",
-  features: ["הגנה טרמית", "ציר נירוסטה", "פעולה שקטה"],
-  specs: {
-    "הספק": "1.5 HP",
-    "מתח": "220V",
-    "קוטר יציאה": "2 inch"
-  },
-  stock: {
-    quantity: 45,
-    minThreshold: 10,
-    unit: "pcs",
-    location: "A-12",
-    price: 850,
-    currency: "ILS"
-  },
-  lastUpdated: new Date().toISOString()
-};
+// src/lib/types.ts
+
+export interface Product {
+  sku: string;
+  name: string;
+  description?: string;
+  barcode?: string;
+  category?: string;
+  image?: string;
+  features?: string[];
+  uses?: string[];
+  instructions?: string[];
+  gallery?: string[];
+  videoUrl?: string;
+  specs?: Record<string, string>;
+  stock?: {
+    quantity: number;
+    minThreshold: number;
+    unit?: string;
+    location?: string;
+    supplier?: string;
+    price?: number;
+    currency?: string;
+  };
+  lastUpdated?: string;
+}
+
+export interface CustomerBrainProfile {
+  clientId: string;
+  name: string;
+  accumulated_knowledge: string;
+  projects?: {
+    name: string;
+    location: string;
+    lastProducts: string[];
+  }[];
+  preferences?: {
+    delivery_method: string;
+    preferred_hours: string;
+  };
+}
