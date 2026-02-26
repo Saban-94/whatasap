@@ -1,42 +1,66 @@
-import { db } from './firebase';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+// src/lib/customerMemory.ts
+import { supabase } from './supabase';
 
 export interface CustomerBrainProfile {
   clientId: string;
   name: string;
-  accumulatedKnowledge: string; // הזיכרון שגימיני צבר
-  projects: {
-    name: string;
-    location: string;
-    lastProducts: string[];
-  }[];
-  preferences: {
-    deliveryMethod: string;
-    preferredHours: string;
+  accumulated_knowledge: string;
+  projects?: any[];
+  preferences?: {
+    delivery_method: string;
+    preferred_hours: string;
   };
 }
 
-// שליפת הזיכרון עבור גימיני לפני תחילת השיחה
+/**
+ * שליפת הזיכרון עבור גימיני לפני תחילת השיחה
+ */
 export async function fetchCustomerBrain(clientId: string): Promise<string> {
-  const docRef = doc(db, 'customer_memory', clientId);
-  const snap = await getDoc(docRef);
+  try {
+    const { data, error } = await supabase
+      .from('customer_memory')
+      .select('*')
+      .eq('clientId', clientId)
+      .single();
 
-  if (!snap.exists()) return "לקוח חדש. נהל שיחה ראשונית כדי להכיר את צרכיו.";
+    if (error || !data) {
+      return "לקוח חדש. נהל שיחה ראשונית כדי להכיר את צרכיו המקצועיים.";
+    }
 
-  const data = snap.data() as CustomerBrainProfile;
-  return `
-    זהו מידע מהזיכרון המצטבר שלך על ${data.name}:
-    - ידע מצטבר: ${data.accumulatedKnowledge}
-    - פרויקטים: ${data.projects.map(p => p.name + ' ב' + p.location).join(', ')}
-    - העדפות אספקה: ${data.preferences.deliveryMethod}
-  `;
+    const profile = data as CustomerBrainProfile;
+    return `
+      זהו מידע מהזיכרון המצטבר שלך על ${profile.name}:
+      - ידע מצטבר: ${profile.accumulated_knowledge}
+      - העדפות אספקה: ${profile.preferences?.delivery_method || 'לא הוגדר'}
+      - שעות מועדפות: ${profile.preferences?.preferred_hours || 'לא הוגדר'}
+    `;
+  } catch (err) {
+    return "מידע הזיכרון אינו זמין כרגע.";
+  }
 }
 
-// פונקציה לחיזוק המוח - עדכון הזיכרון
+/**
+ * חיזוק המוח - הוספת תובנה חדשה לזיכרון הקיים
+ */
 export async function strengthenBrain(clientId: string, newInsight: string) {
-  const docRef = doc(db, 'customer_memory', clientId);
-  await updateDoc(docRef, {
-    accumulatedKnowledge: newInsight,
-    lastUpdate: new Date().toISOString()
-  });
+  // קודם נשלוף את הידע הקיים כדי להוסיף עליו (Append) ולא לדרוס
+  const { data } = await supabase
+    .from('customer_memory')
+    .select('accumulated_knowledge')
+    .eq('clientId', clientId)
+    .single();
+
+  const updatedKnowledge = data 
+    ? `${data.accumulated_knowledge} | ${newInsight}` 
+    : newInsight;
+
+  const { error } = await supabase
+    .from('customer_memory')
+    .upsert({ 
+      clientId, 
+      accumulated_knowledge: updatedKnowledge,
+      last_update: new Date().toISOString()
+    }, { onConflict: 'clientId' });
+
+  if (error) throw error;
 }
