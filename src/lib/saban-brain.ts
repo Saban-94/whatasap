@@ -1,44 +1,49 @@
 // src/lib/saban-brain.ts
 
 export const analyzeDelivery = (ituranData: any[], pdfData: any[], rules: any[]) => {
-  // הפונקציה מתחילה כאן
-  const analysis = pdfData.map((ticket: any) => {
-    // 1. בדיקת PTO (מנוף)
+  return pdfData.map((ticket: any) => {
+    // 1. איתור אירוע פריקה (PTO) תואם במיקום
     const ptoEvent = ituranData.find((event: any) => 
       event.address && ticket.address && 
       (event.address.includes(ticket.address) || ticket.address.includes(event.address))
     );
 
+    // 2. חישוב פער זמנים (בדקות)
     const timeGap = ptoEvent ? Math.abs(ticket.manualTime - ptoEvent.duration) : 0;
-    const isAnomalous = !ptoEvent || timeGap > 15;
-
+    
+    // 3. הגדרת אנומליות
     let loss = 0;
-    let anomalyType = "";
+    let anomalyMessages: string[] = [];
 
-    // 2. בדיקת חוקי העסק
+    // בדיקת חוקי ציוד (Gear)
     if (ticket.items) {
       ticket.items.forEach((item: any) => {
         const rule = rules.find((r: any) => r.item === item.name);
         if (rule && ticket.gear && !ticket.gear.includes(rule.required)) {
           loss += 50;
-          anomalyType = `חסר חיוב: ${rule.required}`;
+          anomalyMessages.push(`חסר חיוב: ${rule.required}`);
         }
       });
     }
 
+    // בדיקת התאמה לאיתורן
     if (!ptoEvent) {
-      anomalyType = "לא נמצא אירוע פריקה באיתורן";
+      anomalyMessages.push("לא נמצא אירוע פריקה באיתורן");
+    } else if (timeGap > 15) {
+      anomalyMessages.push(`חריגת זמן פריקה: ${timeGap} דק'`);
     }
+
+    const isAnomalous = anomalyMessages.length > 0;
 
     return {
       ticketId: ticket.id,
       driver: ticket.driver,
       address: ticket.address,
       isAnomalous,
-      anomalyType: anomalyType || (timeGap > 15 ? "חריגת זמן פריקה" : ""),
-      loss: isAnomalous ? (loss || 100) : 0
+      anomalyType: anomalyMessages.join(" | "),
+      // אם יש אנומליה ולא חושב הפסד ספציפי מחוקים, ניתן קנס גנרי של 100
+      loss: isAnomalous ? (loss || 100) : 0,
+      timestamp: new Date().toISOString()
     };
-  }); // כאן נסגר ה-map
-
-  return analysis; // עכשיו ה-return נמצא בתוך הפונקציה הראשית
-}; // וכאן נסגרת הפונקציה analyzeDelivery
+  });
+};
