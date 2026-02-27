@@ -1,40 +1,50 @@
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import products from "@/data/products.json";
-import inventory from "@/data/inventory.json";
-import savedKnowledge from "@/data/knowledge_cache.json";
+import savedKnowledge from "@/data/knowledge_cache.json"; // מאגר שאלות ותשובות שנשמרו
 
-export async function processSmartOrder(userId: string, query: string) {
-  const normalizedQuery = query.toLowerCase().trim();
+const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY!);
 
-  // 1. בדיקת זיכרון מקומי (Cache) לחיסכון במכסות
-  const cachedAnswer = savedKnowledge.find(k => normalizedQuery.includes(k.question.toLowerCase()));
-  if (cachedAnswer) {
-    const cachedProducts = products.filter(p => cachedAnswer.products?.includes(p.id));
+export async function processSmartOrder(query: string) {
+  const normalized = query.toLowerCase().trim();
+
+  // 1. בדיקה בזיכרון המקומי (Cache) - חינם ומהיר
+  const cachedMatch = savedKnowledge.find(k => normalized.includes(k.question));
+  if (cachedMatch) {
     return { 
-      text: cachedAnswer.answer, 
-      orderList: cachedProducts, 
-      source: 'cache' 
+      text: cachedMatch.answer, 
+      orderList: products.filter(p => cachedMatch.products?.includes(p.sku)),
+      source: 'Local Knowledge' 
     };
   }
 
-  // 2. מנוע חישוב הנדסי (מ״ר לקרטונים)
-  if (normalizedQuery.includes("מטר") || normalizedQuery.includes("מ\"ר") || normalizedQuery.includes("חשב")) {
-    const numMatch = normalizedQuery.match(/\d+/);
-    if (numMatch) {
-      const sqft = parseInt(numMatch[0]);
-      // נוסחה: קרמיקה 60/60 = 1.44 מ״ר לקרטון
-      const boxes = Math.ceil(sqft / 1.44);
-      const targetProduct = products.find(p => p.tags?.includes("60/60"));
-      
-      const response = `עבור שטח של ${sqft} מ"ר, תזדקק ל-${boxes} קרטונים של פורצלן 60/60 (לפי 1.44 מ"ר לקרטון). האם להוסיף אותם להזמנה?`;
-      return { 
-        text: response, 
-        orderList: targetProduct ? [targetProduct] : [], 
-        source: 'logic_engine' 
+  // 2. מנוע חישוב הנדסי (מ"ר לקרטונים) - לוגיקה מקומית
+  if (normalized.includes("מטר") || normalized.includes("מ\"ר")) {
+    const num = parseInt(normalized.match(/\d+/)?.[0] || "0");
+    if (num > 0) {
+      const boxes = Math.ceil(num / 1.44); // לפי 60/60 סטנדרט
+      const ceramic = products.find(p => p.tags?.includes("60/60"));
+      return {
+        text: `לשטח של ${num} מ"ר, תצטרך ${boxes} קרטונים של קרמיקה 60/60. האם להוסיף אותם להזמנה?`,
+        orderList: ceramic ? [ceramic] : [],
+        source: 'Saban Calculator'
       };
     }
   }
 
-  // 3. שליפה חכמה מה-Inventory (אם יש מילה תואמת)
+  // 3. שליפה מ-Gemini 3.1 Pro (רק אם אין תשובה מקומית)
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-3.1-pro-preview" });
+    const prompt = `אתה יועץ מומחה של "ח. סבן חומרי בניין". ענה על השאלה בצורה מקצועית וקצרה: ${query}`;
+    
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+
+    return { text, orderList: [], source: 'Gemini 3.1 Pro' };
+  } catch (error) {
+    return { text: "המערכת בעומס, נסה שוב או פנה למלאי הידני.", orderList: [] };
+  }
+}  // 3. שליפה חכמה מה-Inventory (אם יש מילה תואמת)
   const directProduct = products.find(p => normalizedQuery.includes(p.name.toLowerCase()) || normalizedQuery.includes(p.id));
   if (directProduct) {
     const stock = inventory.find(i => i.product_id === directProduct.id);
