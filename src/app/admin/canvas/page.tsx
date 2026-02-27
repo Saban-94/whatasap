@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Send, Database, Zap, Globe, Loader2, Sparkles, Image as ImageIcon } from 'lucide-react';
+import { Search, Send, Database, Zap, Globe, Loader2, Image as ImageIcon } from 'lucide-react';
 import { processSmartOrder } from '@/lib/dataEngine';
 
 export default function SabanAICanvas() {
@@ -18,7 +18,6 @@ export default function SabanAICanvas() {
     setResponse(null);
 
     try {
-      // שליחת השאילתה למנוע הנתונים המאוחד
       const result = await processSmartOrder("ADMIN", query);
       setResponse(result);
     } catch (e) {
@@ -52,7 +51,7 @@ export default function SabanAICanvas() {
       {/* Main Content */}
       <main className="flex-1 w-full max-w-5xl flex flex-col items-center justify-center relative p-6">
         
-        {/* האנימציה המרכזית (מתכווצת כשיש תוצאה) */}
+        {/* האנימציה המרכזית */}
         <div className={`relative transition-all duration-700 ${response ? 'scale-50 h-32 opacity-50' : 'h-64 mb-12'}`}>
           <div className="relative w-48 h-48 md:w-64 md:h-64 flex items-center justify-center">
             <div className={`absolute inset-0 border-2 border-dashed border-[#00a884]/30 rounded-full ${loading ? 'animate-spin' : 'animate-[spin_20s_linear_infinite]'}`} />
@@ -66,11 +65,10 @@ export default function SabanAICanvas() {
         {response && (
           <div className="w-full max-w-3xl animate-in fade-in slide-in-from-bottom-6 duration-700 pb-32">
             <div className="bg-[#111b21] border border-gray-800 rounded-3xl p-6 mb-6 shadow-2xl relative overflow-hidden">
-               {/* הילה דקורטיבית */}
                <div className="absolute top-0 right-0 w-32 h-32 bg-[#00a884]/5 blur-3xl rounded-full" />
                
               <div className="flex items-center gap-2 text-[#00a884] mb-4 text-xs font-black uppercase tracking-widest">
-                <Sparkles size={14} /> בינה מלאכותית מבוססת מלאי
+                <Zap size={14} /> בינה מלאכותית מבוססת מלאי
               </div>
               <p className="text-xl text-gray-100 leading-relaxed font-medium mb-8">{response.text}</p>
               
@@ -79,9 +77,8 @@ export default function SabanAICanvas() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {response.orderList.map((item: any) => (
                     <div key={item.id} className="bg-[#1c272d] rounded-2xl border border-gray-700/50 overflow-hidden hover:border-[#00a884]/50 transition-all group shadow-lg">
-                      {/* תמונת המוצר */}
                       <div className="h-40 w-full bg-[#0b141a] relative flex items-center justify-center overflow-hidden border-b border-gray-800">
-                        {item.image || item.media_urls?.[0] ? (
+                        {(item.image || item.media_urls?.[0]) ? (
                           <img 
                             src={item.image || item.media_urls[0]} 
                             alt={item.name} 
@@ -98,7 +95,6 @@ export default function SabanAICanvas() {
                         </div>
                       </div>
 
-                      {/* פרטי המוצר */}
                       <div className="p-4 flex justify-between items-end">
                         <div className="space-y-1">
                           <p className="text-sm font-black text-white">{item.name}</p>
@@ -106,7 +102,6 @@ export default function SabanAICanvas() {
                         </div>
                         <div className="text-left">
                           <p className="text-[#00a884] text-lg font-black tracking-tighter">₪{item.price}</p>
-                          <p className="text-[9px] text-gray-500 uppercase font-bold tracking-widest">מחיר מחירון</p>
                         </div>
                       </div>
                     </div>
@@ -117,7 +112,7 @@ export default function SabanAICanvas() {
           </div>
         )}
 
-        {/* שורת החיפוש הצפה */}
+        {/* שורת החיפוש */}
         <div className={`w-full max-w-3xl fixed transition-all duration-500 z-50 ${response ? 'bottom-8' : 'relative mt-4'}`}>
           <div className="bg-[#1c272d]/90 backdrop-blur-2xl p-2 rounded-[2.5rem] border border-gray-700/50 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.7)] flex items-center gap-3 group">
             <div className="p-4 text-gray-500">
@@ -140,15 +135,8 @@ export default function SabanAICanvas() {
               <Send size={24} strokeWidth={2.5} />
             </button>
           </div>
-          <div className="flex justify-center gap-4 mt-4 opacity-30 text-[9px] font-black tracking-[0.3em] uppercase">
-             Inventory • Technical • Logistics
-          </div>
         </div>
       </main>
     </div>
   );
-}
-
-function Sparkles({ size, className }: { size: number, className?: string }) {
-  return <Zap size={size} className={className} />;
 }
