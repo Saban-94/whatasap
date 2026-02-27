@@ -6,21 +6,19 @@ import { Badge } from "@/components/ui/badge";
 import { AlertTriangle } from 'lucide-react';
 
 export default function SabanOrdersDashboard() {
-  // הגדרת סוג any למערך ההזמנות כדי למנוע שגיאות קומפילציה ב-Build
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchOrders();
-    
-    // יצירת Realtime connection ל-Supabase
+
+    // הגדרת סוג מפורש (payload: any) כדי למנוע שגיאת Build
     const channel = supabase
       .channel('schema-db-changes')
       .on(
         'postgres_changes', 
         { event: 'INSERT', schema: 'public', table: 'orders' }, 
         (payload: any) => {
-          // תיקון שגיאת ה-Build: הוספת explicit type ל-payload
           setOrders((prev) => [payload.new, ...prev]);
         }
       )
@@ -58,10 +56,10 @@ export default function SabanOrdersDashboard() {
           <p className="text-gray-400">מעקב הזמנות ווטסאפ ואישורי מנהל</p>
         </div>
         <div className="flex gap-4">
-          <Badge className="bg-orange-600 p-2">
+          <Badge className="bg-orange-600 p-2 text-white">
             ממתין לראמי: {orders.filter(o => o.status === 'WAITING_FOR_RAMI').length}
           </Badge>
-          <Badge className="bg-blue-600 p-2">
+          <Badge className="bg-blue-600 p-2 text-white">
             הזמנות חדשות: {orders.filter(o => o.status === 'PENDING').length}
           </Badge>
         </div>
@@ -98,9 +96,9 @@ export default function SabanOrdersDashboard() {
                     <AlertTriangle size={18}/> אשר חריגה (ראמי)
                   </button>
                 ) : (
-                  <Badge className="bg-[#00a884]">סטטוס: {order.status}</Badge>
+                  <Badge className="bg-[#00a884] text-white">סטטוס: {order.status}</Badge>
                 )}
-                <button className="text-xs text-gray-500 hover:text-white">צפה בלוג שיחה מלא</button>
+                <button className="text-xs text-gray-400 hover:text-white transition-colors">צפה בלוג שיחה מלא</button>
               </div>
             </div>
             
