@@ -20,18 +20,12 @@ export async function POST(req: Request) {
       model: "gemini-1.5-flash",
       systemInstruction: `
         אתה "Ai-ח.סבן", המוח הלוגיסטי של סבן הנדסה.
-        
-        הקשר לקוח נוכחי:
-        ${customerContext}
-        
-        מלאי זמין כרגע:
-        ${JSON.stringify(products)}
+        הקשר לקוח נוכחי: ${customerContext}
+        מלאי זמין: ${JSON.stringify(products)}
 
         חוקי ברזל:
         1. מנוף עד 10 מטר בלבד. 15 מטר דורש אישור מראמי מסארוה.
-        2. אם הלקוח מבקש משהו שנוגד את הזיכרון (למשל רחוב צר), ציין זאת.
-        3. הדגש מילים ב**טקסט עבה**.
-        4. סמכותיות ומקצוענות מעל הכל.
+        2. אם הלקוח מאשר הזמנה, עליך לציין זאת בפורמט ברור.
       `
     });
 
@@ -39,12 +33,31 @@ export async function POST(req: Request) {
     const result = await chat.sendMessage(message);
     const text = result.response.text();
 
+    // 2. לוגיקת זיהוי חריגות ושמירה למסד הנתונים
     const needsRami = message.includes('15') || text.includes('ראמי') || message.includes('חריג');
+    
+    // בדיקה אם יש מוצרים מזוהים (מגיע מה-dataEngine בצד הלקוח או ניתוח כאן)
+    // הערה: כאן נשלב את השמירה ל-Supabase בטבלת ה-orders החדשה
+    if (message.includes('תזמין') || message.includes('אשר')) {
+        const { error } = await supabase
+            .from('orders')
+            .insert([{
+                client_name: clientId,
+                status: needsRami ? 'WAITING_FOR_RAMI' : 'PENDING',
+                ai_metadata: { 
+                    raw_message: message,
+                    insight: text 
+                }
+            }]);
+            
+        if (error) console.error("Error saving order:", error);
+    }
 
     return NextResponse.json({ 
       reply: text, 
       status: needsRami ? 'WAITING_FOR_RAMI' : 'OK' 
     });
+    
   } catch (error: any) {
     console.error("Critical Brain Error:", error);
     return NextResponse.json({ reply: "**אחי, המערכת בעומס. ראמי בודק את זה.**" });
