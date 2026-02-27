@@ -1,40 +1,57 @@
-import unifiedBrain from "@/data/saban_unified_brain.json";
-import productsData from "@/data/products.json";
+import products from "@/data/products.json";
+import inventory from "@/data/inventory.json";
+import savedKnowledge from "@/data/knowledge_cache.json";
 
-export async function processSmartOrder(context: string, query: string) {
-  const products = (productsData as any).inventory || [];
-  const calculators = (unifiedBrain as any).calculators;
+export async function processSmartOrder(userId: string, query: string) {
+  const normalizedQuery = query.toLowerCase().trim();
 
-  // 1. מנגנון חיזוי והיגיון (Fuzzy Matching)
-  // אם המשתמש כתב "דבק" בלי לציין סוג, נציג לו את האופציות המובילות
-  if (query.includes("דבק") || query.includes("להדביק")) {
-    const suggestions = calculators.adhesive_grout.brands;
-    return {
-      text: "זיהיתי שאתה מחפש דבק. יש לי כמה אפשרויות מקצועיות עבורך בהתאם לסוג העבודה:",
-      options: [
-        { label: "תרמוקיר (ליישום עבה 4-8 מ\"מ)", value: "תרמוקיר" },
-        { label: "סיקה (ליישום דק ומקצועי)", value: "סיקה" },
-        { label: "מיסטר פיקס (סטנדרט גבוה)", value: "כרמית" }
-      ],
-      orderList: products.filter((p: any) => p.category?.includes("דבק")).slice(0, 3),
-      type: 'prediction'
+  // 1. בדיקת זיכרון מקומי (Cache) לחיסכון במכסות
+  const cachedAnswer = savedKnowledge.find(k => normalizedQuery.includes(k.question.toLowerCase()));
+  if (cachedAnswer) {
+    const cachedProducts = products.filter(p => cachedAnswer.products?.includes(p.id));
+    return { 
+      text: cachedAnswer.answer, 
+      orderList: cachedProducts, 
+      source: 'cache' 
     };
   }
 
-  // 2. היגיון בחישובי כמויות (חיזוי פחת ומוצרים משלימים)
-  if (query.includes("מטר") || query.includes("ריצוף")) {
-    const numbers = query.match(/\d+/g);
-    const area = numbers ? parseInt(numbers[0]) : 0;
-    
-    if (area > 0) {
-      const calc = calculators.tiling;
-      const cartons = Math.ceil((area * 1.1) / 1.44);
+  // 2. מנוע חישוב הנדסי (מ״ר לקרטונים)
+  if (normalizedQuery.includes("מטר") || normalizedQuery.includes("מ\"ר") || normalizedQuery.includes("חשב")) {
+    const numMatch = normalizedQuery.match(/\d+/);
+    if (numMatch) {
+      const sqft = parseInt(numMatch[0]);
+      // נוסחה: קרמיקה 60/60 = 1.44 מ״ר לקרטון
+      const boxes = Math.ceil(sqft / 1.44);
+      const targetProduct = products.find(p => p.tags?.includes("60/60"));
       
-      return {
-        text: `עבור ${area} מ"ר, החישוב ההנדסי שלי חוזה שצריך בקרוב:`,
-        predictionList: [
-          { item: `${cartons} קרטונים של ריצוף`, reason: "כולל 10% פחת בטיחותי" },
-          { item: `8 שקי דבק תואם`, reason: "לפי יחס כיסוי של 5 ק\"ג למ\"ר" },
+      const response = `עבור שטח של ${sqft} מ"ר, תזדקק ל-${boxes} קרטונים של פורצלן 60/60 (לפי 1.44 מ"ר לקרטון). האם להוסיף אותם להזמנה?`;
+      return { 
+        text: response, 
+        orderList: targetProduct ? [targetProduct] : [], 
+        source: 'logic_engine' 
+      };
+    }
+  }
+
+  // 3. שליפה חכמה מה-Inventory (אם יש מילה תואמת)
+  const directProduct = products.find(p => normalizedQuery.includes(p.name.toLowerCase()) || normalizedQuery.includes(p.id));
+  if (directProduct) {
+    const stock = inventory.find(i => i.product_id === directProduct.id);
+    return {
+      text: `מצאתי את ${directProduct.name} במלאי. נכון לעכשיו יש ${stock?.quantity || 0} יחידות ב${stock?.warehouse || 'מחסן'}.`,
+      orderList: [directProduct],
+      source: 'inventory'
+    };
+  }
+
+  // 4. פנייה ל-AI (Gemini) רק כשאין פתרון מקומי
+  return { 
+    text: "אני סורק את מאגר המומחים... נסה לשאול על סיקה 107 או לבקש חישוב מ\"ר לקרמיקה.", 
+    orderList: [], 
+    source: 'ai_fallback' 
+  };
+}          { item: `8 שקי דבק תואם`, reason: "לפי יחס כיסוי של 5 ק\"ג למ\"ר" },
           { item: `2 ק\"ג רובה`, reason: "למילוי פוגות של 3 מ\"מ" }
         ],
         orderList: products.filter((p: any) => p.name.includes("60/60")).slice(0, 1),
