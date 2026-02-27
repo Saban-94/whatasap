@@ -1,132 +1,106 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import { 
-  Search, 
-  Send, 
-  Database, 
-  Info, 
-  Package, 
-  Zap,
-  MessageSquare
-} from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Warp } from "@paper-design/shaders-react";
+import { useAudioLevel } from "@/hooks/use-audio-level"; // וודא שההוק קיים
+import { Search, Send, Mic, MicOff, Database, Zap, Info } from 'lucide-react';
 
 export default function SabanAICanvas() {
   const [query, setQuery] = useState('');
-  const [chat, setChat] = useState<{role: 'user' | 'ai', content: string}[]>([]);
-  const [isTyping, setIsTyping] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chat]);
-
-  const handleAsk = async () => {
-    if (!query.trim()) return;
-
-    const userMsg = { role: 'user' as const, content: query };
-    setChat(prev => [...prev, userMsg]);
-    setQuery('');
-    setIsTyping(true);
-
-    // סימולציית תגובה מהמלאי
-    setTimeout(() => {
-      setChat(prev => [...prev, { 
-        role: 'ai', 
-        content: `על פי המלאי של סבן הנדסה: סיקה 107 קיים במלאי (42 יחידות). מחירון VIP שלך: 85 ש"ח לשק. האם תרצה להוסיף להזמנה?` 
-      }]);
-      setIsTyping(false);
-    }, 1200);
+  const [isListening, setIsListening] = useState(false);
+  const { audioLevel } = useAudioLevel(); // רמת האודיו משפיעה על ה-Shader
+  
+  // פרמטרים ל-Shader (החזון הוויזואלי של סבן)
+  const shaderParams = {
+    color1: "#00a884", // ירוק סבן
+    color2: "#111b21", // כחול כהה ווטסאפ
+    color3: "#53bdeb", // תכלת אישור
+    speed: 6.0,
+    scale: 0.4,
+    distortion: 0.3
   };
 
   return (
-    <div className="min-h-screen bg-[#0b141a] text-white font-sans flex flex-col" dir="rtl">
+    <div className="min-h-screen bg-[#0b141a] text-white flex flex-col items-center justify-between p-8 font-sans overflow-hidden" dir="rtl">
       
-      {/* Header */}
-      <header className="h-20 border-b border-gray-800 flex items-center justify-between px-8 bg-[#111b21]/80 backdrop-blur-xl sticky top-0 z-50">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-[#00a884] rounded-2xl flex items-center justify-center shadow-lg shadow-[#00a884]/20">
-            <MessageSquare size={28} className="text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl font-black tracking-tight uppercase">AI-ח.סבן CANVAS</h1>
-            <p className="text-[10px] text-[#00a884] font-bold tracking-widest">Knowledge Engine v2.0</p>
-          </div>
+      {/* Header - סטטוס מערכת */}
+      <div className="w-full max-w-5xl flex justify-between items-center opacity-70">
+        <div className="flex items-center gap-3">
+          <div className="w-2 h-2 bg-[#00a884] rounded-full animate-ping" />
+          <span className="text-[10px] font-black uppercase tracking-widest">Saban Master Brain v2.0</span>
+        </div>
+        <div className="flex items-center gap-6 text-[10px] font-bold">
+          <span className="flex items-center gap-1"><Database size={12}/> Sync: 100%</span>
+          <span className="flex items-center gap-1"><Zap size={12}/> AI: Active</span>
+        </div>
+      </div>
+
+      {/* Center - ה-Orb של סבן (הלב של ה-AI) */}
+      <div className="relative flex flex-col items-center justify-center">
+        {/* הילה חיצונית */}
+        <div 
+          className="absolute inset-0 bg-[#00a884] opacity-20 blur-[100px] transition-all duration-300"
+          style={{ transform: `scale(${1 + audioLevel * 2})` }}
+        />
+        
+        {/* ה-Shader המעגלי */}
+        <div 
+          className="rounded-full overflow-hidden border-4 border-[#111b21] shadow-[0_0_50px_rgba(0,168,132,0.3)] transition-transform duration-75"
+          style={{ 
+            width: 320, 
+            height: 320,
+            transform: `scale(${1 + audioLevel * 0.2})` 
+          }}
+        >
+          <Warp
+            width={320}
+            height={320}
+            colors={[shaderParams.color1, shaderParams.color2, shaderParams.color3]}
+            speed={shaderParams.speed}
+            scale={shaderParams.scale}
+            distortion={shaderParams.distortion}
+            softness={0.9}
+            swirl={1.5}
+          />
+        </div>
+
+        <div className="mt-8 text-center">
+          <h2 className="text-2xl font-black tracking-tighter text-[#00a884] mb-1">במה אני יכול לעזור?</h2>
+          <p className="text-xs text-gray-500 font-medium">שאל על מלאי, מפרטים טכניים או מחירים</p>
+        </div>
+      </div>
+
+      {/* Bottom - Input מעוצב קנבס */}
+      <div className="w-full max-w-2xl relative mb-4">
+        <div className="bg-[#1c272d]/80 backdrop-blur-2xl p-2 rounded-[2.5rem] border border-gray-700 shadow-2xl flex items-center gap-2">
+          <button 
+            onClick={() => setIsListening(!isListening)}
+            className={`p-4 rounded-full transition-all ${isListening ? 'bg-red-500 animate-pulse' : 'text-gray-500 hover:bg-gray-800'}`}
+          >
+            {isListening ? <MicOff size={22} /> : <Mic size={22} />}
+          </button>
+          
+          <input 
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="חפש במלאי (למשל: כמה סיקה 107 יש בבני ברק?)" 
+            className="flex-1 bg-transparent outline-none text-sm py-4 px-2 placeholder:text-gray-600"
+          />
+          
+          <button className="bg-[#00a884] hover:bg-[#06cf9c] p-4 rounded-full text-white shadow-lg transition-all active:scale-95">
+            <Send size={22} />
+          </button>
         </div>
         
-        <div className="hidden md:flex items-center gap-6 text-gray-400 text-[10px] font-bold uppercase">
-          <div className="flex items-center gap-2"><Database size={14} /> Database Sync: OK</div>
-          <div className="flex items-center gap-2 text-[#00a884]"><Zap size={14} /> AI Processing: Active</div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="flex-1 max-w-4xl mx-auto w-full p-6 flex flex-col relative">
-        <div className="flex-1 space-y-6 mb-32 pt-4">
-          {chat.length === 0 && (
-            <div className="h-full flex flex-col items-center justify-center text-center space-y-6 opacity-30 py-24 border-2 border-dashed border-gray-800 rounded-3xl">
-              <div className="w-20 h-20 bg-gray-800 rounded-full flex items-center justify-center">
-                 <Search size={40} className="text-gray-500" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold italic mb-2 text-white">שאל את גימני הכל על המלאי והידע של סבן</h2>
-                <p className="text-xs max-w-xs mx-auto">חיפוש חכם ב-products.json, inventory.json ו-technical_knowledge.json</p>
-              </div>
-            </div>
-          )}
-
-          {chat.map((msg, i) => (
-            <div key={i} className={`flex ${msg.role === 'user' ? 'justify-start' : 'justify-end'}`}>
-              <div className={`max-w-[85%] p-5 rounded-3xl shadow-2xl ${
-                msg.role === 'user' 
-                ? 'bg-[#202c33] border border-gray-700 rounded-tr-none' 
-                : 'bg-[#005c4b] text-white rounded-tl-none border-b-4 border-emerald-400/30'
-              }`}>
-                <div className="flex items-center gap-2 mb-2 opacity-50 text-[10px] font-bold">
-                  {msg.role === 'user' ? <Users size={12} /> : <Zap size={12} />}
-                  {msg.role === 'user' ? 'ראמי' : 'גימני AI'}
-                </div>
-                <p className="text-sm leading-relaxed">{msg.content}</p>
-              </div>
-            </div>
-          ))}
-          {isTyping && (
-            <div className="flex justify-end items-center gap-2 italic text-[10px] text-[#00a884] font-bold animate-pulse">
-              גימני סורק את המוח הלוגיסטי... <Zap size={12} />
-            </div>
-          )}
-          <div ref={scrollRef} />
-        </div>
-
-        {/* Floating Input */}
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 z-50">
-          <div className="bg-[#1c272d] p-2 rounded-[2.5rem] border border-gray-700 shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex items-center gap-2">
-            <div className="p-4 text-gray-500"><Info size={20} /></div>
-            <input 
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAsk()}
-              placeholder="שאל אותי על סיקה, מחירים, או כמה נשאר במלאי..." 
-              className="flex-1 bg-transparent outline-none text-sm py-4 px-2 placeholder:text-gray-600"
-            />
-            <button 
-              onClick={handleAsk}
-              className="bg-[#00a884] hover:bg-[#06cf9c] p-4 rounded-full text-white transition-all shadow-lg active:scale-95"
-            >
-              <Send size={24} />
+        {/* תגיות מהירות */}
+        <div className="flex justify-center gap-2 mt-4">
+          {['בדיקת מלאי', 'מפרט טכני', 'מחירון VIP'].map(tag => (
+            <button key={tag} className="text-[9px] font-bold border border-gray-800 px-3 py-1 rounded-full text-gray-500 hover:border-[#00a884] hover:text-[#00a884] transition-all">
+              {tag}
             </button>
-          </div>
+          ))}
         </div>
-      </main>
+      </div>
     </div>
   );
-}
-
-// תיקון ה-Props לגרסת ה-Build
-function Users({ size, className }: { size: number, className?: string }) {
-  return <Package size={size} className={className} />;
-}
-
-function ZapIconCustom({ size, className }: { size: number, className?: string }) {
-  return <Zap size={size} className={className} />;
 }
