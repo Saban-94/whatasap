@@ -1,40 +1,143 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Send, Database, Zap, Globe, Loader2, Image as ImageIcon, Sparkles, Calculator } from 'lucide-react';
+import { Search, Send, Database, Zap, Loader2, Image as ImageIcon, MessageSquare } from 'lucide-react';
 import { processSmartOrder } from '@/lib/dataEngine';
 
-export default function SabanAICanvas() {
+export default function SabanMobileAI() {
   const [query, setQuery] = useState('');
   const [response, setResponse] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => { 
-    setMounted(true); 
-  }, []);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (response) {
-      scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [response]);
+    setMounted(true);
+    // מניעת גלילה של הדף כולו במובייל כדי להרגיש כמו אפליקציה
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = 'auto'; };
+  }, []);
 
-  const handleSearch = async () => {
-    if (!query.trim()) return;
+  const handleAction = async () => {
+    if (!query.trim() || loading) return;
     setLoading(true);
-    setResponse(null);
+    
+    // סגירת מקלדת במובייל לאחר לחיצה
+    inputRef.current?.blur();
 
     try {
-      // שליחת השאילתה למנוע הנתונים המקומי והמאובטח
-      const result = await processSmartOrder("ADMIN", query);
+      // שליפה מהמוח המקומי/סמנטי
+      const result = await processSmartOrder("MOBILE_USER", query);
       setResponse(result);
     } catch (e) {
-      console.error("Search Error:", e);
+      console.error("Critical AI Error:", e);
     } finally {
       setLoading(false);
+      setQuery('');
     }
+  };
+
+  if (!mounted) return null;
+
+  return (
+    <div className="fixed inset-0 bg-[#0b141a] text-white flex flex-col font-sans overflow-hidden select-none touch-none" dir="rtl">
+      
+      {/* Header - Mobile Style */}
+      <header className="h-16 border-b border-gray-800/50 flex items-center justify-between px-6 bg-[#111b21]/80 backdrop-blur-xl z-[100]">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-[#00a884] rounded-lg flex items-center justify-center shadow-lg">
+            <span className="font-bold text-sm">ס</span>
+          </div>
+          <h1 className="text-sm font-black tracking-tight uppercase">Saban AI Canvas</h1>
+        </div>
+        <div className="flex items-center gap-2">
+           <div className={`w-2 h-2 rounded-full ${loading ? 'bg-yellow-400 animate-pulse' : 'bg-[#00a884]'}`} />
+           <span className="text-[10px] font-bold text-gray-500 uppercase">Live</span>
+        </div>
+      </header>
+
+      {/* Main Content Area */}
+      <main className="flex-1 relative overflow-y-auto p-4 pb-32 touch-pan-y">
+        
+        {/* The 720° Rotating Orb - Breathing Logic */}
+        {!response && !loading && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <div className="relative w-56 h-56 flex items-center justify-center">
+              {/* Outer Ring 720deg */}
+              <div className="absolute inset-0 border-[3px] border-dashed border-[#00a884]/20 rounded-full animate-[spin_4s_linear_infinite]" 
+                   style={{ animationDuration: '3s', transform: 'rotateX(45deg)' }} />
+              
+              {/* Core Avatar */}
+              <div className="w-40 h-40 bg-gradient-to-tr from-[#00a884] to-[#005c4b] rounded-full shadow-[0_0_60px_rgba(0,168,132,0.3)] flex items-center justify-center border-4 border-[#111b21] animate-pulse">
+                <img src="/avattar.png" className="w-24 h-24 object-contain opacity-90" alt="Saban AI" />
+              </div>
+            </div>
+            <p className="mt-8 text-gray-500 font-bold text-xs tracking-widest animate-pulse">היועץ של ח. סבן קשוב...</p>
+          </div>
+        )}
+
+        {/* AI Response Display */}
+        {response && (
+          <div className="w-full space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="bg-[#1c272d] border border-gray-800 p-5 rounded-3xl shadow-xl">
+              <div className="flex items-center gap-2 text-[#00a884] mb-3 text-[10px] font-bold">
+                <Zap size={12} /> מענה טכני מבוסס נתונים
+              </div>
+              <p className="text-lg leading-relaxed font-medium">{response.text}</p>
+            </div>
+
+            {/* Product Cards for Mobile */}
+            {response.orderList?.map((item: any) => (
+              <div key={item.id} className="bg-[#111b21] rounded-3xl border border-gray-800 overflow-hidden flex flex-col shadow-lg">
+                <div className="h-48 bg-[#0b141a] p-4 flex items-center justify-center">
+                  <img src={item.image || "/avattar.png"} className="h-full object-contain" alt={item.name} />
+                </div>
+                <div className="p-4 flex justify-between items-center bg-[#1c272d]">
+                  <div>
+                    <h3 className="font-bold text-sm">{item.name}</h3>
+                    <p className="text-[10px] text-gray-500">מק"ט: {item.sku}</p>
+                  </div>
+                  <div className="text-left">
+                    <p className="text-[#00a884] font-black">₪{item.price}</p>
+                    <button className="text-[10px] bg-[#00a884]/10 text-[#00a884] px-3 py-1 rounded-full font-bold mt-1">
+                      בדוק מלאי
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </main>
+
+      {/* Floating Mobile Input - The Engine */}
+      <div className="p-4 bg-gradient-to-t from-[#0b141a] via-[#0b141a] to-transparent absolute bottom-0 w-full z-[200]">
+        <div className="bg-[#1c272d] border border-gray-700/50 rounded-[2rem] p-1 flex items-center shadow-2xl focus-within:border-[#00a884] transition-all">
+          <div className="p-4 text-gray-500">
+            {loading ? <Loader2 className="animate-spin text-[#00a884]" size={20} /> : <MessageSquare size={20} />}
+          </div>
+          
+          <input 
+            ref={inputRef}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleAction()}
+            placeholder="שאל את היועץ של סבן..." 
+            className="flex-1 bg-transparent outline-none py-4 text-sm placeholder:text-gray-600 pointer-events-auto"
+          />
+          
+          <button 
+            onClick={handleAction}
+            disabled={loading}
+            className="bg-[#00a884] p-4 rounded-full text-white active:scale-90 transition-all shadow-lg pointer-events-auto ml-1"
+          >
+            <Send size={20} strokeWidth={2.5} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}    }
   };
 
   if (!mounted) return null;
