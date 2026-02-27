@@ -1,40 +1,54 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import products from "@/data/products.json";
-import savedKnowledge from "@/data/knowledge_cache.json"; // מאגר שאלות ותשובות שנשמרו
-
-const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY!);
+import inventory from "@/data/inventory.json";
+import knowledge from "@/data/knowledge_cache.json";
 
 export async function processSmartOrder(query: string) {
   const normalized = query.toLowerCase().trim();
 
-  // 1. בדיקה בזיכרון המקומי (Cache) - חינם ומהיר
-  const cachedMatch = savedKnowledge.find(k => normalized.includes(k.question));
+  // 1. חיפוש בזיכרון המקומי (Cache)
+  const cachedMatch = knowledge.find(k => normalized.includes(k.question.toLowerCase()));
   if (cachedMatch) {
     return { 
       text: cachedMatch.answer, 
       orderList: products.filter(p => cachedMatch.products?.includes(p.sku)),
-      source: 'Local Knowledge' 
+      source: 'cache' 
     };
   }
 
-  // 2. מנוע חישוב הנדסי (מ"ר לקרטונים) - לוגיקה מקומית
+  // 2. מנוע חישוב הנדסי (מ"ר לקרטונים)
   if (normalized.includes("מטר") || normalized.includes("מ\"ר")) {
-    const num = parseInt(normalized.match(/\d+/)?.[0] || "0");
+    const numMatch = normalized.match(/\d+/);
+    const num = numMatch ? parseInt(numMatch[0]) : 0;
+    
     if (num > 0) {
-      const boxes = Math.ceil(num / 1.44); // לפי 60/60 סטנדרט
+      const boxes = Math.ceil(num / 1.44); // חישוב לפי קרמיקה 60/60
       const ceramic = products.find(p => p.tags?.includes("60/60"));
       return {
         text: `לשטח של ${num} מ"ר, תצטרך ${boxes} קרטונים של קרמיקה 60/60. האם להוסיף אותם להזמנה?`,
         orderList: ceramic ? [ceramic] : [],
-        source: 'Saban Calculator'
+        source: 'calculator'
       };
     }
   }
 
-  // 3. שליפה מ-Gemini 3.1 Pro (רק אם אין תשובה מקומית)
-  try {
-    const model = genAI.getGenerativeModel({ model: "gemini-3.1-pro-preview" });
-    const prompt = `אתה יועץ מומחה של "ח. סבן חומרי בניין". ענה על השאלה בצורה מקצועית וקצרה: ${query}`;
+  // 3. שליפה ישירה מהמלאי לפי שם מוצר
+  const directProduct = products.find(p => normalized.includes(p.name.toLowerCase()));
+  if (directProduct) {
+    const stock = inventory.find(i => i.product_id === directProduct.id);
+    return {
+      text: `מצאתי את ${directProduct.name} במלאי. נכון לעכשיו יש ${stock?.quantity || 0} יחידות ב${stock?.warehouse || 'מחסן'}.`,
+      orderList: [directProduct],
+      source: 'inventory'
+    };
+  }
+
+  // 4. במידה ולא נמצא כלום - תשובה כללית
+  return { 
+    text: "אני סורק את מאגר המומחים... נסה לשאול על מוצר ספציפי או לבקש חישוב כמויות.", 
+    orderList: [],
+    source: 'ai_fallback'
+  };
+}    const prompt = `אתה יועץ מומחה של "ח. סבן חומרי בניין". ענה על השאלה בצורה מקצועית וקצרה: ${query}`;
     
     const result = await model.generateContent(prompt);
     const response = await result.response;
