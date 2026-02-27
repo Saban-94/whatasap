@@ -3,23 +3,32 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, AlertTriangle, Clock, Search } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 
 export default function SabanOrdersDashboard() {
-  const [orders, setOrders] = useState([]);
+  // הגדרת סוג any למערך ההזמנות כדי למנוע שגיאות קומפילציה ב-Build
+  const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchOrders();
-    // יצירת Realtime connection ל-Supabase כדי לראות הזמנות חדשות מהצ'אט ברגע שהן נוצרות
+    
+    // יצירת Realtime connection ל-Supabase
     const channel = supabase
       .channel('schema-db-changes')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, payload => {
-        setOrders(prev => [payload.new, ...prev]);
-      })
+      .on(
+        'postgres_changes', 
+        { event: 'INSERT', schema: 'public', table: 'orders' }, 
+        (payload: any) => {
+          // תיקון שגיאת ה-Build: הוספת explicit type ל-payload
+          setOrders((prev) => [payload.new, ...prev]);
+        }
+      )
       .subscribe();
 
-    return () => supabase.removeChannel(channel);
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   async function fetchOrders() {
@@ -27,6 +36,7 @@ export default function SabanOrdersDashboard() {
       .from('orders')
       .select('*')
       .order('created_at', { ascending: false });
+    
     setOrders(data || []);
     setLoading(false);
   }
@@ -36,6 +46,10 @@ export default function SabanOrdersDashboard() {
     fetchOrders();
   };
 
+  if (loading) {
+    return <div className="p-6 bg-[#0b141a] min-h-screen text-white text-center">טוען נתונים...</div>;
+  }
+
   return (
     <div className="p-6 bg-[#0b141a] min-h-screen text-white font-sans" dir="rtl">
       <header className="mb-8 flex justify-between items-center border-b border-gray-800 pb-4">
@@ -44,8 +58,12 @@ export default function SabanOrdersDashboard() {
           <p className="text-gray-400">מעקב הזמנות ווטסאפ ואישורי מנהל</p>
         </div>
         <div className="flex gap-4">
-          <Badge className="bg-orange-600 p-2">ממתין לראמי: {orders.filter(o => o.status === 'WAITING_FOR_RAMI').length}</Badge>
-          <Badge className="bg-blue-600 p-2">הזמנות חדשות: {orders.filter(o => o.status === 'PENDING').length}</Badge>
+          <Badge className="bg-orange-600 p-2">
+            ממתין לראמי: {orders.filter(o => o.status === 'WAITING_FOR_RAMI').length}
+          </Badge>
+          <Badge className="bg-blue-600 p-2">
+            הזמנות חדשות: {orders.filter(o => o.status === 'PENDING').length}
+          </Badge>
         </div>
       </header>
 
@@ -56,12 +74,14 @@ export default function SabanOrdersDashboard() {
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <span className="font-bold text-lg">{order.client_name}</span>
-                  <span className="text-xs text-gray-500">{new Date(order.created_at).toLocaleString('he-IL')}</span>
+                  <span className="text-xs text-gray-500">
+                    {new Date(order.created_at).toLocaleString('he-IL')}
+                  </span>
                 </div>
                 <p className="text-sm text-gray-300 italic mb-3">"{order.ai_metadata?.raw_message}"</p>
                 
                 <div className="space-y-1">
-                   {order.items?.map((item: any, i: number) => (
+                   {order.items && Array.isArray(order.items) && order.items.map((item: any, i: number) => (
                      <div key={i} className="text-sm bg-gray-800/50 p-1 px-2 rounded inline-block ml-2">
                        {item.qty} x {item.name}
                      </div>
@@ -73,7 +93,7 @@ export default function SabanOrdersDashboard() {
                 {order.status === 'WAITING_FOR_RAMI' ? (
                   <button 
                     onClick={() => approveOrder(order.id)}
-                    className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2"
+                    className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors"
                   >
                     <AlertTriangle size={18}/> אשר חריגה (ראמי)
                   </button>
@@ -91,6 +111,9 @@ export default function SabanOrdersDashboard() {
             )}
           </div>
         ))}
+        {orders.length === 0 && (
+          <div className="text-center text-gray-500 mt-10">אין הזמנות חדשות במערכת.</div>
+        )}
       </div>
     </div>
   );
