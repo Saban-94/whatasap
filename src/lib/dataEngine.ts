@@ -1,41 +1,52 @@
-// src/lib/dataEngine.ts
-import productsData from "@/data/products.json";
-import customerHistory from "@/data/customer_history.json";
+import products from "@/data/products.json";
+import inventory from "@/data/inventory.json";
+import knowledge from "@/data/technical_knowledge.json";
 
-// מילון מונחים שנלמד מהשטח (מתוך ה-CSV)
-const SLANG_MAP: Record<string, string> = {
-  "אמרקאי": "שפכטל אמריקאי טמבור",
-  "פיבה": "פיבה קרטון",
-  "סוססום": "סומסום",
-  "מסכן טיפ": "מסקינטייפ כחול",
-  "סרט ניר": "סרט נייר קרטון"
-};
-
-export async function processSmartOrder(customerId: string, text: string) {
-  let normalizedText = text;
-  
-  // נורמליזציה של סלנג למוצרים טכניים
-  Object.keys(SLANG_MAP).forEach(slang => {
-    if (text.includes(slang)) {
-      normalizedText = text.replace(new RegExp(slang, 'g'), SLANG_MAP[slang]);
-    }
-  });
-
-  // שליפת פרופיל לקוח מההיסטוריה (זיהוי לפי טלפון מה-CSV)
-  const client = customerHistory.find(c => c.phone === customerId) || { client_name: "לקוח חדש" };
-
-  const inventory = Array.isArray(productsData) ? productsData : [];
-  const foundProducts = inventory.filter((p: any) => 
-    normalizedText.toLowerCase().includes(p.name.toLowerCase())
+export async function processSmartOrder(context: string, query: string) {
+  // 1. זיהוי מוצר לפי מילות מפתח (סיקה, קרמיקה וכו')
+  const identifiedProduct = products.find(p => 
+    query.includes(p.name) || (p.tags && p.tags.some(t => query.includes(t)))
   );
 
-  return {
-    text: `בוקר טוב ${client.client_name}, יטופל מיידית. רשמתי את המוצרים להזמנה.`,
-    orderList: foundProducts.map(p => ({
-      id: p.barcode,
-      name: p.name,
-      qty: 1, // ניתן להוסיף זיהוי כמויות רגקס כאן
-      price: p.price || "לפי מחירון"
-    }))
-  };
+  // 2. לוגיקת חישוב כמויות (למשל קרמיקה 60/60)
+  let calculationResult = null;
+  if (query.includes("מטר") || query.includes("חשב")) {
+    const sqMeter = parseFloat(query.replace(/[^0-9.]/g, ''));
+    if (identifiedProduct?.packaging_ratio) {
+      const cartons = Math.ceil(sqMeter / identifiedProduct.packaging_ratio);
+      calculationResult = {
+        required: sqMeter,
+        units: cartons,
+        unitName: "קרטונים",
+        ratio: identifiedProduct.packaging_ratio
+      };
+    }
+  }
+
+  // 3. שליפת ידע טכני ממאגר קיים (חיסכון במכסת AI)
+  const techInfo = knowledge.find(k => identifiedProduct && k.product_id === identifiedProduct.id);
+
+  // 4. בניית התשובה
+  if (identifiedProduct) {
+    const stock = inventory.find(i => i.product_id === identifiedProduct.id);
+    let text = `מצאתי עבורך את ${identifiedProduct.name}. \n`;
+    
+    if (calculationResult) {
+      text += `📏 עבור ${calculationResult.required} מ"ר, תצטרך ${calculationResult.units} ${calculationResult.unitName} (לפי יחס של ${calculationResult.ratio} למארז). \n`;
+    }
+    
+    if (techInfo) {
+      text += `🛠️ מפרט טכני: ${techInfo.description} \n`;
+    }
+
+    text += `📦 במלאי: ${stock?.quantity || 0} יחידות זמינות ב${stock?.warehouse || "מחסן מרכזי"}.`;
+
+    return {
+      text,
+      orderList: [{ ...identifiedProduct, qty: calculationResult?.units || 1, available: stock?.quantity || 0 }],
+      hasImage: !!identifiedProduct.image
+    };
+  }
+
+  return { text: "אני סורק את המוח... לא מצאתי מוצר תואם. נסה לרשום שם מוצר או מק\"ט.", orderList: [] };
 }
