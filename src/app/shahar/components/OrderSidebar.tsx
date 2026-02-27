@@ -1,79 +1,66 @@
 'use client';
 import React from 'react';
-import { X, ShoppingCart, Package, CheckCircle2, Trash2 } from 'lucide-react';
 
 interface OrderSidebarProps {
-  isOpen: boolean;
-  setIsOpen: (open: boolean) => void;
-  cart: any[];
-  setCart: (cart: any[]) => void;
+  orderItems?: any[];
+  onUpdateQty?: (id: string, delta: number) => void;
 }
 
-export default function OrderSidebar({ isOpen, setIsOpen, cart, setCart }: OrderSidebarProps) {
-  const totalItems = cart.reduce((acc, curr) => acc + curr.qty, 0);
+export default function OrderSidebar({ orderItems = [], onUpdateQty }: OrderSidebarProps) {
+  // הגנה: וודא ש-orderItems הוא תמיד מערך, גם אם הגיע undefined
+  const items = Array.isArray(orderItems) ? orderItems : [];
 
-  const updateQty = (sku: string, delta: number) => {
-    setCart(cart.map(item => 
-      item.sku === sku ? { ...item, qty: Math.max(1, item.qty + delta) } : item
-    ));
-  };
-
-  const removeItem = (sku: string) => {
-    setCart(cart.filter(item => item.sku !== sku));
-  };
+  // חישוב בטוח: שימוש ב-0 כברירת מחדל ו-parseFloat למניעת שגיאות חישוב
+  const total = items.reduce((acc, item) => {
+    const price = parseFloat(item?.price) || 0;
+    const qty = parseInt(item?.qty) || 0;
+    return acc + (price * qty);
+  }, 0);
 
   return (
-    <div className={`fixed inset-y-0 left-0 z-50 transition-all duration-300 border-r border-[#202c33] bg-[#111b21] flex flex-col ${isOpen ? 'w-80 md:w-96' : 'w-0 overflow-hidden border-none'}`}>
-      <header className="h-16 bg-[#202c33] p-4 flex items-center justify-between shadow-md">
-        <div className="flex items-center gap-2 text-[#C9A227]">
-          <ShoppingCart size={20} />
-          <span className="font-bold text-sm uppercase tracking-wider">הזמנה חדשה</span>
+    <div className="bg-[#111b21] p-4 rounded-2xl border border-gray-800 h-full flex flex-col shadow-2xl">
+      <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-4">
+        <h3 className="text-[#00a884] font-black text-lg">סל הזמנה חכם</h3>
+        <div className="text-left">
+          <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">סה"כ לתשלום</p>
+          <p className="text-xl font-black text-white">₪{total.toLocaleString()}</p>
         </div>
-        <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-white">
-          <X size={24} />
-        </button>
-      </header>
-
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {cart.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-gray-500 opacity-50">
-            <Package size={60} className="mb-4" />
-            <p>הסל ריק</p>
-            <p className="text-xs">דבר עם גימני כדי להוסיף מוצרים</p>
-          </div>
-        ) : (
-          cart.map((item) => (
-            <div key={item.sku} className="bg-[#202c33] rounded-xl p-4 border border-[#2a3942] relative group">
-              <div className="flex justify-between items-start mb-2">
-                <p className="font-bold text-sm leading-tight ml-4">{item.name}</p>
-                <button onClick={() => removeItem(item.sku)} className="text-gray-500 hover:text-red-500">
-                  <Trash2 size={16} />
-                </button>
+      </div>
+      
+      <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar">
+        {items.length > 0 ? (
+          items.map((item, i) => (
+            <div key={item.id || i} className="bg-[#202c33] p-3 rounded-xl border-r-4 border-[#00a884] shadow-sm">
+              <div className="flex justify-between items-start">
+                <span className="text-sm font-bold text-white leading-tight w-2/3">{item.name}</span>
+                <span className="text-xs font-mono text-[#00a884]">₪{item.price}</span>
               </div>
-              <div className="flex justify-between items-center mt-4">
-                <div className="flex items-center gap-3 bg-[#111b21] rounded-lg p-1">
-                  <button className="w-8 h-8 flex items-center justify-center bg-[#2a3942] rounded hover:bg-[#C9A227] hover:text-black transition-colors" onClick={() => updateQty(item.sku, 1)}>+</button>
-                  <span className="text-sm font-bold w-10 text-center">{item.qty} יח'</span>
-                  <button className="w-8 h-8 flex items-center justify-center bg-[#2a3942] rounded hover:bg-[#C9A227] hover:text-black transition-colors" onClick={() => updateQty(item.sku, -1)}>-</button>
+              <div className="flex items-center justify-between mt-3">
+                <div className="flex items-center gap-4 bg-[#111b21] rounded-full px-3 py-1">
+                  <button 
+                    onClick={() => onUpdateQty?.(item.id, -1)}
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >-</button>
+                  <span className="text-sm font-bold min-w-[20px] text-center">{item.qty}</span>
+                  <button 
+                    onClick={() => onUpdateQty?.(item.id, 1)}
+                    className="text-[#00a884] hover:text-[#06cf9c] transition-colors"
+                  >+</button>
                 </div>
-                <span className="text-[10px] text-gray-500 font-mono">מק"ט: {item.sku}</span>
               </div>
             </div>
           ))
+        ) : (
+          <div className="h-full flex flex-col items-center justify-center opacity-20 py-10">
+            <div className="w-12 h-12 border-2 border-dashed border-gray-500 rounded-full mb-2"></div>
+            <p className="text-xs text-center">ה-AI מחכה להודעה<br/>כדי לזהות מוצרים</p>
+          </div>
         )}
       </div>
-
-      {cart.length > 0 && (
-        <div className="p-4 bg-[#202c33] border-t border-gray-800">
-          <div className="flex justify-between mb-4">
-            <span className="text-sm">סה"כ פריטים:</span>
-            <span className="font-bold text-[#C9A227]">{totalItems}</span>
-          </div>
-          <button className="w-full bg-[#C9A227] text-black font-black py-4 rounded-xl hover:scale-[0.98] active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg">
-            <CheckCircle2 size={20} /> שלח הזמנה לוואטסאפ
-          </button>
-        </div>
-      )}
+      
+      <button className="w-full bg-[#00a884] hover:bg-[#06cf9c] text-white py-3 rounded-xl font-bold mt-4 transition-all shadow-lg shadow-[#00a884]/20 active:scale-95">
+        שלח למחלקת הזמנות
+      </button>
     </div>
   );
 }
