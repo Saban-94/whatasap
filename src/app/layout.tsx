@@ -9,6 +9,11 @@ export const metadata = {
   title: 'Saban OS - ח. סבן',
   description: 'מערכת ניהול ולוגיסטיקה חכמה',
   manifest: '/manifest.json',
+  icons: {
+    icon: '/favicon.ico', // שימוש בלוגו ח. סבן המקצועי
+    apple: '/1000211661.jpg', // אייקון לאייפון
+  },
+  themeColor: '#00a884', // צבע ירוק סבן לפס העליון בנייד
 };
 
 export default function RootLayout({
@@ -17,17 +22,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="he" dir="rtl">
-      <body className={inter.className}>
+    <html lang="he" dir="rtl" className="dark">
+      <body className={`${inter.className} bg-black text-white antialiased`}>
+        {/* רישום ה-Service Worker לביצועים מהירים ואופליין */}
         <RegisterServiceWorker />
+        
+        {/* ניהול התראות דחיפה ללקוחות ונציגים */}
         <NotificationManager />
         
-        <main className="min-h-screen bg-black text-white">
+        <main className="min-h-screen">
           {children}
         </main>
 
-        {/* הצ'אט החדש והנקי של גימני */}
-        <div className="fixed bottom-4 right-4 z-50 w-full max-w-[350px]">
+        {/* האווטאר הנושם המרכזי יכול להיות מוטמע כאן כ-Global Overlay אם תרצה */}
+        <div className="fixed bottom-6 right-6 z-[100]">
+           {/* כאן יבוא הרכיב של ה-AI Orb במידה ותרצה אותו זמין מכל דף */}
         </div>
       </body>
     </html>
