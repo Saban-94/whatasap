@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Search, Send, Database, Zap, Globe, Loader2, Image as ImageIcon } from 'lucide-react';
-import { processSmartOrder } from '@/lib/dataEngine';
+import { processSmartOrder } from '@/lib/dataEngine'; // המנוע שסורק את ה-JSON וה-Supabase
 
 export default function SabanAICanvas() {
   const [query, setQuery] = useState('');
@@ -18,6 +18,7 @@ export default function SabanAICanvas() {
     setResponse(null);
 
     try {
+      // שליחת השאילתה למנוע הנתונים המאוחד
       const result = await processSmartOrder("ADMIN", query);
       setResponse(result);
     } catch (e) {
@@ -32,7 +33,7 @@ export default function SabanAICanvas() {
   return (
     <div className="min-h-screen bg-[#0b141a] text-white flex flex-col items-center font-sans overflow-hidden" dir="rtl">
       
-      {/* Header */}
+      {/* סרגל עליון */}
       <header className="w-full h-20 border-b border-gray-800/50 flex items-center justify-between px-8 bg-[#111b21]/30 backdrop-blur-md z-50">
         <div className="flex items-center gap-4">
           <div className="w-10 h-10 bg-gradient-to-br from-[#00a884] to-[#005c4b] rounded-xl flex items-center justify-center shadow-lg shadow-[#00a884]/20">
@@ -40,23 +41,41 @@ export default function SabanAICanvas() {
           </div>
           <div className="flex flex-col">
             <h1 className="text-lg font-black tracking-tighter leading-none">AI-ח.סבן CANVAS</h1>
-            <span className="text-[9px] text-[#00a884] font-bold uppercase tracking-widest mt-1">Product Visual Engine</span>
+            <span className="text-[9px] text-[#00a884] font-bold uppercase tracking-widest mt-1">Saban Engineering Intelligence</span>
           </div>
         </div>
         <div className="flex items-center gap-4 text-[10px] font-bold text-gray-400">
-          <span className="flex items-center gap-1"><Database size={12} className="text-[#00a884]"/> נתונים: SUPABASE</span>
+          <span className="flex items-center gap-1"><Database size={12} className="text-[#00a884]"/> Sync: OK</span>
+          <span className="flex items-center gap-1 text-[#00a884] animate-pulse"><Zap size={12}/> Active</span>
         </div>
       </header>
 
-      {/* Main Content */}
+      {/* מרכז הדף - ה-Orb הויזואלי (הנשמה) */}
       <main className="flex-1 w-full max-w-5xl flex flex-col items-center justify-center relative p-6">
         
-        {/* האנימציה המרכזית */}
+        {/* אפקטים של תאורה ברקע */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#00a884]/10 rounded-full blur-[120px] pointer-events-none" />
+        
         <div className={`relative transition-all duration-700 ${response ? 'scale-50 h-32 opacity-50' : 'h-64 mb-12'}`}>
+          
+          {/* הילה נושמת מסביב לאווטאר - ה"נשמה הויזואלית" */}
+          <div 
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#00a884] opacity-20 blur-[100px] rounded-full animate-[pulse_4s_ease-in-out_infinite]"
+            style={{ width: 400, height: 400 }}
+          />
+
+          {/* האווטאר המרכזי מ-avattar.png */}
           <div className="relative w-48 h-48 md:w-64 md:h-64 flex items-center justify-center">
+            {/* טבעת חיצונית מסתובבת */}
             <div className={`absolute inset-0 border-2 border-dashed border-[#00a884]/30 rounded-full ${loading ? 'animate-spin' : 'animate-[spin_20s_linear_infinite]'}`} />
-            <div className="w-32 h-32 md:w-40 md:h-40 bg-gradient-to-tr from-[#00a884] to-[#005c4b] rounded-full shadow-[0_0_80px_rgba(0,168,132,0.3)] flex items-center justify-center">
-                <Globe size={60} className="text-white opacity-80" strokeWidth={1} />
+            
+            {/* האווטאר הנושם */}
+            <div className="w-32 h-32 md:w-40 md:h-40 bg-gradient-to-tr from-[#00a884] to-[#005c4b] rounded-full shadow-[0_0_80px_rgba(0,168,132,0.4)] animate-[pulse_6s_ease-in-out_infinite] flex items-center justify-center overflow-hidden border-4 border-[#111b21]">
+                <img 
+                  src="/avattar.png" 
+                  alt="Saban AI" 
+                  className="object-contain w-full h-full p-4"
+                />
             </div>
           </div>
         </div>
@@ -65,6 +84,7 @@ export default function SabanAICanvas() {
         {response && (
           <div className="w-full max-w-3xl animate-in fade-in slide-in-from-bottom-6 duration-700 pb-32">
             <div className="bg-[#111b21] border border-gray-800 rounded-3xl p-6 mb-6 shadow-2xl relative overflow-hidden">
+               {/* הילה דקורטיבית */}
                <div className="absolute top-0 right-0 w-32 h-32 bg-[#00a884]/5 blur-3xl rounded-full" />
                
               <div className="flex items-center gap-2 text-[#00a884] mb-4 text-xs font-black uppercase tracking-widest">
@@ -77,8 +97,9 @@ export default function SabanAICanvas() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {response.orderList.map((item: any) => (
                     <div key={item.id} className="bg-[#1c272d] rounded-2xl border border-gray-700/50 overflow-hidden hover:border-[#00a884]/50 transition-all group shadow-lg">
+                      {/* תמונת המוצר */}
                       <div className="h-40 w-full bg-[#0b141a] relative flex items-center justify-center overflow-hidden border-b border-gray-800">
-                        {(item.image || item.media_urls?.[0]) ? (
+                        {item.image || item.media_urls?.[0] ? (
                           <img 
                             src={item.image || item.media_urls[0]} 
                             alt={item.name} 
@@ -95,6 +116,7 @@ export default function SabanAICanvas() {
                         </div>
                       </div>
 
+                      {/* פרטי המוצר */}
                       <div className="p-4 flex justify-between items-end">
                         <div className="space-y-1">
                           <p className="text-sm font-black text-white">{item.name}</p>
@@ -112,11 +134,11 @@ export default function SabanAICanvas() {
           </div>
         )}
 
-        {/* שורת החיפוש */}
+        {/* שורת החיפוש הצפה */}
         <div className={`w-full max-w-3xl fixed transition-all duration-500 z-50 ${response ? 'bottom-8' : 'relative mt-4'}`}>
-          <div className="bg-[#1c272d]/90 backdrop-blur-2xl p-2 rounded-[2.5rem] border border-gray-700/50 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.7)] flex items-center gap-3 group">
-            <div className="p-4 text-gray-500">
-              {loading ? <Loader2 className="animate-spin text-[#00a884]" size={24} /> : <Search size={24} />}
+          <div className="bg-[#1c272d]/90 backdrop-blur-2xl p-2 rounded-[2.5rem] border border-gray-700/50 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.7)] flex items-center gap-3 group focus-within:border-[#00a884]/50">
+            <div className="p-4 text-gray-500 group-focus-within:text-[#00a884]">
+              {loading ? <Loader2 className="animate-spin text-[#00a884]" size={24} /> : <Search size={24} strokeWidth={2.5} />}
             </div>
             
             <input 
@@ -130,7 +152,7 @@ export default function SabanAICanvas() {
             <button 
               onClick={handleSearch}
               disabled={loading}
-              className="bg-[#00a884] hover:bg-[#06cf9c] p-4 rounded-full text-white shadow-lg transition-all active:scale-95 disabled:opacity-50"
+              className="bg-[#00a884] hover:bg-[#06cf9c] p-4 rounded-full text-white shadow-lg transition-all active:scale-95 disabled:opacity-50 group-hover:shadow-[#00a884]/20"
             >
               <Send size={24} strokeWidth={2.5} />
             </button>
