@@ -1,38 +1,94 @@
 'use client';
-import React, { useState } from 'react';
-import { Bell, Check, X, User, MessageCircle } from 'lucide-react';
 
-export default function RamiControl() {
-  const [alerts, setAlerts] = useState([
-    { id: 1, user: 'שחר שאול', msg: 'ביקש מנוף 15 מטר לאבן יהודה', time: '13:26' }
-  ]);
+import React, { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
+import { Badge } from "@/components/ui/badge";
+import { CheckCircle, AlertTriangle, Clock, Search } from 'lucide-react';
+
+export default function SabanOrdersDashboard() {
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchOrders();
+    // יצירת Realtime connection ל-Supabase כדי לראות הזמנות חדשות מהצ'אט ברגע שהן נוצרות
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, payload => {
+        setOrders(prev => [payload.new, ...prev]);
+      })
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
+  }, []);
+
+  async function fetchOrders() {
+    const { data } = await supabase
+      .from('orders')
+      .select('*')
+      .order('created_at', { ascending: false });
+    setOrders(data || []);
+    setLoading(false);
+  }
+
+  const approveOrder = async (id: string) => {
+    await supabase.from('orders').update({ status: 'APPROVED' }).eq('id', id);
+    fetchOrders();
+  };
 
   return (
-    <div className="min-h-screen bg-[#f0f2f5] p-6 font-sans" dir="rtl">
-      <header className="bg-[#202c33] text-white p-6 rounded-3xl flex justify-between items-center shadow-xl mb-10">
+    <div className="p-6 bg-[#0b141a] min-h-screen text-white font-sans" dir="rtl">
+      <header className="mb-8 flex justify-between items-center border-b border-gray-800 pb-4">
         <div>
-          <h1 className="text-2xl font-black">חמ"ל ראמי מסארוה</h1>
-          <p className="text-xs text-[#00a884]">ניהול חריגות והזמנות VIP</p>
+          <h1 className="text-2xl font-bold text-[#00a884]">ניהול הזמנות - ח. סבן</h1>
+          <p className="text-gray-400">מעקב הזמנות ווטסאפ ואישורי מנהל</p>
         </div>
-        <Bell className="text-yellow-500 animate-bounce" />
+        <div className="flex gap-4">
+          <Badge className="bg-orange-600 p-2">ממתין לראמי: {orders.filter(o => o.status === 'WAITING_FOR_RAMI').length}</Badge>
+          <Badge className="bg-blue-600 p-2">הזמנות חדשות: {orders.filter(o => o.status === 'PENDING').length}</Badge>
+        </div>
       </header>
 
-      <div className="max-w-2xl mx-auto space-y-4">
-        {alerts.map(a => (
-          <div key={a.id} className="bg-white p-6 rounded-[2rem] shadow-lg border-r-8 border-[#C9A227] animate-in slide-in-from-right">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="bg-gray-200 p-2 rounded-full"><User size={24}/></div>
+      <div className="grid grid-cols-1 gap-4">
+        {orders.map((order) => (
+          <div key={order.id} className={`p-4 rounded-xl border ${order.status === 'WAITING_FOR_RAMI' ? 'border-orange-500 bg-[#202c33]' : 'border-gray-800 bg-[#111b21]'}`}>
+            <div className="flex justify-between items-start">
               <div>
-                <h3 className="font-bold">{a.user}</h3>
-                <span className="text-[10px] text-red-500 font-bold">חריגת מנוף - דורש אישור סדרן</span>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-bold text-lg">{order.client_name}</span>
+                  <span className="text-xs text-gray-500">{new Date(order.created_at).toLocaleString('he-IL')}</span>
+                </div>
+                <p className="text-sm text-gray-300 italic mb-3">"{order.ai_metadata?.raw_message}"</p>
+                
+                <div className="space-y-1">
+                   {order.items?.map((item: any, i: number) => (
+                     <div key={i} className="text-sm bg-gray-800/50 p-1 px-2 rounded inline-block ml-2">
+                       {item.qty} x {item.name}
+                     </div>
+                   ))}
+                </div>
               </div>
-              <span className="mr-auto text-[10px] opacity-40 text-black">{a.time}</span>
+
+              <div className="flex flex-col items-end gap-2">
+                {order.status === 'WAITING_FOR_RAMI' ? (
+                  <button 
+                    onClick={() => approveOrder(order.id)}
+                    className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2"
+                  >
+                    <AlertTriangle size={18}/> אשר חריגה (ראמי)
+                  </button>
+                ) : (
+                  <Badge className="bg-[#00a884]">סטטוס: {order.status}</Badge>
+                )}
+                <button className="text-xs text-gray-500 hover:text-white">צפה בלוג שיחה מלא</button>
+              </div>
             </div>
-            <p className="bg-gray-50 p-4 rounded-2xl italic mb-6 text-black border">"{a.msg}"</p>
-            <div className="flex gap-2">
-              <button className="flex-1 bg-[#00a884] text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2"><Check size={18}/> אשר</button>
-              <button className="flex-1 bg-red-500 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2"><X size={18}/> דחה</button>
-            </div>
+            
+            {order.ai_metadata?.insight && (
+              <div className="mt-4 p-2 bg-blue-900/20 border-r-2 border-blue-500 text-xs text-blue-300">
+                <strong>תובנת גימני:</strong> {order.ai_metadata.insight}
+              </div>
+            )}
           </div>
         ))}
       </div>
