@@ -1,0 +1,72 @@
+{
+    "company": "ח. סבן חומרי בניין (1994) בע\"מ",
+    "branding": {
+        "name": "AI-ח.סבן",
+        "role": "יועץ ומומחה הנדסי",
+        "avatar_url": "/avattar.png",
+        "logo_url": "/1000211660.jpg"
+    },
+    "calculators": {
+        "tiling": {
+            "description": "חישוב ריצוף ופורצלן כולל פחת הנדסי",
+            "input": ["area_m2", "tile_size"],
+            "tile_sizes": ["60x60", "80x80", "120x60"],
+            "waste_factor": 1.10,
+            "formula": "total_m2_required = area_m2 * 1.10",
+            "packaging": {
+                "60x60": 1.44,
+                "80x80": 1.28,
+                "120x60": 1.44
+            }
+        },
+        "sand_gravel": {
+            "description": "חישוב חול וסומסום למילוי לפי נפח",
+            "input": ["area_m2", "depth_m"],
+            "constants": {
+                "bala_volume_m3": 0.6
+            },
+            "formula": {
+                "volume": "volume_m3 = area_m2 * depth_m",
+                "balot": "num_balot = Math.ceil(volume_m3 / 0.6)"
+            }
+        },
+        "adhesive_grout": {
+            "description": "חישוב דבקים ורובה לפי מותגים (סיקה, תרמוקיר, כרמית)",
+            "input": ["area_m2", "coverage_kg_per_m2", "layer_thickness_mm"],
+            "brands": {
+                "thermokir": {
+                    "models": ["500", "503", "601", "602", "603", "700", "770-AD"],
+                    "recommended_thickness_mm": "4-8"
+                },
+                "carmit_mrfix": {
+                    "models": ["109", "116", "132", "100", "110"],
+                    "coverage_kg_per_m2_per_mm": 1.5
+                },
+                "sika": {
+                    "models": ["Ceram 100", "Ceram 135", "Ceram 235", "Ceram 255"],
+                    "recommended_thickness_mm": "3-6"
+                },
+                "sakret": {
+                    "models": ["AD607"],
+                    "coverage_kg_per_m2_per_mm": 1.4
+                }
+            },
+            "formula_general": "total_kg = area_m2 * coverage_kg_per_m2",
+            "formula_detailed": "total_kg = area_m2 * coverage_kg_per_m2_per_mm * layer_thickness_mm"
+        },
+        "blocks": {
+            "description": "מחשבון בלוקים מקיף (גודל 1 עד 25)",
+            "input": ["wall_length_m", "wall_height_m", "openings_m2"],
+            "general_formula": "net_m2 = (length * height) - openings",
+            "sizes": {
+                "size_1": 0.01, "size_4": 0.04, "size_10": 0.10, "size_20": 0.20, "size_25": 0.25
+            },
+            "formula_calc": "num_blocks = Math.ceil(net_m2 / block_area_m2)"
+        }
+    },
+    "logic_rules": {
+        "cache_priority": true,
+        "always_suggest_order": true,
+        "show_visual_card": true
+    }
+}
