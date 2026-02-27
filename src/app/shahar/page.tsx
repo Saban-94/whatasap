@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Moon, Sun, MoreVertical, CheckCheck, Menu, Phone, Video, Search, Paperclip, Smile } from 'lucide-react';
+import WhatsAppGroupView from '@/components/WhatsAppChat';
+
 
 // --- הגדרות תמונות ---
 const SHAHAR_IMG = "https://ui-avatars.com/api/?name=Shahar+Shaul&background=C9A227&color=fff";
@@ -13,7 +15,14 @@ interface Message {
   sender: 'user' | 'ai';
   timestamp: string;
 }
-
+export default function ShaharPage() {
+  return (
+    <main className="min-h-screen bg-[#0b141a]">
+      {/* כאן הממשק שואב את הנתונים מ-customer_history.json שחילצנו */}
+      <WhatsAppGroupView initialClientId="+972526458899" /> 
+    </main>
+  );
+}
 export default function ShaharWhatsApp() {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [messages, setMessages] = useState<Message[]>([]);
