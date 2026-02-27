@@ -1,76 +1,45 @@
+// src/lib/dataEngine.ts
 import productsData from "@/data/products.json";
-import { fetchCustomerBrain } from "@/lib/customerMemory";
-import { getSabanSmartResponse } from "@/app/actions/gemini-brain";
+import customerHistory from "@/data/customer_history.json";
 
-/**
- * מנקה טקסט ומבטיח מראה מקצועי ללא סימנים דהויים
- */
-function formatSabanDialogue(text: string) {
-  return text
-    .replace(/\*\*/g, '') // מחיקת כוכביות
-    .replace(/ג'ימיני:|גימני:/g, '') 
-    .trim();
-}
+// מילון נורמליזציה שנלמד מהיסטוריית הווצאפ
+const SLANG_MAP: Record<string, string> = {
+  "אמרקאי": "שפכטל אמריקאי טמבור",
+  "פיבה": "פיבה קרטון",
+  "סוססום": "סומסום",
+  "שומשום": "סומסום",
+  "סיקה פליקס": "סיקה פלקס 118",
+  "ניר סרט": "סרט נייר קרטון",
+  "מסכן טיפ": "מסקינטייפ (נייר דבק כחול)"
+};
 
 export async function processSmartOrder(customerId: string, text: string) {
-  const memory: any = await fetchCustomerBrain(customerId);
-  const name = (memory?.name) ? memory.name : "אחי";
-  
-  const inventory = Array.isArray(productsData) ? productsData : (productsData as any).inventory || [];
-
-  // 1. זיהוי מוצרים: חיפוש מק"ט או שם מוצר
-  const foundProducts = inventory.filter((p: any) => {
-    const searchText = text.toLowerCase();
-    const productName = p.name?.toLowerCase() || "";
-    const barcode = p.barcode?.toString() || "";
-
-    // זיהוי לפי ברקוד או מילות מפתח
-    const keywords = productName.split(' ').filter((w: string) => w.length > 2);
-    const hasAllKeywords = keywords.length > 0 && keywords.every((kw: string) => searchText.includes(kw));
-
-    return searchText.includes(barcode) || searchText.includes(productName) || hasAllKeywords;
+  // 1. נורמליזציה של הטקסט לפי היסטוריית הווצאפ
+  let normalizedText = text;
+  Object.keys(SLANG_MAP).forEach(slang => {
+    if (text.includes(slang)) {
+      normalizedText = text.replace(new RegExp(slang, 'g'), SLANG_MAP[slang]);
+    }
   });
 
-  // 2. בניית קונטקסט קצר לגימני - הוספנו :any לפתרון שגיאת ה-Build
-  const productsFoundString = foundProducts.map((p: any) => 
-    `- ${p.name} (מק"ט: ${p.barcode}). חישוב: ${p.calculation_logic || 'לפי יחידות'}`
-  ).join('\n');
+  // 2. שליפת פרופיל לקוח מהזיכרון
+  const clientProfile = customerHistory.find(c => c.phone === customerId || c.client_name.includes(customerId));
 
-  let aiResponse = ""; 
-  try {
-    const prompt = `
-      אתה "גימני" מחברת ח. סבן. ענה ללקוח בשם ${name}.
-      הסגנון: דיאלוג קצר, מקצועי, של מנהל עבודה. בלי חפירות.
-      
-      אם נמצאו מוצרים במלאי, ציין את שמם והמק"ט שלהם בקצרה.
-      מוצרים שמצאתי במלאי:
-      ${productsFoundString}
-
-      הוראה קריטית: אל תשתמש בכוכביות (**). ענה ב-3-4 משפטים מקסימום.
-      השאלה של הלקוח: "${text}"
-    `;
-
-    const raw = await getSabanSmartResponse(prompt, customerId);
-    aiResponse = formatSabanDialogue(raw || "");
-  } catch (err) {
-    aiResponse = `אהלן ${name}, בודק לך את המק"ט במלאי רגע...`;
-  }
-
-  // 3. עדכון רשימת ההזמנה (Sidebar)
-  const orderList = foundProducts.map((p: any) => ({
-    id: p.barcode,
-    name: p.name,
-    barcode: p.barcode,
-    qty: 1,
-    price: p.price || "לפי מחירון",
-    image: p.image_url,
-    color: p.department?.includes('איטום') ? '#3b82f6' : '#10b981'
-  }));
+  // 3. לוגיקת זיהוי מוצרים משופרת
+  const inventory = Array.isArray(productsData) ? productsData : [];
+  const foundProducts = inventory.filter((p: any) => {
+    const productName = p.name?.toLowerCase() || "";
+    return normalizedText.toLowerCase().includes(productName) || 
+           (clientProfile?.favorite_products.some(fav => productName.includes(fav.toLowerCase())));
+  });
 
   return {
-    text: aiResponse,
-    orderList: orderList,
-    customerName: name,
-    meta: { recommendations: orderList }
+    text: `אהלן ${clientProfile?.client_name || 'אחי'}, זיהיתי את ההזמנה. לאתר ב${clientProfile?.frequent_sites[0] || 'רגיל'}?`,
+    orderList: foundProducts.map(p => ({
+      id: p.barcode,
+      name: p.name,
+      qty: normalizedText.match(new RegExp(`(\\d+)\\s+${p.name}`)) ? parseInt(RegExp.$1) : 1,
+      price: p.price || "לפי מחירון VIP"
+    }))
   };
 }
