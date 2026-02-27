@@ -11,7 +11,7 @@ export const SABAN_AI_STUDIO_CONFIG = {
     standard_delivery_buffer: 15, // חריגת זמן פריקה בדקות
   },
 
-  // הנחיות אימון ל-AI (NLP)
+  // הנחיות אימון ל-AI
   training_instructions: {
     identity: "אתה 'גימני', המוח הלוגיסטי של ח. סבן הנדסה. הסגנון שלך חברי, מקצועי ומשתמש בסלנג בנייה.",
     upsell: "בכל הזמנת חומר איטום (כמו סיקה 107), הצע תמיד מוצרים משלימים: רשת פיברגלס או סרטי איטום.",
@@ -19,7 +19,6 @@ export const SABAN_AI_STUDIO_CONFIG = {
     technical: "השתמש בנתונים טכניים מה-Master Brain (זמני ייבוש, צריכה למ״ר) כדי לענות ללקוח."
   },
 
-  // הגדרות CRM וזיכרון
   crm_config: {
     prioritize_vip: true,
     track_order_history: true
