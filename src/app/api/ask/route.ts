@@ -29,14 +29,16 @@ const UIBlueprintSchema = z.object({
 export async function POST(req: NextRequest) {
   try {
     const { query } = await req.json();
+    if (!query) return NextResponse.json({ error: "Query is required" }, { status: 400 });
+
     const normalized = query.toLowerCase().trim();
     const key = crypto.createHash('sha256').update(`${normalized}|${process.env.DATA_VERSION || 'v1'}`).digest('hex');
 
     // 1. בדיקה ב-Supabase Cache
-    const { data: cached } = await supabase.from('answers_cache').select('*').eq('key', key).single();
+    const { data: cached } = await supabase.from('answers_cache').select('*').eq('key', key).maybeSingle();
     if (cached) {
       const age = Date.now() - new Date(cached.created_at).getTime();
-      if (age < cached.ttl) {
+      if (age < (cached.ttl || 2592000000)) {
         return NextResponse.json(cached.payload);
       }
     }
@@ -57,22 +59,21 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 3. שימוש ב-generateText עם Tools ו-maxSteps
+    // 3. שימוש ב-generateText (ללא maxSteps כדי למנוע את שגיאת ה-Build)
     const { text } = await generateText({
       model: google('gemini-1.5-pro-latest'),
-      maxSteps: 5,
       system: `אתה המומחה של ח. סבן. עליך להחזיר תשובה בפורמט JSON בלבד התואם לסכימת UIBlueprint.
-               אם חסר מידע טכני או מדיה, השתמש בכלי ה-webSearch.
-               ה-JSON חייב לכלול: text, source, type, components, ו-media אופציונלי.`,
+               ה-JSON חייב לכלול: text, source, type, components.
+               אל תוסיף הסברים מחוץ ל-JSON.`,
       prompt: query,
       tools: {
         webSearch: tool({
           description: 'חיפוש מפרטים, תמונות או סרטונים בגוגל Custom Search',
-          inputSchema: z.object({ q: z.string() }),
-          execute: async ({ q }) => {
+          execute: async ({ q }: { q: string }) => {
             const res = await fetch(`https://www.googleapis.com/customsearch/v1?key=${process.env.GOOGLE_CSE_API_KEY}&cx=${process.env.GOOGLE_CSE_CX}&q=${encodeURIComponent(q)}`);
             return res.json();
-          }
+          },
+          parameters: z.object({ q: z.string() }),
         })
       },
     });
@@ -80,7 +81,7 @@ export async function POST(req: NextRequest) {
     // ניסיון פענוח ה-JSON מהטקסט של המודל
     let finalPayload;
     try {
-      // ניקוי תגיות Markdown אם המודל הוסיף אותן
+      // ניקוי יסודי של תגיות Markdown
       const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
       finalPayload = JSON.parse(cleanJson);
     } catch (e) {
