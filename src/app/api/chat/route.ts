@@ -11,19 +11,22 @@ export async function POST(req: Request) {
     const { messages } = await req.json();
     const lastMessage = messages[messages.length - 1].content.trim();
 
-    // 1. חיבור בטוח ל-Supabase עם מפתח ה-Service Role
+    // 1. חיבור ל-Supabase (שימוש בשמות המדויקים מהבדיקה שלך)
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE!
+      process.env.SUPABASE_SERVICE_ROLE || process.env.SUPABASE_SERVICE_KEY!
     );
 
-    // 2. חיבור ל-Gemini 3.1 Flash
-    const geminiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY;
-    if (!geminiKey) throw new Error("Missing Gemini API Key");
+    // 2. חיבור ל-Gemini 3.1 Flash (תמיכה בשמות וריאביליים)
+    const geminiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_KEY || process.env.GEMINI_API_KEY;
+    
+    if (!geminiKey) {
+      return Response.json({ text: "אחי, המפתח של Gemini לא נמצא בקוד. בדוק שוב את השם ב-Vercel." }, { status: 200 });
+    }
 
     const googleAI = createGoogleGenerativeAI({ apiKey: geminiKey });
 
-    // 3. שליפת מוצרים מהמלאי לפי ה-SQL שלך (product_name, sku, category)
+    // 3. שליפת מוצרים מהמלאי (לפי המבנה ב-SQL שלך)
     const { data: products, error: dbError } = await supabase
       .from("inventory")
       .select("product_name, sku, price, category, supplier_name, department")
@@ -33,15 +36,15 @@ export async function POST(req: Request) {
     if (dbError) console.error("Database Error:", dbError);
 
     const context = products?.length 
-      ? `מוצרים שנמצאו במלאי סבן: ${JSON.stringify(products)}` 
-      : "לא נמצא מוצר תואם במלאי.";
+      ? `נתונים מאומתים מהמלאי של סבן: ${JSON.stringify(products)}` 
+      : "לא נמצא מוצר כזה במלאי הנוכחי.";
 
-    // 4. יצירת תשובה עם המודל החדש
+    // 4. יצירת התשובה עם המודל החדש 3.1
     const { text } = await generateText({
       model: googleAI("gemini-3.1-flash-preview"),
-      system: `אתה נציג טכני של חברת "ח. סבן". ענה בעברית. 
-               השתמש בנתונים הבאים מהמלאי: ${context}.
-               אם מצאת מוצר, פרט את המק"ט והמחיר.`,
+      system: `אתה נציג המכירות והתמיכה של "ח. סבן חומרי בניין". השב בעברית בלבד.
+               השתמש במידע הבא מהמלאי: ${context}.
+               אם מצאת מוצר, תמיד ציין את המק"ט (SKU) ואת המחיר (Price).`,
       messages,
     });
 
@@ -55,10 +58,9 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error("Critical Chat Error:", error);
-    // החזרת JSON תקין גם בשגיאה כדי למנוע 500 בדפדפן
     return Response.json({ 
-      text: "אחי, יש לי תקלה בחיבור למחסן. וודא שמפתח ה-API מוגדר ב-Vercel.",
-      error: error.message 
+      text: "מצטער ראמי, יש תקלה בשליפת הנתונים. וודא שביצעת Redeploy ב-Vercel.",
+      debug: error.message 
     }, { status: 200 });
   }
 }
