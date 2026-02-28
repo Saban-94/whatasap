@@ -35,7 +35,7 @@ export async function POST(req: Request) {
       : "המוצר לא נמצא במלאי הנוכחי.";
 
     const { text } = await generateText({
-      model: googleAI("gemini-1.5-pro-latest"),
+       model: googleAI("gemini-3.1-pro-preview"),
       system: `אתה המוח הטכני של חברת ח. סבן. השב בעברית.
                מידע מהמלאי: ${productContext}.
                אם מצאת "סיקה 107", פרט מחיר וצריכה.`,
