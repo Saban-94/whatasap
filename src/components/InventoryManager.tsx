@@ -2,14 +2,6 @@
 
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { 
   Loader2, 
@@ -28,7 +20,6 @@ export default function InventoryManager() {
   const [syncing, setSyncing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // 1. פונקציית שליפת הנתונים מהטבלה
   const fetchInventory = async () => {
     setLoading(true)
     setError(null)
@@ -48,44 +39,13 @@ export default function InventoryManager() {
     }
   }
 
-  // 2. פונקציית סנכרון אקטיבי (קוראת ל-API של הצאט או למנוע עדכון)
-  const handleActiveSync = async () => {
-    setSyncing(true)
-    try {
-      // כאן המערכת יכולה להפעיל תהליך של משיכת נתונים ממאגר חיצוני
-      // לצורך הדוגמה, אנחנו מבצעים רענון עמוק
-      await fetchInventory()
-      alert("הסנכרון מול המאגר הושלם בהצלחה")
-    } catch (err) {
-      alert("הסנכרון נכשל")
-    } finally {
-      setSyncing(false)
-    }
-  }
-
-  // 3. האזנה לשינויים בזמן אמת (Realtime)
   useEffect(() => {
     fetchInventory()
-
-    const channel = supabase
-      .channel('inventory-db-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'inventory' },
-        () => {
-          fetchInventory() // מרענן אוטומטית כשיש שינוי ב-DB
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
   }, [])
 
   return (
-    <div className="p-6 space-y-6" dir="rtl">
-      {/* Header - לוח בקרה */}
+    <div className="p-6 space-y-6 max-w-7xl mx-auto" dir="rtl">
+      {/* Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-3xl shadow-sm border border-slate-100 gap-4">
         <div className="flex items-center gap-4">
           <div className="bg-[#0B2C63] p-3 rounded-2xl text-white shadow-lg shadow-blue-100">
@@ -93,13 +53,7 @@ export default function InventoryManager() {
           </div>
           <div>
             <h1 className="text-2xl font-black text-[#0B2C63] tracking-tight">ניהול מלאי סבן</h1>
-            <div className="flex items-center gap-2 text-xs font-bold text-green-600 mt-1 uppercase tracking-wider">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-              </span>
-              חיבור חי למסד הנתונים
-            </div>
+            <p className="text-xs font-bold text-green-600 mt-1 uppercase tracking-wider">חיבור חי למסד הנתונים</p>
           </div>
         </div>
 
@@ -108,93 +62,79 @@ export default function InventoryManager() {
             variant="outline" 
             onClick={fetchInventory} 
             disabled={loading}
-            className="flex-1 md:flex-none gap-2 rounded-xl border-slate-200 font-bold text-slate-600"
+            className="flex-1 md:flex-none gap-2 rounded-xl border-slate-200 font-bold"
           >
             <RefreshCcw size={16} className={loading ? "animate-spin" : ""} />
             רענן
           </Button>
-
           <Button 
-            onClick={handleActiveSync} 
             disabled={syncing}
             className="flex-1 md:flex-none gap-2 bg-[#0B2C63] hover:bg-[#081f4d] text-white rounded-xl shadow-md font-bold"
           >
-            {syncing ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
+            <Zap size={16} />
             סנכרון מלא
           </Button>
         </div>
       </div>
 
-      {/* הודעת שגיאה */}
-      {error && (
-        <div className="bg-red-50 border border-red-100 text-red-600 p-4 rounded-2xl flex items-center gap-3 font-bold text-sm animate-in fade-in">
-          <AlertCircle size={20} />
-          {error}
-        </div>
-      )}
-
-      {/* טבלת נתונים */}
+      {/* Main Inventory Table */}
       <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
         {loading && items.length === 0 ? (
           <div className="flex flex-col justify-center items-center p-24 gap-4">
             <Loader2 className="animate-spin text-[#0B2C63]" size={48} />
-            <p className="text-slate-400 font-black uppercase tracking-widest text-[10px]">Loading Saban Inventory...</p>
+            <p className="text-slate-400 font-black uppercase tracking-widest text-[10px]">Loading Inventory...</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <Table>
-              <TableHeader className="bg-slate-50/50">
-                <TableRow className="hover:bg-transparent border-slate-100">
-                  <TableHead className="text-right font-black py-5 text-[#0B2C63] pr-8">שם המוצר</TableHead>
-                  <TableHead className="text-right font-black py-5 text-[#0B2C63]">מק"ט (SKU)</TableHead>
-                  <TableHead className="text-right font-black py-5 text-[#0B2C63]">קטגוריה</TableHead>
-                  <TableHead className="text-right font-black py-5 text-[#0B2C63]">ספק</TableHead>
-                  <TableHead className="text-center font-black py-5 text-[#0B2C63] pl-8">סטטוס</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <table className="w-full text-right border-collapse">
+              <thead>
+                <tr className="bg-slate-50/50 border-b border-slate-100">
+                  <th className="px-6 py-5 font-black text-[#0B2C63] text-sm">שם המוצר</th>
+                  <th className="px-6 py-5 font-black text-[#0B2C63] text-sm">מק"ט (SKU)</th>
+                  <th className="px-6 py-5 font-black text-[#0B2C63] text-sm">קטגוריה</th>
+                  <th className="px-6 py-5 font-black text-[#0B2C63] text-sm">ספק</th>
+                  <th className="px-6 py-5 font-black text-[#0B2C63] text-sm text-center">סטטוס</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
                 {items.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-20 text-slate-400 font-bold">
-                      לא נמצאו מוצרים במלאי
-                    </TableCell>
-                  </TableRow>
+                  <tr>
+                    <td colSpan={5} className="text-center py-20 text-slate-400 font-bold">לא נמצאו מוצרים</td>
+                  </tr>
                 ) : (
                   items.map((item, idx) => (
-                    <TableRow key={item.id || idx} className="hover:bg-blue-50/30 transition-colors border-slate-50 group">
-                      <TableCell className="text-right py-5 pr-8 font-black text-slate-800">
-                        {item.product_name}
-                      </TableCell>
-                      <TableCell className="text-right py-5 font-mono text-[11px] font-bold text-blue-600/70 tracking-tighter">
+                    <tr key={item.id || idx} className="hover:bg-blue-50/20 transition-colors group">
+                      <td className="px-6 py-5 font-black text-slate-800">{item.product_name}</td>
+                      <td className="px-6 py-5 font-mono text-[11px] font-bold text-blue-600/70 tracking-tighter italic">
                         {item.sku || '---'}
-                      </TableCell>
-                      <TableCell className="text-right py-5 text-sm">
+                      </td>
+                      <td className="px-6 py-5">
                         <span className="bg-slate-100 text-slate-500 px-3 py-1.5 rounded-full font-black text-[10px] uppercase flex items-center gap-1.5 w-fit">
                           <Tag size={12} /> {item.category || 'כללי'}
                         </span>
-                      </TableCell>
-                      <TableCell className="text-right py-5 text-sm">
-                        <span className="flex items-center gap-1.5 text-slate-500 font-bold">
-                          <Factory size={14} className="opacity-40" /> {item.supplier_name || 'ספק לא רשום'}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center py-5 pl-8">
+                      </td>
+                      <td className="px-6 py-5 text-sm font-bold text-slate-500 italic">
+                        <div className="flex items-center gap-1.5">
+                          <Factory size={14} className="opacity-40" /> {item.supplier_name || 'ספק סבן'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-5">
                         <div className="flex justify-center items-center gap-2">
                            <CheckCircle2 size={16} className="text-green-500" />
-                           <span className="text-[10px] font-black text-green-600 uppercase">Synchronized</span>
+                           <span className="text-[9px] font-black text-green-600 uppercase">Synced</span>
                         </div>
-                      </TableCell>
-                    </TableRow>
+                      </td>
+                    </tr>
                   ))
                 )}
-              </TableBody>
-            </Table>
+              </tbody>
+            </table>
           </div>
         )}
       </div>
-
-      <div className="text-center">
-        <p className="text-[10px] font-black text-slate-300 uppercase tracking-[4px]">Saban Logistics Control System v3.1</p>
+      
+      <div className="text-center pt-4">
+        <p className="text-[10px] font-black text-slate-300 uppercase tracking-[4px]">Saban Control v3.1</p>
       </div>
     </div>
   )
