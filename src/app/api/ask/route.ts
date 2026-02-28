@@ -65,7 +65,8 @@ export async function POST(req: NextRequest) {
         webSearch: tool({
           description: 'חיפוש מפרטים טכניים של חומרי בניין בגוגל',
           parameters: z.object({ q: z.string() }),
-          execute: async ({ q }) => {
+          // התיקון: הגדרת טיפוס מפורשת בתוך ה-execute כדי לספק את ה-TS
+          execute: async ({ q }: { q: string }) => {
             const res = await fetch(
               `https://www.googleapis.com/customsearch/v1?key=${process.env.GOOGLE_CSE_API_KEY}&cx=${process.env.GOOGLE_CSE_CX}&q=${encodeURIComponent(q)}`
             );
