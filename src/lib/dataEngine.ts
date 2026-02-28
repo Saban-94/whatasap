@@ -1,75 +1,96 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import productsData from "@/data/products.json";
 import inventoryData from "@/data/inventory.json";
+import knowledgeData from "@/data/knowledge_cache.json";
 
+// הגדרת נתונים בטוחה
 const products: any[] = Array.isArray(productsData) ? productsData : (productsData as any).inventory || [];
+const inventory: any = inventoryData;
+const knowledge: any[] = knowledgeData;
+
 const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY!);
 
 export async function processSmartOrder(query: string, secondParam?: string) {
   const actualQuery = (typeof query === 'string' && secondParam) ? secondParam : query;
   const normalized = actualQuery.toLowerCase().trim();
 
-  // 1. בדיקת מילת מפתח "פרטים" - שליפה מורחבת
-  if (normalized.includes("פרטים") || normalized.includes("עוד מידע")) {
-    return await fetchExtendedDetails(actualQuery);
+  // 1. חיפוש בזיכרון המקומי (Cache)
+  const cachedMatch = knowledge.find((k: any) => normalized.includes(k.question.toLowerCase()));
+  if (cachedMatch) {
+    return { 
+      text: cachedMatch.answer, 
+      orderList: products.filter((p: any) => cachedMatch.products?.includes(p.sku || p.barcode)) || [],
+      source: 'cache' 
+    };
   }
 
-  // 2. לוגיקת חישוב קיימת (לא משתנה)
-  if (normalized.includes("מטר") || normalized.includes("מ\"ר")) {
-    const num = parseInt(normalized.match(/\d+/)?.[0] || "0");
+  // 2. מנוע חישוב הנדסי
+  if (normalized.includes("מטר") || normalized.includes("מ\"ר") || normalized.includes("חשב")) {
+    const numMatch = normalized.match(/\d+/);
+    const num = numMatch ? parseInt(numMatch[0]) : 0;
+    
     if (num > 0) {
-      const boxes = Math.ceil(num / 1.44);
+      const boxes = Math.ceil(num / 1.44); 
+      const ceramic = products.find((p: any) => p.name?.includes("60/60") || p.category?.includes("קרמיקה"));
       return {
-        text: `עבור ${num} מ"ר, צריך כ-${boxes} קרטונים. תרצה "פרטים" על המוצר או הוראות יישום?`,
-        orderList: products.filter(p => p.name.includes("60/60")).slice(0,1),
+        text: `עבור ${num} מ"ר, החישוב ההנדסי שלי חוזה שצריך כ-${boxes} קרטונים (לפי 1.44 מ"ר לקרטון).`,
+        orderList: ceramic ? [ceramic] : [],
         source: 'calculator'
       };
     }
   }
 
-  // 3. שליפה רגילה מהמלאי
-  const product = products.find(p => normalized.includes(p.name?.toLowerCase()));
-  if (product) {
+  // 3. שליפה מהמלאי או טיפול במילת מפתח "פרטים"
+  if (normalized.includes("פרטים") || normalized.includes("עוד מידע")) {
+    return await fetchExtendedDetails(actualQuery);
+  }
+
+  const directProduct = products.find((p: any) => 
+    normalized.includes(p.name?.toLowerCase()) || (p.sku && normalized.includes(p.sku.toLowerCase()))
+  );
+
+  if (directProduct) {
     return {
-      text: `מצאתי את ${product.name}. תרצה לקבל "פרטים" טכניים או סרטון הדרכה?`,
-      orderList: [product],
+      text: `מצאתי את ${directProduct.name} במלאי של ח. סבן. תרצה "פרטים" נוספים?`,
+      orderList: [directProduct],
       source: 'inventory'
     };
   }
 
-  // 4. ברירת מחדל - Gemini 3.1 Pro
-  return await callGemini(actualQuery);
-}
-
-// פונקציה חדשה לשליפת מידע עמוק + חיפוש גוגל
-async function fetchExtendedDetails(query: string) {
+  // 4. Gemini 3.1 Pro
   try {
     const model = genAI.getGenerativeModel({ 
       model: "gemini-3.1-pro-preview",
-      // הוספת כלי חיפוש גוגל לשליפת תמונות וסרטונים
-      tools: [{ googleSearchRetrieval: {} }] as any 
+      systemInstruction: "אתה המומחה הטכני של ח. סבן חומרי בניין. ענה בקצרה ובמקצועיות."
     });
 
-    const result = await model.generateContent(`
-      המשתמש ביקש פרטים נוספים על: ${query}.
-      חפש במאגר האינטרנט: 
-      1. מפרט טכני מלא.
-      2. קישור לתמונת מוצר רלוונטית או סרטון יוטיוב של "ח. סבן" או הוראות יישום.
-      ענה בעברית מקצועית.
-    `);
-
-    return {
-      text: result.response.text(),
-      source: 'Gemini 3.1 Pro + Google Search',
-      type: 'extended'
+    const result = await model.generateContent(normalized);
+    return { 
+      text: result.response.text(), 
+      orderList: [], // חובה להחזיר מערך ריק כדי למנוע שגיאת Build
+      source: 'Gemini 3.1 Pro' 
     };
-  } catch (e) {
-    return { text: "לא הצלחתי לשלוף פרטים נוספים כרגע.", source: "error" };
+  } catch (error) {
+    return { 
+      text: "אני סורק את המאגר... נסה לשאול על סיקה 107 או לבקש חישוב.", 
+      orderList: [],
+      source: 'fallback'
+    };
   }
 }
 
-async function callGemini(query: string) {
-  const model = genAI.getGenerativeModel({ model: "gemini-3.1-pro-preview" });
-  const result = await model.generateContent(query);
-  return { text: result.response.text(), source: 'Gemini 3.1' };
+// פונקציית חיפוש מורחב
+async function fetchExtendedDetails(query: string) {
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-3.1-pro-preview" });
+    const result = await model.generateContent(`תן מפרט טכני והנחיות יישום עבור: ${query}. ענה בעברית.`);
+    return {
+      text: result.response.text(),
+      orderList: [], // חובה להחזיר מערך ריק
+      source: 'Gemini 3.1 Pro Search',
+      type: 'extended'
+    };
+  } catch (e) {
+    return { text: "לא הצלחתי לשלוף פרטים נוספים.", orderList: [], source: "error" };
+  }
 }
