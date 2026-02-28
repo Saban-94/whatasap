@@ -6,10 +6,16 @@ import knowledge from "@/data/knowledge_cache.json";
 // אתחול Gemini 3.1 Pro
 const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY!);
 
-export async function processSmartOrder(query: string) {
-  const normalized = query.toLowerCase().trim();
+/**
+ * מנוע השאילתות המשולב של ח. סבן
+ * תומך בפרמטר אחד או שניים כדי למנוע שגיאות Build
+ */
+export async function processSmartOrder(query: string, secondParam?: string) {
+  // זיהוי השאילתה האמיתית (מטפל במקרים של (ID, Query) או רק (Query))
+  const actualQuery = (typeof query === 'string' && secondParam) ? secondParam : query;
+  const normalized = actualQuery.toLowerCase().trim();
 
-  // 1. שלב א': שליפה מהירה מהזיכרון המקומי (Cache) - חינמי לגמרי
+  // 1. שלב א': שליפה מהירה מהזיכרון המקומי (Cache)
   const cachedMatch = knowledge.find(k => normalized.includes(k.question.toLowerCase()));
   if (cachedMatch) {
     return { 
@@ -73,8 +79,7 @@ export async function processSmartOrder(query: string) {
       היה מקצועי, קצר ולעניין. אם שואלים על מוצר שלא קיים במאגר, הצע חלופה דומה.`
     });
 
-    const prompt = `שאילתת משתמש: ${query}`;
-    const result = await model.generateContent(prompt);
+    const result = await model.generateContent(`שאילתת משתמש: ${actualQuery}`);
     const response = await result.response;
     
     return { 
