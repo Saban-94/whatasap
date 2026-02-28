@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Send, Zap, Loader2, MessageSquare, Database, RefreshCw } from 'lucide-react';
+import { Search, Send, Zap, Loader2, MessageSquare, Database, RefreshCw, Info, ExternalLink } from 'lucide-react';
 import { processSmartOrder } from '@/lib/dataEngine';
 
 export default function SabanAICanvasMobile() {
@@ -24,23 +24,18 @@ export default function SabanAICanvasMobile() {
     }
   }, [response]);
 
-  const handleAction = async () => {
-    if (!query.trim() || loading) return;
-    setLoading(true);
+  const handleAction = async (forcedQuery?: string) => {
+    const activeQuery = forcedQuery || query;
+    if (!activeQuery.trim() || loading) return;
     
-    // סגירת מקלדת במובייל
+    setLoading(true);
     if (inputRef.current) inputRef.current.blur();
 
     try {
-      const result = await processSmartOrder(query);
+      const result = await processSmartOrder(activeQuery);
       setResponse(result);
     } catch (e) {
       console.error("AI Interface Error:", e);
-      setResponse({
-        text: "משהו השתבש בחיבור למוח של סבן. נסה שוב בעוד רגע.",
-        orderList: [],
-        source: "error"
-      });
     } finally {
       setLoading(false);
       setQuery('');
@@ -52,122 +47,114 @@ export default function SabanAICanvasMobile() {
   return (
     <div className="fixed inset-0 bg-[#0b141a] text-white flex flex-col font-sans overflow-hidden select-none" dir="rtl">
       
-      {/* Header - Saban Branding */}
+      {/* Header */}
       <header className="h-16 border-b border-gray-800/60 flex items-center justify-between px-6 bg-[#111b21]/95 backdrop-blur-2xl z-[100] shadow-xl">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-gradient-to-br from-[#00a884] to-[#005c4b] rounded-xl flex items-center justify-center shadow-lg">
-            <span className="font-black text-lg">ס</span>
-          </div>
+          <div className="w-9 h-9 bg-gradient-to-br from-[#00a884] to-[#005c4b] rounded-xl flex items-center justify-center font-black text-lg shadow-lg">ס</div>
           <div className="flex flex-col">
             <h1 className="text-sm font-black tracking-tighter leading-none uppercase italic">Saban AI</h1>
-            <span className="text-[8px] text-[#00a884] font-bold tracking-[0.2em] mt-1 uppercase">Knowledge Engine</span>
+            <span className="text-[8px] text-[#00a884] font-bold tracking-[0.2em] mt-1 uppercase">Advanced Knowledge</span>
           </div>
         </div>
         <div className="flex items-center gap-4">
            {response && (
-             <button 
-               onClick={() => setResponse(null)}
-               className="p-2 bg-gray-800/50 rounded-full text-gray-400 active:scale-90 transition-transform"
-             >
-               <RefreshCw size={16} />
+             <button onClick={() => setResponse(null)} className="p-2 bg-gray-800/50 rounded-full active:scale-90 transition-transform">
+               <RefreshCw size={14} />
              </button>
            )}
-           <div className="flex items-center gap-1.5 bg-[#00a884]/10 px-2 py-1 rounded-md border border-[#00a884]/20">
-              <div className={`w-1.5 h-1.5 rounded-full ${loading ? 'bg-yellow-400 animate-pulse' : 'bg-[#00a884]'}`} />
-              <span className="text-[9px] font-black text-[#00a884] uppercase tracking-tighter">Live</span>
-           </div>
+           <span className="flex items-center gap-1.5 font-bold text-[10px] text-gray-500">
+             <div className="w-1.5 h-1.5 bg-[#00a884] rounded-full animate-pulse" /> LIVE
+           </span>
         </div>
       </header>
 
-      {/* Main UI Area */}
+      {/* Main Content */}
       <main className="flex-1 relative overflow-y-auto p-5 pb-36 touch-pan-y">
         
-        {/* The 720° Rotating Orb */}
+        {/* Orb Visualization */}
         {!response && !loading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center opacity-80 pointer-events-none">
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none opacity-60">
             <div className="relative w-64 h-64 flex items-center justify-center">
-              <div className="absolute inset-0 border-[2px] border-dashed border-[#00a884]/30 rounded-full animate-spin-custom" />
-              <div className="w-44 h-44 bg-gradient-to-tr from-[#00a884] via-[#005c4b] to-[#0b141a] rounded-full shadow-[0_0_70px_rgba(0,168,132,0.3)] flex items-center justify-center border-4 border-[#111b21] animate-pulse">
-                <img src="/avattar.png" className="w-28 h-28 object-contain drop-shadow-2xl" alt="Saban AI" />
+              <div className="absolute inset-0 border-2 border-dashed border-[#00a884]/30 rounded-full animate-spin-custom" />
+              <div className="w-40 h-40 bg-gradient-to-tr from-[#00a884] to-[#0b141a] rounded-full shadow-[0_0_60px_rgba(0,168,132,0.3)] flex items-center justify-center border-4 border-[#111b21] animate-pulse">
+                <img src="/avattar.png" className="w-24 h-24 object-contain" alt="Saban" />
               </div>
             </div>
-            <div className="mt-10 text-center space-y-2">
-              <h2 className="text-xl font-bold text-white tracking-tight">היועץ של סבן קשוב</h2>
-              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.3em]">ממתין לשאלה או חישוב</p>
-            </div>
+            <p className="mt-8 text-gray-500 font-bold text-xs tracking-widest animate-pulse uppercase">Saban Brain Active</p>
           </div>
         )}
 
-        {/* AI Response Display */}
+        {/* AI Responses */}
         {response && (
-          <div className="w-full space-y-5 animate-in fade-in slide-in-from-bottom-6 duration-700">
-            <div className="bg-[#1c272d]/80 backdrop-blur-xl border border-gray-800 p-6 rounded-[2rem] shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-[#00a884]/5 blur-3xl rounded-full" />
-              <div className="flex items-center gap-2 text-[#00a884] mb-4 text-[9px] font-black uppercase tracking-widest">
-                <Database size={12} /> מקור: {response.source || 'Saban Intelligence'}
+          <div className="w-full space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className={`bg-[#1c272d] border ${response.type === 'extended' ? 'border-[#00a884]/50' : 'border-gray-800'} p-6 rounded-[2rem] shadow-xl relative overflow-hidden`}>
+              <div className="flex items-center gap-2 text-[#00a884] mb-3 text-[10px] font-black uppercase tracking-wider">
+                <Zap size={12} /> {response.source}
               </div>
-              <p className="text-xl leading-relaxed font-medium text-gray-100 italic">
-                "{response.text}"
-              </p>
+              <p className="text-lg leading-relaxed font-medium text-gray-100 whitespace-pre-wrap">{response.text}</p>
+              
+              {/* כפתור "פרטים נוספים" חכם */}
+              {response.source !== 'Gemini 3.1 Pro + Google Search' && (
+                <button 
+                  onClick={() => handleAction(`פרטים נוספים על השאלה האחרונה`)}
+                  className="mt-4 flex items-center gap-2 bg-[#00a884]/10 text-[#00a884] px-4 py-2 rounded-full text-xs font-black hover:bg-[#00a884]/20 transition-all border border-[#00a884]/30"
+                >
+                  <Info size={14} /> לחץ לקבלת פרטים נוספים ומדיה
+                </button>
+              )}
             </div>
 
-            {/* Product Cards */}
+            {/* Product List */}
             {response.orderList?.map((item: any) => (
-              <div key={item.id} className="bg-[#111b21] rounded-[2.5rem] border border-gray-800 overflow-hidden flex flex-col shadow-2xl animate-in fade-in zoom-in duration-500">
-                <div className="h-56 bg-white flex items-center justify-center p-8 relative">
-                   <img src={item.image || "/avattar.png"} className="h-full object-contain" alt={item.name} />
-                   <div className="absolute top-4 right-4 bg-[#00a884] text-white text-[10px] font-black px-3 py-1 rounded-full shadow-lg">במלאי</div>
+              <div key={item.id} className="bg-[#111b21] rounded-3xl border border-gray-800 overflow-hidden flex flex-col shadow-lg">
+                <div className="h-48 bg-white p-4 flex items-center justify-center relative">
+                  <img src={item.image || "/avattar.png"} className="h-full object-contain" alt={item.name} />
+                  <div className="absolute top-3 right-3 bg-[#00a884] text-white text-[9px] font-black px-2 py-1 rounded-md">מלאי זמין</div>
                 </div>
-                <div className="p-6 bg-[#1c272d] flex justify-between items-center border-t border-gray-800">
+                <div className="p-4 flex justify-between items-center bg-[#1c272d]">
                   <div className="space-y-1">
-                    <h3 className="font-black text-base">{item.name}</h3>
-                    <p className="text-[10px] text-gray-500 font-bold uppercase">SKU: {item.sku}</p>
+                    <h3 className="font-bold text-sm text-white">{item.name}</h3>
+                    <p className="text-[10px] text-gray-500 font-mono uppercase">SKU: {item.sku}</p>
                   </div>
                   <div className="text-left">
-                    <p className="text-[#00a884] text-xl font-black tracking-tighter">₪{item.price}</p>
-                    <button className="mt-2 bg-[#00a884] text-white text-[10px] font-black px-5 py-2 rounded-full active:scale-90 transition-transform shadow-lg shadow-[#00a884]/20">
-                      הוסף להזמנה
-                    </button>
+                    <p className="text-[#00a884] font-black text-lg">₪{item.price}</p>
+                    <button className="text-[10px] bg-[#00a884] text-white px-4 py-2 rounded-full font-black mt-1 active:scale-90 transition-transform shadow-lg shadow-[#00a884]/20">הוסף</button>
                   </div>
                 </div>
               </div>
             ))}
-            <div ref={scrollRef} className="h-4" />
+            <div ref={scrollRef} className="h-10" />
           </div>
         )}
 
         {loading && (
-          <div className="flex flex-col items-center justify-center py-10 space-y-4">
-             <Loader2 className="animate-spin text-[#00a884]" size={32} />
-             <p className="text-[10px] font-black text-[#00a884] animate-pulse uppercase tracking-widest">סורק נתונים ומחשב...</p>
+          <div className="flex flex-col items-center justify-center py-20 animate-pulse">
+            <Loader2 className="animate-spin text-[#00a884] mb-4" size={32} />
+            <p className="text-[10px] font-black text-[#00a884] uppercase tracking-widest">מתחבר למקורות מידע וגוגל...</p>
           </div>
         )}
       </main>
 
-      {/* Floating Mobile Input */}
-      <div className="p-5 bg-gradient-to-t from-[#0b141a] via-[#0b141a] to-transparent absolute bottom-0 w-full z-[200]">
-        <div className="bg-[#1c272d] border border-gray-700/50 rounded-[2.5rem] p-1.5 flex items-center shadow-2xl focus-within:border-[#00a884] transition-all duration-300">
+      {/* Floating Input */}
+      <div className="p-4 bg-gradient-to-t from-[#0b141a] via-[#0b141a] to-transparent absolute bottom-0 w-full z-[200]">
+        <div className="bg-[#1c272d] border border-gray-700/50 rounded-[2rem] p-1 flex items-center shadow-2xl focus-within:border-[#00a884] transition-all">
           <div className="p-4 text-gray-500">
-            <MessageSquare size={22} strokeWidth={2.5} />
+            <MessageSquare size={20} />
           </div>
-          
           <input 
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleAction()}
-            placeholder="חשב לי 20 מ״ר או שאל שאלה..." 
-            className="flex-1 bg-transparent outline-none py-4 text-[16px] font-medium placeholder:text-gray-600"
+            placeholder="שאל שאלה או בקש חישוב..." 
+            className="flex-1 bg-transparent outline-none py-4 text-base placeholder:text-gray-600 font-medium"
           />
-          
           <button 
-            onClick={handleAction}
+            onClick={() => handleAction()}
             disabled={loading}
-            className={`p-4 rounded-full transition-all shadow-xl active:scale-90 flex items-center justify-center ml-1 ${
-              loading ? 'bg-gray-800 text-gray-600' : 'bg-[#00a884] text-white'
-            }`}
+            className="bg-[#00a884] p-4 rounded-full text-white active:scale-90 transition-all shadow-lg ml-1"
           >
-            <Send size={22} strokeWidth={3} />
+            <Send size={20} strokeWidth={2.5} />
           </button>
         </div>
       </div>
