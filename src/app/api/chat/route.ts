@@ -1,103 +1,60 @@
-import { google } from "@ai-sdk/google"
-import { generateText, tool } from "ai"
-import { createClient } from "@supabase/supabase-js"
-import { z } from "zod"
+import { google } from "@ai-sdk/google";
+import { generateText } from "ai";
+import { supabase } from "@/lib/supabase";
 
-export const dynamic = 'force-dynamic';
+export const maxDuration = 30;
 
 export async function POST(req: Request) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE!;
-  const geminiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY;
-  const googleSearchKey = process.env.GOOGLE_CSE_API_KEY;
-  const googleSearchCX = "1340c66f5e73a4076"; // ה-CX שלך
-
-  if (!supabaseKey || !geminiKey) {
-    return new Response(JSON.stringify({ error: "Configuration Missing" }), { status: 500 });
-  }
-
-  const supabase = createClient(supabaseUrl, supabaseKey);
-
   try {
     const { messages } = await req.json();
-    const lastMessage = messages[messages.length - 1]?.content || "";
-    const cacheKey = `chat:v1:${lastMessage.toLowerCase().trim()}`;
+    const lastMsg = messages[messages.length - 1].content.trim().toLowerCase();
+    const geminiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 
-    // 1. בדיקת קאש (חיסכון במפתחות)
-    const { data: cached } = await supabase
-      .from('answers_cache')
-      .select('payload')
-      .eq('key', cacheKey)
-      .single();
+    if (!geminiKey) throw new Error("Missing Gemini API Key");
 
-    // אם יש מידע מלא (כולל תמונה/וידאו), מחזירים מיד
-    if (cached?.payload && cached.payload.components?.some((c: any) => c.props?.image || c.props?.videoUrl)) {
-      return new Response(JSON.stringify(cached.payload));
-    }
-
-    // 2. הפעלת Gemini עם כלים לחיפוש משלים
-    const { text, toolResults } = await generateText({
-      model: google("gemini-1.5-pro-latest"),
+    // 1. הגדרת המודל בצורה נכונה עם המפתח
+    const model = google("gemini-1.5-pro-latest", {
       apiKey: geminiKey,
-      system: `אתה המוח הטכני של ח. סבן. עליך להחזיר תמיד JSON לממשק UIBlueprint.
-               אם מצאת מוצר במידע המאומת אבל חסרה לו תמונה או סרטון הדרכה, השתמש בכלי ה-webSearch כדי למצוא לינק רלוונטי מיוטיוב או גוגל תמונות.`,
+    });
+
+    // 2. חיפוש במלאי (Inventory)
+    const { data: products } = await supabase
+      .from("inventory")
+      .select("*")
+      .or(`product_name.ilike.%${lastMsg}%,sku.ilike.%${lastMsg}%`)
+      .limit(3);
+
+    const productContext = products?.length 
+      ? `מידע מאומת מהמלאי: ${JSON.stringify(products)}` 
+      : "לא נמצא מוצר מדויק במלאי כרגע.";
+
+    // 3. יצירת התשובה
+    const { text } = await generateText({
+      model: model, // משתמש במודל שהגדרנו למעלה
+      system: `אתה המוח הטכני של ח. סבן. עליך להחזיר תמיד תשובה מקצועית בעברית.
+               השתמש במידע הבא מהמלאי: ${productContext}.
+               אם נמצא מוצר, ציין מחיר, צריכה למ"ר וזמן ייבוש.`,
       messages,
-      tools: {
-        webSearch: tool({
-          description: "חיפוש תמונות מוצר וסרטוני הדרכה מיוטיוב",
-          inputSchema: z.object({ q: z.string() }),
-          execute: async ({ q }) => {
-            const res = await fetch(
-              `https://www.googleapis.com/customsearch/v1?key=${googleSearchKey}&cx=${googleSearchCX}&q=${encodeURIComponent(q)}`
-            );
-            return res.json();
-          },
-        }),
-      },
-      maxSteps: 5,
     });
 
-    // 3. עיבוד ה-Blueprint והעשרה מהחיפוש
-    let blueprint;
-    try {
-      const cleanJson = text.replace(/```json/g, "").replace(/```/g, "").trim();
-      blueprint = JSON.parse(cleanJson);
-    } catch (e) {
-      blueprint = { text, source: "Saban AI", type: "info", components: [] };
-    }
-
-    // הזרקת מדיה מתוצאות החיפוש לתוך ה-Blueprint אם חסר
-    if (toolResults) {
-      const searchResult = toolResults[0]?.result;
-      const firstImage = searchResult?.items?.find((i: any) => i.pagemap?.cse_image)?.[0]?.link;
-      const firstVideo = searchResult?.items?.find((i: any) => i.link.includes("youtube.com"))?.link;
-
-      blueprint.components = blueprint.components.map((comp: any) => {
-        if (comp.type === "productCard") {
-          return {
-            ...comp,
-            props: {
-              ...comp.props,
-              image: comp.props.image || firstImage,
-              videoUrl: comp.props.videoUrl || firstVideo
-            }
-          };
+    return Response.json({ 
+      text, 
+      uiBlueprint: products?.[0] ? {
+        type: "product_card",
+        data: {
+          title: products[0].product_name,
+          price: products[0].price,
+          image: products[0].image_url,
+          specs: {
+            coverage: products[0].coverage_per_sqm,
+            drying: products[0].drying_time
+          }
         }
-        return comp;
-      });
-    }
-
-    // 4. שמירה/עדכון בקאש לשימוש חוזר (חיסכון עתידי במפתח גוגל)
-    await supabase.from('answers_cache').upsert({ 
-      key: cacheKey, 
-      payload: blueprint,
-      updated_at: new Date() 
+      } : null
     });
-
-    return new Response(JSON.stringify(blueprint));
 
   } catch (error: any) {
-    console.error("API Error:", error);
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    console.error("Chat API Error:", error);
+    return Response.json({ text: "חלה שגיאה בחיבור למערכת." }, { status: 200 });
   }
 }
