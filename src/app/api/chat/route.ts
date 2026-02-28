@@ -11,36 +11,29 @@ export async function POST(req: Request) {
     const { messages } = await req.json();
     const lastMsg = messages[messages.length - 1].content.trim().toLowerCase();
     
-    // משיכת המפתח מה-Secrets (תמיכה בשמות השונים ב-Vercel)
-    const geminiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY;
+    // שליפת המפתח בצורה בטוחה
+    const geminiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 
     if (!geminiKey) {
-      return Response.json({ text: "Missing Gemini API Key in environment variables." }, { status: 500 });
+      return Response.json({ text: "שגיאה: חסר API Key בהגדרות Vercel." }, { status: 200 });
     }
 
-    // הגדרת ה-SDK של גוגל עם המודל החדש 3.1
+    // הגדרת המודל החדש (נכון ל-28 בפברואר 2026)
     const googleAI = createGoogleGenerativeAI({
       apiKey: geminiKey,
     });
 
-    // חיפוש במלאי סבן (לפי העמודות ב-CSV שלך)
+    // חיפוש במלאי סבן ב-Supabase
     const { data: products } = await supabase
       .from("inventory")
       .select("*")
       .or(`product_name.ilike.%${lastMsg}%,sku.ilike.%${lastMsg}%`)
       .limit(3);
 
-    const productContext = products?.length 
-      ? `מידע מאומת מהמלאי: ${JSON.stringify(products)}` 
-      : "המוצר לא נמצא במלאי הנוכחי של סבן.";
-
-    // יצירת התשובה עם מודל 3.1 Flash Image Preview
     const { text } = await generateText({
-      model: googleAI("gemini-3.1-flash-preview"),
-      system: `אתה המוח הטכני של "ח. סבן חומרי בניין". עליך לענות בעברית מקצועית.
-               השתמש בנתונים הבאים מהמלאי: ${productContext}.
-               תמיד תציין מחיר (₪), מק"ט (SKU) ופרטים טכניים אם קיימים.
-               אם מצאת "סיקה 107", תן דגש על צריכה למ"ר וזמן ייבוש.`,
+      model: googleAI("gemini-3.1-flash-preview"), // המודל המעודכן
+      system: `אתה המוח הטכני של ח. סבן חומרי בניין. השב בעברית.
+               נתוני מלאי מאומתים: ${JSON.stringify(products || [])}`,
       messages,
     });
 
@@ -51,19 +44,13 @@ export async function POST(req: Request) {
         data: {
           title: products[0].product_name,
           price: products[0].price,
-          image: products[0].image_url,
-          sku: products[0].sku,
-          specs: {
-            coverage: products[0].coverage_per_sqm,
-            drying: products[0].drying_time
-          },
-          features: products[0].features || []
+          image: products[0].image_url
         }
       } : null
     });
 
   } catch (error: any) {
-    console.error("Saban AI Error:", error);
-    return Response.json({ text: "חלה שגיאה בסנכרון מול מודל Gemini 3.1." }, { status: 200 });
+    console.error("Gemini 3.1 Error:", error);
+    return Response.json({ text: "מצטער ראמי, יש לי תקלה קלה בסנכרון מול המודל החדש. תנסה שוב בעוד רגע?" }, { status: 200 });
   }
 }
