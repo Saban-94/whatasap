@@ -1,28 +1,24 @@
-import { google } from "@ai-sdk/google";
+import { createGoogle } from "@ai-sdk/google";
 import { generateText } from "ai";
 import { supabase } from "@/lib/supabase";
 
-// הגדרת זמן ריצה מקסימלי ל-Vercel Edge
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
   try {
     const { messages } = await req.json();
     const lastMsg = messages[messages.length - 1].content.trim().toLowerCase();
-    
-    // משיכת המפתח מה-Environment Variables של Vercel
     const geminiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 
     if (!geminiKey) {
-      return Response.json({ text: "Missing Google API Key in Vercel settings." }, { status: 500 });
+      return Response.json({ text: "Missing Gemini API Key" }, { status: 500 });
     }
 
-    // הגדרת המודל בצורה הנכונה לגרסת SDK latest
-    const model = google("gemini-1.5-pro-latest", {
+    // הדרך הנכונה להגדיר מפתח בגרסאות האחרונות
+    const google = createGoogle({
       apiKey: geminiKey,
     });
 
-    // שאילתת מלאי מול Supabase (לפי העמודות ב-CSV שלך)
     const { data: products } = await supabase
       .from("inventory")
       .select("*")
@@ -30,16 +26,12 @@ export async function POST(req: Request) {
       .limit(3);
 
     const productContext = products?.length 
-      ? `נתוני מלאי זמינים: ${JSON.stringify(products)}` 
-      : "לא נמצא מוצר תואם בחיפוש ישיר.";
+      ? `נתוני מלאי: ${JSON.stringify(products)}` 
+      : "לא נמצא מוצר במלאי.";
 
-    // יצירת התשובה באמצעות ה-SDK החדש
     const { text } = await generateText({
-      model: model,
-      system: `אתה המוח הטכני של חברת ח. סבן. השב בעברית מקצועית.
-               נתונים מהמלאי: ${productContext}.
-               אם מצאת מוצר, ציין מחיר (₪), צריכה למ"ר וזמן ייבוש. 
-               אם לא מצאת, הצע מוצר דומה מהקטגוריה.`,
+      model: google("gemini-1.5-pro-latest"),
+      system: `אתה המוח הטכני של ח. סבן. השב בעברית. נתונים: ${productContext}`,
       messages,
     });
 
@@ -62,6 +54,6 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error("Saban AI Error:", error);
-    return Response.json({ text: "מצטער, חלה שגיאה בחיבור למערכת סבן." }, { status: 200 });
+    return Response.json({ text: "שגיאת מערכת" }, { status: 200 });
   }
 }
