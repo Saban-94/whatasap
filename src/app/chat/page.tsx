@@ -11,18 +11,19 @@ export default function ChatPage() {
   const [isThinking, setIsThinking] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  // גלילה אוטומטית להודעה האחרונה
+  // גלילה אוטומטית לסוף הצ'אט
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
   }, [messages, isThinking])
 
+  // הודעת פתיחה
   useEffect(() => {
     setMessages([{ 
-      id: "start", 
+      id: "init", 
       role: "assistant", 
-      content: "אהלן ראמי! אני מחובר למלאי סבן עם מודל Gemini 3.1. איך אני יכול לעזור?", 
+      content: "אהלן ראמי! אני מחובר למלאי סבן עם Gemini 3.1 Flash. שאל אותי על כל מוצר.", 
       createdAt: new Date() 
     }])
   }, [])
@@ -30,13 +31,7 @@ export default function ChatPage() {
   const handleSend = async () => {
     if (!inputValue.trim() || isThinking) return
     
-    const userMsg = { 
-      id: Date.now().toString(), 
-      role: "user", 
-      content: inputValue,
-      createdAt: new Date()
-    }
-    
+    const userMsg = { id: Date.now().toString(), role: "user", content: inputValue }
     setMessages(prev => [...prev, userMsg])
     setInputValue("")
     setIsThinking(true)
@@ -54,15 +49,13 @@ export default function ChatPage() {
         id: (Date.now() + 1).toString(), 
         role: "assistant", 
         content: data.text,
-        uiBlueprint: data.uiBlueprint,
-        createdAt: new Date()
+        uiBlueprint: data.uiBlueprint 
       }])
     } catch (e) {
-      console.error("Chat Error:", e)
       setMessages(prev => [...prev, { 
         id: "err", 
         role: "assistant", 
-        content: "אופס, משהו השתבש בחיבור לשרת. נסה שוב בעוד רגע." 
+        content: "אופס, חלה שגיאה בחיבור לשרת סבן." 
       }])
     } finally {
       setIsThinking(false)
@@ -71,10 +64,8 @@ export default function ChatPage() {
 
   return (
     <div className="relative min-h-screen bg-[#fbfbfb] overflow-hidden font-sans" dir="rtl">
-      {/* רקע אורבס נושם */}
       <FloatingOrbs />
       
-      {/* Header יוקרתי */}
       <header className="sticky top-0 z-30 w-full bg-white/80 backdrop-blur-xl border-b border-slate-100 p-4 shadow-sm">
         <div className="max-w-2xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-3">
@@ -83,39 +74,35 @@ export default function ChatPage() {
             </div>
             <div>
               <h1 className="text-lg font-black text-[#0B2C63] leading-none uppercase italic">Saban AI</h1>
-              <span className="text-[9px] font-bold text-green-600 uppercase tracking-widest">Gemini 3.1 Flash</span>
+              <span className="text-[9px] font-bold text-green-600 uppercase tracking-widest">3.1 Flash Live</span>
             </div>
           </div>
-          <Button onClick={() => setMessages([])} variant="ghost" size="icon" className="rounded-full hover:bg-slate-100 transition-colors">
+          <Button onClick={() => setMessages([])} variant="ghost" size="icon" className="rounded-full">
             <MessageSquareDashed size={18} className="text-slate-400" />
           </Button>
         </div>
       </header>
 
-      {/* אזור ההודעות */}
       <main ref={scrollRef} className="relative z-10 h-[calc(100dvh-160px)] overflow-y-auto px-4 pt-6 scroll-smooth">
         <div className="max-w-2xl mx-auto w-full space-y-6 pb-12">
           {messages.map((m) => (
             <div key={m.id} className={`flex flex-col ${m.role === "user" ? "items-end" : "items-start"} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
-              <div className={`max-w-[85%] p-4 rounded-[26px] font-bold shadow-sm transition-all ${
-                m.role === "user" ? "bg-[#0B2C63] text-white rounded-tr-none shadow-blue-900/10" : "bg-white text-slate-800 border border-slate-50 rounded-tl-none shadow-slate-200/50"
+              <div className={`max-w-[85%] p-4 rounded-[26px] font-bold shadow-sm ${
+                m.role === "user" ? "bg-[#0B2C63] text-white rounded-tr-none" : "bg-white text-slate-800 border border-slate-50 rounded-tl-none shadow-slate-200/50"
               }`}>
                 {m.content}
               </div>
 
-              {/* כרטיס מוצר ויזואלי במידה ונמצא מוצר */}
-              {m.uiBlueprint && (
-                <div className="mt-4 p-5 bg-white rounded-[32px] shadow-2xl border border-slate-50 w-full max-w-[280px] animate-in zoom-in-95 transition-transform hover:scale-[1.02]">
+              {/* כרטיס מוצר ויזואלי מהמלאי */}
+              {m.uiBlueprint && m.uiBlueprint.data && (
+                <div className="mt-4 p-5 bg-white rounded-[32px] shadow-2xl border border-slate-50 w-full max-w-[280px] animate-in zoom-in-95">
                   <h4 className="font-black text-[#0B2C63] text-lg leading-tight">{m.uiBlueprint.data.product_name}</h4>
-                  <div className="flex items-baseline gap-1 mt-1 text-blue-600 font-black text-xl">
-                    <span className="text-xs italic">₪</span>{m.uiBlueprint.data.price || '0'}
-                  </div>
                   <div className="mt-4 space-y-2">
-                    <div className="bg-slate-50 p-3 rounded-2xl text-[10px] font-black text-slate-500 uppercase flex justify-between border border-slate-100">
+                    <div className="bg-slate-50 p-3 rounded-2xl text-[10px] font-black text-slate-500 flex justify-between">
                       <span>מק"ט:</span>
                       <span className="text-[#0B2C63] font-mono tracking-tighter">{m.uiBlueprint.data.sku}</span>
                     </div>
-                    <div className="bg-slate-50 p-3 rounded-2xl text-[10px] font-black text-slate-500 uppercase flex justify-between border border-slate-100">
+                    <div className="bg-slate-50 p-3 rounded-2xl text-[10px] font-black text-slate-500 flex justify-between">
                       <span>ספק:</span>
                       <span className="text-[#0B2C63] truncate max-w-[120px]">{m.uiBlueprint.data.supplier_name}</span>
                     </div>
@@ -133,21 +120,18 @@ export default function ChatPage() {
         </div>
       </main>
 
-      {/* אזור הקלט */}
-      <footer className="fixed bottom-0 left-0 w-full z-40 p-6 bg-gradient-to-t from-[#fbfbfb] via-[#fbfbfb] to-transparent">
-        <div className="max-w-2xl mx-auto">
-          <div className="relative flex items-center bg-white border border-slate-100 shadow-2xl rounded-[30px] p-2 pr-6 transition-all focus-within:ring-4 focus-within:ring-blue-50/50">
-            <input 
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              className="flex-1 bg-transparent outline-none font-bold text-slate-800 text-[15px] py-3 placeholder:text-slate-300"
-              placeholder="שאל אותי על סיקה, בטון או דבק..."
-            />
-            <Button onClick={handleSend} disabled={isThinking} className="bg-[#0B2C63] h-12 w-12 rounded-[22px] shadow-lg shadow-blue-900/20 hover:bg-[#081f4d] transition-all active:scale-95">
-              <Send size={18} className="text-white" />
-            </Button>
-          </div>
+      <footer className="fixed bottom-0 left-0 w-full z-40 p-6 bg-gradient-to-t from-[#fbfbfb] to-transparent">
+        <div className="max-w-2xl mx-auto flex items-center bg-white border border-slate-100 shadow-2xl rounded-[30px] p-2 pr-6">
+          <input 
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+            className="flex-1 bg-transparent outline-none font-bold text-slate-800 text-[15px] py-3"
+            placeholder="חפש סיקה, בטון או דבק..."
+          />
+          <Button onClick={handleSend} disabled={isThinking} className="bg-[#0B2C63] h-12 w-12 rounded-[22px] shadow-lg shadow-blue-900/20 active:scale-95 transition-all">
+            <Send size={18} className="text-white" />
+          </Button>
         </div>
       </footer>
     </div>
