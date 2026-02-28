@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import FloatingOrbs from "@/components/FloatingOrbs"
 import { usePWAInstall } from "@/components/usePWAInstall"
 
-// תיקון: אם MessageList לא קיים כקובץ נפרד, נבנה אותו רגע בפנים כדי שה-Build לא ייפול
+// קומפוננטה פנימית לרשימת ההודעות
 function InternalMessageList({ messages, isThinking }: { messages: any[], isThinking: boolean }) {
   return (
     <div className="space-y-6 pb-24">
@@ -19,7 +19,12 @@ function InternalMessageList({ messages, isThinking }: { messages: any[], isThin
           </div>
         </div>
       ))}
-      {isThinking && <div className="text-slate-400 text-xs animate-pulse font-bold">סבן AI חושב...</div>}
+      {isThinking && (
+        <div className="flex gap-2 items-center text-slate-400 text-[10px] font-black animate-pulse uppercase tracking-widest">
+          <div className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-bounce" />
+          Saban AI is thinking...
+        </div>
+      )}
     </div>
   )
 }
@@ -28,10 +33,17 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<any[]>([])
   const [inputValue, setInputValue] = useState("")
   const [isThinking, setIsThinking] = useState(false)
-  const { isInstallable, installPWA } = usePWAInstall()
+  
+  // תיקון השגיאה: התאמה לערכים שה-Hook באמת מחזיר
+  const { deferredPrompt, prompt } = usePWAInstall()
 
   useEffect(() => {
-    setMessages([{ id: "w", role: "assistant", content: "אהלן ראמי! איך אני יכול לעזור היום?", createdAt: new Date() }])
+    setMessages([{ 
+      id: "w", 
+      role: "assistant", 
+      content: "אהלן ראמי! איך אני יכול לעזור היום?", 
+      createdAt: new Date() 
+    }])
   }, [])
 
   const handleSend = async () => {
@@ -44,10 +56,15 @@ export default function ChatPage() {
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: [...messages, userMsg] })
       })
       const data = await response.json()
-      setMessages(prev => [...prev, { id: Date.now().toString(), role: "assistant", content: data.text }])
+      setMessages(prev => [...prev, { 
+        id: Date.now().toString(), 
+        role: "assistant", 
+        content: data.text 
+      }])
     } catch (e) {
       console.error(e)
     } finally {
@@ -56,20 +73,27 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="relative min-h-screen bg-[#fbfbfb] overflow-hidden" dir="rtl">
+    <div className="relative min-h-screen bg-[#fbfbfb] overflow-hidden font-sans" dir="rtl">
       <FloatingOrbs />
       
       <header className="sticky top-0 z-30 w-full bg-white/70 backdrop-blur-2xl border-b border-slate-100/50 p-4">
         <div className="max-w-2xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#0B2C63] rounded-2xl flex items-center justify-center shadow-lg">
+            <div className="w-10 h-10 bg-[#0B2C63] rounded-2xl flex items-center justify-center shadow-lg shadow-blue-100">
                <Sparkles className="text-white" size={20} />
             </div>
-            <h1 className="text-lg font-black text-[#0B2C63]">Saban OS</h1>
+            <h1 className="text-lg font-black text-[#0B2C63] tracking-tighter">Saban OS</h1>
           </div>
           <div className="flex gap-2">
-            {isInstallable && <Button onClick={installPWA} variant="ghost" size="icon"><Smartphone size={18} /></Button>}
-            <Button onClick={() => setMessages([])} variant="ghost" size="icon"><MessageSquareDashed size={18} /></Button>
+            {/* שימוש ב-deferredPrompt כדי לבדוק אם אפשר להתקין */}
+            {deferredPrompt && (
+              <Button onClick={prompt} variant="ghost" size="icon" className="rounded-full">
+                <Smartphone size={18} className="text-blue-600" />
+              </Button>
+            )}
+            <Button onClick={() => setMessages([])} variant="ghost" size="icon" className="rounded-full">
+              <MessageSquareDashed size={18} className="text-slate-400" />
+            </Button>
           </div>
         </div>
       </header>
@@ -80,19 +104,22 @@ export default function ChatPage() {
         </div>
       </main>
 
-      <footer className="fixed bottom-0 left-0 w-full z-40 p-6 bg-gradient-to-t from-[#fbfbfb] to-transparent">
+      <footer className="fixed bottom-0 left-0 w-full z-40 p-6 bg-gradient-to-t from-[#fbfbfb] via-[#fbfbfb] to-transparent">
         <div className="max-w-2xl mx-auto">
-          <div className="flex items-center bg-white border border-slate-100 shadow-2xl rounded-[30px] p-2 pr-6">
-            <input 
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              className="flex-1 bg-transparent outline-none text-[15px] font-bold text-slate-800"
-              placeholder="שאל אותי על המלאי..."
-            />
-            <Button onClick={handleSend} className="bg-[#0B2C63] h-12 w-12 rounded-[22px]">
-              <Send size={18} className="text-white" />
-            </Button>
+          <div className="relative group">
+            <div className="absolute -inset-1 bg-gradient-to-r from-blue-100 to-orange-50 rounded-[32px] blur opacity-20 group-focus-within:opacity-40 transition"></div>
+            <div className="relative flex items-center bg-white border border-slate-100 shadow-2xl rounded-[30px] p-2 pr-6 overflow-hidden">
+              <input 
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                className="flex-1 bg-transparent outline-none text-[15px] font-bold text-slate-800 placeholder:text-slate-300 py-3"
+                placeholder="שאל אותי על המלאי..."
+              />
+              <Button onClick={handleSend} disabled={isThinking} className="bg-[#0B2C63] h-12 w-12 rounded-[22px] transition-all active:scale-95">
+                <Send size={18} className="text-white" />
+              </Button>
+            </div>
           </div>
         </div>
       </footer>
