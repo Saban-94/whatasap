@@ -11,34 +11,41 @@ export async function POST(req: Request) {
     const { messages } = await req.json();
     const lastMessage = messages[messages.length - 1].content.trim();
 
-    // חיבור ל-Supabase - שימוש ב-Service Role לעקיפת בעיות הרשאה
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE!
-    );
+    // 1. חיבור ל-Supabase - וודא שהשמות ב-Vercel הם בדיוק אלו
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE!;
 
-    // הגדרת Gemini 3.1 Flash
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // 2. חיבור ל-Gemini 3.1 Flash
     const geminiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-    const googleAI = createGoogleGenerativeAI({ apiKey: geminiKey! });
+    if (!geminiKey) throw new Error("Missing Gemini API Key in Vercel Environment");
 
-    // חיפוש מוצרים - שליפת עמודות שקיימות בטוח ב-SQL שלך
+    const googleAI = createGoogleGenerativeAI({ apiKey: geminiKey });
+
+    // 3. שליפת מוצרים מהמלאי לפי שמות העמודות ב-SQL שלך
     const { data: products, error: dbError } = await supabase
       .from("inventory")
-      .select("product_name, sku, price, category, supplier_name")
+      .select("product_name, sku, price, category, supplier_name, department")
       .or(`product_name.ilike.%${lastMessage}%,sku.ilike.%${lastMessage}%`)
       .limit(3);
 
-    if (dbError) throw dbError;
+    if (dbError) {
+      console.error("Supabase Query Error:", dbError.message);
+      throw dbError;
+    }
 
-    const inventoryContext = products?.length 
-      ? `נתוני מלאי מאומתים מסבן: ${JSON.stringify(products)}` 
-      : "המוצר לא נמצא במלאי הנוכחי.";
+    const context = products?.length 
+      ? `מצאתי את המוצרים הבאים במלאי של סבן: ${JSON.stringify(products)}` 
+      : "לא נמצא מוצר תואם בחיפוש במלאי.";
 
+    // 4. הפעלת המודל החדש 3.1
     const { text } = await generateText({
       model: googleAI("gemini-3.1-flash-preview"),
-      system: `אתה עוזר טכני של "ח. סבן חומרי בניין". השב בעברית.
-               מידע מהמלאי: ${inventoryContext}.
-               אם מצאת מוצר, פרט מק"ט ומחיר. אם לא מצאת, הצע עזרה כללית.`,
+      system: `אתה נציג המכירות והמומחה הטכני של "ח. סבן חומרי בניין". השב בעברית.
+               השתמש במידע מהמלאי המאומת: ${context}.
+               במידה ומצאת מוצר, תמיד ציין מק"ט ומחיר.
+               אם לא מצאת, הסבר בנימוס ותציע להתקשר למחסן.`,
       messages,
     });
 
@@ -51,9 +58,10 @@ export async function POST(req: Request) {
     });
 
   } catch (error: any) {
-    console.error("Critical Chat Error:", error);
+    console.error("Critical API Error:", error);
+    // החזרת תשובה ללקוח שלא "תשבור" את הצ'אט
     return Response.json({ 
-      text: "ראמי אחי, יש תקלה בשאילתה למסד הנתונים. וודא ששמות העמודות בקוד תואמים ל-Supabase.",
+      text: "מצטער ראמי, יש לי תקלה קלה בשליפת הנתונים מהמחסן. וודא שביצעת Redeploy אחרי עדכון המפתחות.",
       debug: error.message 
     }, { status: 200 });
   }
