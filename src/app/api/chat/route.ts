@@ -41,7 +41,7 @@ export async function POST(req: Request) {
 
     // הגדרת המודל החדש והתקין לפי התיעוד מ-26 בפברואר
     const { text } = await generateText({
-     model: googleAI("gemini-3.1-flash-image-preview"), 
+    model: googleAI("gemini-3-flash"),
      system: `אתה המוח הטכני של ח. סבן חומרי בניין. השב בעברית.
            נתוני מלאי מאומתים: ${JSON.stringify(products || [])}`,
   messages,
