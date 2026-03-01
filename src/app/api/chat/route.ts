@@ -39,14 +39,12 @@ export async function POST(req: Request) {
       ? `מצאתי את המוצרים הבאים במלאי של סבן: ${JSON.stringify(products)}` 
       : "לא נמצא מוצר תואם בחיפוש במלאי.";
 
-    // 4. הפעלת המודל החדש 3.1
+    // הגדרת המודל החדש והתקין לפי התיעוד מ-26 בפברואר
     const { text } = await generateText({
-      model: googleAI("gemini-1.5-flash"),
-      system: `אתה נציג המכירות והמומחה הטכני של "ח. סבן חומרי בניין". השב בעברית.
-               השתמש במידע מהמלאי המאומת: ${context}.
-               במידה ומצאת מוצר, תמיד ציין מק"ט ומחיר.
-               אם לא מצאת, הסבר בנימוס ותציע להתקשר למחסן.`,
-      messages,
+     model: googleAI("gemini-3.1-flash-image-preview"), 
+     system: `אתה המוח הטכני של ח. סבן חומרי בניין. השב בעברית.
+           נתוני מלאי מאומתים: ${JSON.stringify(products || [])}`,
+  messages,
     });
 
     return Response.json({ 
