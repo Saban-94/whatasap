@@ -115,13 +115,16 @@ export async function POST(req: Request) {
 
     for (const modelId of modelsToTry) {
       try {
-        const { text } = await generateText({
-          model: googleAI(modelId),
-          system: SYSTEM_PROMPT,
-          messages,
+const { text } = await generateText({
+  model: googleAI(modelId),
+  system: `אתה יועץ המכירות של ח. סבן...`, // ה-Prompt שכתבנו קודם
+  messages,
+  temperature: 0.4,
+  // מחקנו את maxTokens כדי למנוע את השגיאה
+});
           // NEW: כוונון רך—ללא שינוי מודל/מבנה, רק פרמטרים נתמכים של ה‑AI SDK
-          maxTokens: 800,       // להשאיר מרווח ל‑JSON + ניסוח
-          temperature: 0.4,     // יציב, לא "פרוע" (AI SDK תומך בפרמטרים הללו) [1](https://www.visily.ai/ui-mockup-tool/)
+             maxDuration: 30, // מגדיר זמן ריצה מקסימלי במקום טוקנים
+             temperature: 0.4,   // יציב, לא "פרוע" (AI SDK תומך בפרמטרים הללו) [1](https://www.visily.ai/ui-mockup-tool/)
         });
         finalResponseText = text?.trim() || "";
         activeModelName = modelId;
