@@ -37,11 +37,11 @@ export async function POST(req: Request) {
       }
     }
 
-    const modelsToTry = [
-      "gemini-3.1-flash-image-preview",
-      "gemini-3-flash-preview",
-      "gemini-1.5-flash-latest"
-    ];
+const modelsToTry = [
+  "gemini-3-flash-preview",    // המודל שמופיע אצלך כפעיל (5 RPM)
+  "gemini-2.5-flash",          // מודל יציב מאוד שפתוח לך (5 RPM)
+  "gemini-1.5-flash-latest"    // גיבוי שתמיד עובד
+];
 
     if (!geminiKey) throw new Error("Missing Gemini API Key");
     const googleAI = createGoogleGenerativeAI({ apiKey: geminiKey });
