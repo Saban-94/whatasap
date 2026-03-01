@@ -1,5 +1,3 @@
-export const dynamic = 'force-dynamic';
-
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { generateText } from "ai";
 import { createClient } from "@supabase/supabase-js";
@@ -7,78 +5,44 @@ import { createClient } from "@supabase/supabase-js";
 export async function POST(req: Request) {
   try {
     const { messages } = await req.json();
-    const lastMessage = messages[messages.length - 1].content.trim();
+    const lastMsg = messages[messages.length - 1].content.trim();
 
-    // 1. איסוף מפתחות חסין - בודק את כל האופציות ששמנו ב-Vercel
-    const geminiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || 
-                     process.env.GEMINI_API_KEY || 
-                     process.env.gemini_key ||
-                     process.env.GEMINI_KEY;
+    // Init Supabase & Google CSE
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE!);
+    const googleAI = createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY! });
 
-    if (!geminiKey) {
-      return Response.json({ 
-        text: "❌ שגיאה: לא נמצא מפתח Gemini ב-Vercel. וודא שהגדרת GOOGLE_GENERATIVE_AI_API_KEY." 
-      }, { status: 200 });
-    }
-
-    // 2. חיבור ל-Supabase
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE!
-    );
-
-    // 3. שליפת מוצר אחד לבדיקת ה-Database
+    // 1. Search DB
     const { data: products } = await supabase
       .from("inventory")
-      .select("product_name, sku, price")
-      .or(`product_name.ilike.%${lastMessage}%,sku.ilike.%${lastMessage}%`)
-      .limit(1);
+      .select("*")
+      .or(`product_name.ilike.%${lastMsg}%,sku.ilike.%${lastMsg}%`)
+      .limit(2);
 
-    const context = products?.length ? JSON.stringify(products) : "אין נתוני מלאי תואמים";
+    // 2. Add Images from Google if product found
+    if (products?.[0]) {
+      const imgRes = await fetch(`https://www.googleapis.com/customsearch/v1?key=${process.env.GOOGLE_CSE_API_KEY}&cx=${process.env.GOOGLE_CSE_CX_ID}&q=${encodeURIComponent(products[0].product_name)}&searchType=image&num=1`);
+      const imgData = await imgRes.json();
+      products[0].image_url = imgData.items?.[0]?.link;
+    }
 
-    // 4. רשימת מודלים לבדיקה (לפי העדכונים של 2026)
-    const modelsToTry = [
-      "gemini-3.1-flash-image-preview", // הכי חדש
-      "gemini-3-flash-preview",         // יציב
-      "gemini-1.5-flash-latest"         // גיבוי אחרון
-    ];
+    // 3. Model Fallback Logic
+    const models = ["gemini-3.1-flash-image-preview", "gemini-3-flash-preview", "gemini-1.5-flash-latest"];
+    let finalRes = { text: "", model: "" };
 
-    let successText = "";
-    let workingModel = "";
-
-    // 5. הלופ החסין - מנסה מודל אחרי מודל
-    for (const modelId of modelsToTry) {
+    for (const m of models) {
       try {
-        const googleAI = createGoogleGenerativeAI({ apiKey: geminiKey });
         const { text } = await generateText({
-          model: googleAI(modelId),
-          system: `אתה נציג המכירות של ח. סבן. ענה בעברית. נתוני מלאי: ${context}`,
-          messages,
+          model: googleAI(m),
+          system: `אתה יועץ המכירות של ח. סבן חומרי בניין. ענה בעברית. מלאי: ${JSON.stringify(products || [])}`,
+          messages
         });
-        
-        successText = text;
-        workingModel = modelId;
-        break; // אם הצליח, יוצא מהלופ
-      } catch (err) {
-        console.error(`Failed with ${modelId}, trying next...`);
-        continue;
-      }
+        finalRes = { text, model: m };
+        break;
+      } catch (e) { continue; }
     }
 
-    if (!workingModel) {
-      throw new Error("כל המודלים נכשלו. וודא שהמפתח ב-Google AI Studio תקין.");
-    }
-
-    return Response.json({ 
-      text: successText, 
-      activeModel: workingModel,
-      uiBlueprint: products?.[0] ? { type: "product_card", data: products[0] } : null
-    });
-
-  } catch (error: any) {
-    return Response.json({ 
-      text: "❌ תקלה סופית: המפתח ב-Vercel הוגדר אך גוגל דוחה אותו. וודא שאין רווחים במפתח.",
-      debug: error.message 
-    }, { status: 200 });
+    return Response.json({ text: finalRes.text, products, activeModel: finalRes.model });
+  } catch (error) {
+    return Response.json({ text: "תקלה בסנכרון.", products: [] });
   }
 }
