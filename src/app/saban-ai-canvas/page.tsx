@@ -5,7 +5,7 @@ import {
   Send, Sparkles, ShoppingBag, MessageCircle, 
   Plus, Minus, Trash2, Database, ShieldCheck, 
   Loader2, Paperclip, Star, Play, Droplets, Maximize2, 
-  CheckCircle2, ShoppingCart, Clock, Wrench, X
+  CheckCircle2, ShoppingCart, Clock, Wrench, X, Package // <--- הוספנו את Package כאן
 } from "lucide-react";
 
 // --- Types ---
