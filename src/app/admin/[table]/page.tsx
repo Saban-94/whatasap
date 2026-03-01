@@ -1,95 +1,59 @@
 "use client"
 
-import { useParams } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useState, use } from "react"
 import { supabase } from "@/lib/supabase"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Loader2, Search, Edit, Trash2, Package } from "lucide-react"
 
-export default function TableManager() {
-  const { table } = useParams()
+export default function DynamicAdminPage({ params }: { params: Promise<{ table: string }> }) {
+  const { table } = use(params)
   const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState("")
 
-  useEffect(() => {
-    async function fetchData() {
-      setLoading(true)
-      const { data: res } = await supabase.from(table as string).select('*')
-      if (res) setData(res)
-      setLoading(false)
-    }
-    fetchData()
-  }, [table])
+  const fetchData = async () => {
+    setLoading(true)
+    const { data: res } = await supabase.from(table).select('*').limit(50)
+    if (res) setData(res)
+    setLoading(false)
+  }
 
-  const filteredData = data.filter(item => 
-    Object.values(item).some(val => 
-      String(val).toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  )
-
-  const columns = data.length > 0 ? Object.keys(data[0]) : []
+  useEffect(() => { fetchData() }, [table])
 
   return (
-    <div className="p-6 space-y-6" dir="rtl">
-      <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border">
+    <div className="p-8 max-w-7xl mx-auto min-h-screen bg-white" dir="rtl">
+      <div className="flex justify-between items-center mb-10 border-b pb-6">
         <div className="flex items-center gap-4">
-          <div className="bg-blue-100 p-3 rounded-xl text-blue-600">
-            <Package size={24} />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-[#0B2C63]">ניהול {table}</h1>
-            <p className="text-sm text-slate-400">נמצאו {data.length} רשומות</p>
-          </div>
+          <Package className="text-[#0B2C63]" size={32} />
+          <h1 className="text-2xl font-black text-[#0B2C63]">ניהול טבלה: {table}</h1>
         </div>
-        <div className="relative w-72">
-          <Search className="absolute right-3 top-3 text-slate-400" size={18} />
-          <Input 
-            placeholder="חיפוש מהיר..." 
-            className="pr-10"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
+        <Button onClick={fetchData} className="bg-[#0B2C63] text-white rounded-xl">רענן נתונים</Button>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-xl border overflow-hidden">
+      <div className="overflow-x-auto rounded-2xl border shadow-sm">
         {loading ? (
-          <div className="flex justify-center p-20"><Loader2 className="animate-spin text-blue-600" size={48} /></div>
+          <div className="p-20 flex justify-center"><Loader2 className="animate-spin text-blue-600" size={40} /></div>
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader className="bg-slate-50">
-                <TableRow>
-                  {columns.map(col => (
-                    <TableHead key={col} className="text-right font-bold text-[#0B2C63]">{col}</TableHead>
-                  ))}
-                  <TableHead className="text-center font-bold">פעולות</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredData.map((item, idx) => (
-                  <TableRow key={idx} className="hover:bg-blue-50/30 transition-colors">
-                    {columns.map(col => (
-                      <TableCell key={col} className="text-right py-4 text-sm">
-                        {typeof item[col] === 'object' ? '📦 JSON' : String(item[col])}
-                      </TableCell>
-                    ))}
-                    <TableCell className="text-center flex justify-center gap-2 py-4">
-                      <Button variant="ghost" size="icon" className="text-blue-500 hover:bg-blue-100">
-                        <Edit size={16} />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="text-red-500 hover:bg-red-100">
-                        <Trash2 size={16} />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <table className="w-full text-right border-collapse">
+            <thead className="bg-slate-50 border-b">
+              <tr>
+                <th className="px-6 py-4 font-bold text-slate-600">נתונים</th>
+                <th className="px-6 py-4 font-bold text-slate-600 text-center">פעולות</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {data.map((item, i) => (
+                <tr key={i} className="hover:bg-slate-50">
+                  <td className="px-6 py-4 text-sm text-slate-600 font-mono">
+                    {JSON.stringify(item).substring(0, 100)}...
+                  </td>
+                  <td className="px-6 py-4 flex justify-center gap-2">
+                    <Button variant="ghost" size="sm" className="text-blue-500"><Edit size={16} /></Button>
+                    <Button variant="ghost" size="sm" className="text-red-500"><Trash2 size={16} /></Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
     </div>
