@@ -41,7 +41,7 @@ export async function POST(req: Request) {
 
     // 4. הפעלת המודל החדש 3.1
     const { text } = await generateText({
-      model: googleAI("gemini-3.1-flash-preview"),
+      model: googleAI("gemini-1.5-flash"),
       system: `אתה נציג המכירות והמומחה הטכני של "ח. סבן חומרי בניין". השב בעברית.
                השתמש במידע מהמלאי המאומת: ${context}.
                במידה ומצאת מוצר, תמיד ציין מק"ט ומחיר.
