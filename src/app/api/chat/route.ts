@@ -11,14 +11,15 @@ export async function POST(req: Request) {
     const messages = body.messages || [];
 
     if (messages.length === 0) {
-      return Response.json({ text: "שלום ראמי, סבן AI מוכן לעבודה." });
+      return Response.json({ text: "שלום! סבן AI מוכן לעזור לך עם מוצרים וחישובים." });
     }
 
     const lastMsgObj = messages[messages.length - 1];
     const rawText = lastMsgObj.content || lastMsgObj.text || "";
     const lastMsg = rawText.toString().trim();
 
-    const geminiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_KEY;
+    // הגדרת מפתחות
+    const geminiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE;
 
@@ -37,11 +38,11 @@ export async function POST(req: Request) {
       }
     }
 
-const modelsToTry = [
-  "gemini-3-flash-preview",    // המודל שמופיע אצלך כפעיל (5 RPM)
-  "gemini-2.5-flash",          // מודל יציב מאוד שפתוח לך (5 RPM)
-  "gemini-1.5-flash-latest"    // גיבוי שתמיד עובד
-];
+    // רשימת מודלים מעודכנת לפי ה-Free Tier שלך
+    const modelsToTry = [
+      "gemini-2.0-flash", 
+      "gemini-1.5-flash-latest"
+    ];
 
     if (!geminiKey) throw new Error("Missing Gemini API Key");
     const googleAI = createGoogleGenerativeAI({ apiKey: geminiKey });
@@ -52,7 +53,12 @@ const modelsToTry = [
       try {
         const { text } = await generateText({
           model: googleAI(modelId),
-          system: `אתה יועץ המכירות של ח. סבן חומרי בניין. ענה בעברית. נתוני מלאי: ${JSON.stringify(products)}. חוק חישוב: עבור סיקה 255, כמות = (שטח מ"ר * 4 ק"ג) / 25 ק"ג שק. עגל למעלה + 1 שק רזרבה.`,
+          system: `אתה יועץ המכירות של ח. סבן חומרי בניין. ענה בעברית.
+          נתוני מלאי זמינים: ${JSON.stringify(products)}.
+          חוק חישוב כמויות:
+          - עבור דבקי אריחים (כמו סיקה 255): (שטח מ"ר * 4 ק"ג) / 25 ק"ג שק. עגל תמיד למעלה + 1 שק רזרבה.
+          - עבור איטום נוזלי: (שטח מ"ר * צריכה לקמ"ר מהמפרט) / משקל פח.
+          בסוף כל תשובה טכנית, תן "טיפ זהב" ליישום והצע להוסיף לסל.`,
           messages,
           temperature: 0.4
         });
@@ -61,7 +67,6 @@ const modelsToTry = [
         activeModelName = modelId;
         break; 
       } catch (err) {
-        console.warn(`Model ${modelId} failed, trying next...`);
         continue;
       }
     }
@@ -73,9 +78,8 @@ const modelsToTry = [
     });
 
   } catch (error: any) {
-    console.error("CRITICAL ERROR:", error);
     return Response.json({ 
-      text: "ראמי אחי, חלה שגיאה בעיבוד הבקשה. בדוק את מפתחות ה-API.",
+      text: "חלה שגיאה בעיבוד. אנא וודא שמפתח ה-API תקין ב-Vercel.",
       debug: error.message
     });
   }
