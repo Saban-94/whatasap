@@ -45,9 +45,11 @@ export async function POST(req: Request) {
 
     const googleAI = createGoogleGenerativeAI({ apiKey: geminiKey });
 
-    // שימוש במודל Gemini 3 Flash החדש (מעודכן למרץ 2026)
     const { text } = await generateText({
-      model: googleAI("gemini-3-flash"), 
+    model: googleAI("gemini-3.1-flash-image-preview"), // המודל החדש ביותר
+    system: `אתה יועץ המכירות של ח. סבן...`,
+    messages
+   });
       system: `אתה עוזר מכירות מומחה של "ח. סבן חומרי בניין". 
       השתמש במידע הבא כדי לענות:
       מידע עסקי (שעות, סניפים): ${JSON.stringify(businessInfo)}
