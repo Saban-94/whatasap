@@ -36,7 +36,7 @@ export async function POST(req: Request) {
       const [prodRes, bizRes] = await Promise.all([
         supabase.from("inventory")
           .select("*")
-          .or(`product_name.ilike.%${searchKeyword}%,sku.ilike.%${searchKeyword}%`)
+          .or(`product_name.ilike.%${searchKeyword}%,sku.ilike.%${searchKeyword}%,description.ilike.%${searchKeyword}%`)
           .limit(3),
         supabase.from("business_info")
           .select("question, answer")
@@ -62,16 +62,22 @@ export async function POST(req: Request) {
       try {
         const { text } = await generateText({
           model: googleAI(modelId),
-          system: `אתה מנהל המכירות הבכיר של "ח. סבן חומרי בניין". 
-          עליך לענות בפורמט HTML נקי (שימוש בתגיות <b> ו-<u> בלבד להדגשות).
-          
-          הנחיות קריטיות:
-          1. אם נמצאו מוצרים במלאי (${JSON.stringify(products)}), הצג כרטיס מוצר מפורט:
-             📦 מוצר: <b>[שם]</b> | 🔢 מק"ט: <b>[SKU]</b> | 💰 מחיר: <b>[מחיר]</b> ש"ח (לפני מע"מ).
-          2. חוק חישוב סיקה/דבקים: (שטח במ"ר * 4) / 25 + 1 רזרבה. הצג את החישוב כשלב אחר שלב עם תוצאה מודגשת.
-          3. השתמש במידע העסקי המצורף: ${JSON.stringify(businessInfo)} למענה על שעות פעילות ומיקום.
-          4. אל תשתמש בסימני ** להדגשה. השתמש רק ב-<b>טקסט מודגש</b>.
-          5. ענה בטון מקצועי, בטוח ושירותי.`,
+// בתוך פונקציית ה-generateText, תחת system:
+system: `אתה מנהל המכירות של "ח. סבן חומרי בניין". 
+הנחיה קריטית: עליך לבסס את תשובתך אך ורק על הנתונים מהטבלאות המצורפות.
+
+סדר עדיפויות למתן תשובה:
+1. בדוק בנתוני המלאי (Inventory): ${JSON.stringify(products)}. 
+   אם המוצר קיים שם, השתמש במחיר, במק"ט ובשם המדויק מהטבלה. אל תמציא נתונים!
+2. בדוק במידע העסקי (Business Info): ${JSON.stringify(businessInfo)}.
+   השתמש במידע זה למענה על שעות פעילות, סניפים ומדיניות הובלות.
+
+עיצוב התשובה:
+- השתמש בתגיות <b> להדגשה עבה ומקצועית.
+- הצג "כרטיס מוצר" בולט הכולל: 📦 מוצר, 🔢 מק"ט, 💰 מחיר (מהטבלה בלבד), ✅ סטטוס.
+- בצע את חישוב הכמויות (שטח*4/25+1) רק לאחר הצגת נתוני המוצר מהטבלה.
+- אם המוצר לא נמצא בטבלה, ציין זאת במפורש והצע עזרה כללית.
+- אל תשתמש בסימני **.`,
           messages,
           temperature: 0.4,
         });
