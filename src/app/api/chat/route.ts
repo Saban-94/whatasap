@@ -14,7 +14,6 @@ export async function POST(req: Request) {
       process.env.SUPABASE_SERVICE_ROLE!
     );
     
-    // שליפה ממוקדת של מוצר אחד כדי למנוע בלבול בעיצוב
     const { data: products } = await supabase
       .from("inventory")
       .select("*")
@@ -29,10 +28,9 @@ export async function POST(req: Request) {
       try {
         const { text } = await generateText({
           model: googleAI(modelId),
-          system: `אתה מנהל המכירות של "ח. סבן". ענה בפורמט HTML (תגיות <b>).
+          system: `אתה מנהל המכירות הבכיר של "ח. סבן". ענה בקיצור ובפורמט HTML (תגיות <b>).
           מידע מהמלאי: ${JSON.stringify(products)}.
-          חוק חישוב סיקה: (שטח * 4) / 25 + 1 רזרבה. הצג תוצאה סופית מודגשת.
-          אם נמצא מוצר, ציין שפרטיו מופיעים בכרטיס המצורף.`,
+          חוק חישוב סיקה: (שטח * 4) / 25 + 1 רזרבה. הצג תוצאה סופית מודגשת.`,
           messages,
           temperature: 0.2
         });
@@ -40,7 +38,6 @@ export async function POST(req: Request) {
       } catch (e) { continue; }
     }
 
-    // בניית הוראות העיצוב ל-Frontend
     const uiBlueprint = (products && products.length > 0) ? {
       type: "product_card",
       data: {
@@ -48,20 +45,12 @@ export async function POST(req: Request) {
         price: products[0].price,
         image: products[0].image_url || null,
         sku: products[0].sku,
-        specs: {
-          coverage: "4 ק\"ג למ\"ר",
-          drying: "24 שעות"
-        }
+        specs: { coverage: "4 ק\"ג למ\"ר", drying: "24 שעות" }
       }
     } : null;
 
-    return Response.json({ 
-      text: responseText, 
-      products: products || [],
-      uiBlueprint 
-    });
-
+    return Response.json({ text: responseText, products: products || [], uiBlueprint });
   } catch (error) {
-    return Response.json({ text: "שגיאה בחיבור למערכת." }, { status: 500 });
+    return Response.json({ text: "שגיאה בחיבור." }, { status: 500 });
   }
 }
