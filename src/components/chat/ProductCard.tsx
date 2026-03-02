@@ -1,41 +1,64 @@
 "use client";
-import React, { useState } from "react";
-import { Play, ShoppingCart, Plus, Minus } from "lucide-react";
 
-export default function ProductCard({ name, imageUrl, specs, sku, onAddToOrder, onWatchTutorial }: any) {
-  const [qty, setQty] = useState(1);
+import React from 'react';
+import { ShoppingCart, Package, Tag, CheckCircle } from 'lucide-react';
 
+interface ProductProps {
+  product: {
+    product_name: string;
+    sku: string;
+    price: number;
+    description?: string;
+    image_url?: string;
+  };
+}
+
+export const ProductCard = ({ product }: ProductProps) => {
   return (
-    <div className="bg-white rounded-xl overflow-hidden border border-gray-200 mt-2 shadow-sm text-right" dir="rtl">
-      {imageUrl && <img src={imageUrl} alt={name} className="w-full h-44 object-cover" />}
-      <div className="p-4 space-y-3">
-        <h3 className="font-black text-lg text-[#111B21]">{name}</h3>
-        <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-1 rounded font-black border border-emerald-100">
-          מק״ט: <span dir="ltr">{sku || "99999"}</span>
-        </span>
+    <div className="my-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[30px] overflow-hidden shadow-2xl max-w-sm transition-all hover:scale-[1.02]">
+      {product.image_url && (
+        <div className="h-48 w-full bg-slate-100 dark:bg-slate-800 relative">
+          <img 
+            src={product.image_url} 
+            alt={product.product_name}
+            className="w-full h-full object-contain p-4"
+          />
+        </div>
+      )}
+      <div className="p-6 text-right" dir="rtl">
+        <div className="flex justify-between items-start mb-2">
+          <span className="bg-blue-100 text-blue-600 text-[10px] font-black px-3 py-1 rounded-full uppercase italic">
+            SABAN STOCK
+          </span>
+          <span className="text-slate-400 text-[10px] font-mono">#{product.sku}</span>
+        </div>
         
-        <div className="grid grid-cols-2 gap-2 py-2 border-y border-gray-50">
-          <div className="text-xs font-black text-gray-500">צריכה: <span className="text-[#111B21]">{specs?.consumptionPerM2 || "—"}</span></div>
-          <div className="text-xs font-black text-gray-500">ייבוש: <span className="text-[#111B21]">{specs?.dryingTime || "—"}</span></div>
+        <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2 leading-tight">
+          {product.product_name}
+        </h3>
+        
+        <div className="flex items-baseline gap-1 mb-4">
+          <span className="text-3xl font-black text-blue-600">{product.price}</span>
+          <span className="text-sm font-bold text-slate-500">₪ לפני מע"מ</span>
         </div>
 
-        <div className="flex flex-col gap-2">
-          <button onClick={onWatchTutorial} className="bg-blue-50 text-blue-600 py-2 rounded-lg font-black text-xs flex items-center justify-center gap-2 hover:bg-blue-100 transition-colors">
-            <Play size={14} fill="currentColor" /> צפה בהדרכה
-          </button>
-          
-          <div className="flex items-center gap-2 mt-1">
-            <div className="flex items-center border rounded-lg bg-gray-50" dir="ltr">
-              <button onClick={() => setQty(Math.max(1, qty - 1))} className="p-1 px-3 text-emerald-700 font-bold">-</button>
-              <span className="w-8 text-center font-black text-sm text-black">{qty}</span>
-              <button onClick={() => setQty(qty + 1)} className="p-1 px-3 text-emerald-700 font-bold">+</button>
-            </div>
-            <button onClick={() => onAddToOrder(qty)} className="flex-1 bg-emerald-600 text-white py-2.5 rounded-lg font-black text-sm flex items-center justify-center gap-2 shadow-sm active:scale-95 transition-all">
-              <ShoppingCart size={16} /> הוסף לסל
-            </button>
+        <div className="space-y-3 mb-6">
+          <div className="flex items-center gap-2 text-green-500 text-sm font-bold">
+            <CheckCircle size={16} />
+            <span>זמין במלאי לאיסוף מיידי</span>
           </div>
+          {product.description && (
+            <p className="text-slate-500 dark:text-slate-400 text-xs leading-relaxed line-clamp-2 italic">
+              {product.description}
+            </p>
+          )}
         </div>
+
+        <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-black flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-blue-500/20">
+          <ShoppingCart size={20} />
+          להוספה להזמנה
+        </button>
       </div>
     </div>
   );
-}
+};
