@@ -33,8 +33,11 @@ export async function POST(req: Request) {
 
     const googleAI = createGoogleGenerativeAI({ apiKey: geminiKey });
     
-    const { text } = await generateText({
-      model: googleAI("gemini-1.5-flash"),
+const { text } = await generateText({
+  model: googleAI("models/gemini-1.5-flash"), // <--- זה התיקון הקריטי!
+  system: `אתה עוזר של ח. סבן. מידע עסקי: ${JSON.stringify(businessInfo)}. מלאי: ${JSON.stringify(products)}.`,
+  messages
+});
       system: `אתה עוזר של ח. סבן. מידע עסקי: ${JSON.stringify(businessInfo)}. מלאי: ${JSON.stringify(products)}.`,
       messages
     });
