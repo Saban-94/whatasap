@@ -6,7 +6,8 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
-    const { messages } = await req.json();
+    const body = await req.json();
+    const messages = body.messages || [];
     const lastMsg = messages[messages.length - 1]?.content?.toString().trim() || "";
 
     const supabase = createClient(
@@ -14,6 +15,7 @@ export async function POST(req: Request) {
       process.env.SUPABASE_SERVICE_ROLE!
     );
     
+    // שליפה מהירה מ-Supabase
     const { data: products } = await supabase
       .from("inventory")
       .select("*")
@@ -22,16 +24,18 @@ export async function POST(req: Request) {
 
     const googleAI = createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY! });
     
+    // שימוש במודל הכי יציב למניעת שגיאות 500
     const { text } = await generateText({
       model: googleAI("gemini-1.5-flash"),
       system: `אתה מנהל המכירות של "ח. סבן". ענה בקיצור ב-HTML (<b>).
-      מלאי: ${JSON.stringify(products)}.
-      חוק סיקה: (שטח * 4) / 25 + 1. הצג תוצאה סופית מודגשת.`,
+      מלאי נוכחי: ${JSON.stringify(products || [])}.
+      חוק סיקה: (שטח * 4) / 25 + 1 רזרבה. הצג תוצאה סופית מודגשת.`,
       messages,
       temperature: 0.2
     });
 
-    const uiBlueprint = products && products.length > 0 ? {
+    // בניית הבלופרינט לעיצוב
+    const uiBlueprint = (products && products.length > 0) ? {
       type: "product_card",
       data: {
         title: products[0].product_name,
@@ -42,8 +46,19 @@ export async function POST(req: Request) {
       }
     } : null;
 
-    return Response.json({ text, products, uiBlueprint });
-  } catch (error) {
-    return Response.json({ text: "שגיאה בחיבור למערכת." }, { status: 500 });
+    return new Response(JSON.stringify({ 
+      text: text || "לא נמצאה תשובה, אנא נסה שוב.", 
+      uiBlueprint 
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+  } catch (error: any) {
+    console.error("Critical API Error:", error);
+    return new Response(JSON.stringify({ 
+      text: "מצטער, יש לי תקלה קלה בחיבור למחסן. נסה שוב בעוד רגע.",
+      error: error.message 
+    }), { status: 500 });
   }
 }
