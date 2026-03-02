@@ -33,9 +33,17 @@ export async function POST(req: Request) {
 
     const googleAI = createGoogleGenerativeAI({ apiKey: geminiKey });
     
+// אפשרות 1: השם הכי סטנדרטי (הספרייה תוסיף models/ לבד)
 const { text } = await generateText({
-  model: googleAI("models/gemini-1.5-flash"), // <--- זה התיקון הקריטי!
-  system: `אתה עוזר של ח. סבן. מידע עסקי: ${JSON.stringify(businessInfo)}. מלאי: ${JSON.stringify(products)}.`,
+  model: googleAI("gemini-1.5-flash"), 
+  system: `אתה עוזר של ח. סבן...`,
+  messages
+});
+
+// --- או אם זה עדיין נכשל, אפשרות 2 (השם המלא והעדכני): ---
+const { text } = await generateText({
+  model: googleAI("gemini-1.5-flash-latest"), 
+  system: `אתה עוזר של ח. סבן...`,
   messages
 });
       system: `אתה עוזר של ח. סבן. מידע עסקי: ${JSON.stringify(businessInfo)}. מלאי: ${JSON.stringify(products)}.`,
