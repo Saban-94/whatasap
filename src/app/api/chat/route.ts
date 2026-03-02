@@ -14,7 +14,6 @@ export async function POST(req: Request) {
       process.env.SUPABASE_SERVICE_ROLE!
     );
     
-    // שליפה ממוקדת
     const { data: products } = await supabase
       .from("inventory")
       .select("*")
@@ -22,36 +21,29 @@ export async function POST(req: Request) {
       .limit(1);
 
     const googleAI = createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY! });
-    const models = ["gemini-1.5-flash", "gemini-1.5-pro"]; // Fallback models
     
-    let responseText = "";
-    for (const modelId of models) {
-      try {
-        const { text } = await generateText({
-          model: googleAI(modelId),
-          system: `אתה מנהל המכירות הבכיר של ח. סבן. ענה בקיצור ובפורמט HTML (<b>).
-          מלאי: ${JSON.stringify(products)}.
-          חוק חישוב סיקה: (שטח*4)/25 + 1. תוצאה סופית מודגשת.`,
-          messages,
-          temperature: 0.2
-        });
-        if (text) { responseText = text; break; }
-      } catch (e) { continue; }
-    }
+    const { text } = await generateText({
+      model: googleAI("gemini-1.5-flash"),
+      system: `אתה מנהל המכירות של "ח. סבן". ענה בקיצור ב-HTML (<b>).
+      מלאי: ${JSON.stringify(products)}.
+      חוק סיקה: (שטח * 4) / 25 + 1. הצג תוצאה סופית מודגשת.`,
+      messages,
+      temperature: 0.2
+    });
 
     const uiBlueprint = products && products.length > 0 ? {
       type: "product_card",
       data: {
         title: products[0].product_name,
         price: products[0].price,
-        image: products[0].image_url || null,
+        image: products[0].image_url,
         sku: products[0].sku,
         specs: { coverage: "4 ק\"ג למ\"ר", drying: "24 שעות" }
       }
     } : null;
 
-    return Response.json({ text: responseText, products, uiBlueprint });
+    return Response.json({ text, products, uiBlueprint });
   } catch (error) {
-    return Response.json({ text: "שגיאה בחיבור." }, { status: 500 });
+    return Response.json({ text: "שגיאה בחיבור למערכת." }, { status: 500 });
   }
 }
