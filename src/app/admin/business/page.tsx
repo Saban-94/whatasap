@@ -237,12 +237,23 @@ export default function BusinessInfoManager() {
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-[10px] font-black bg-blue-500/10 text-blue-400 px-3 py-1 rounded-full uppercase italic tracking-widest">{item.category}</span>
-                <div className="flex gap-2">
-                  {item.image_url && <ImageIcon size={14} className="text-blue-500/40" title="יש תמונה" />}
-                  {item.file_url && <FileText size={14} className="text-red-500/40" title="יש PDF" />}
-                  {item.video_url && <Youtube size={14} className="text-red-600/40" title="יש וידאו" />}
-                </div>
-              </div>
+<div className="flex gap-2">
+  {item.image_url && (
+    <span title="יש תמונה">
+      <ImageIcon size={14} className="text-blue-500/40" />
+    </span>
+  )}
+  {item.file_url && (
+    <span title="יש PDF">
+      <FileText size={14} className="text-red-500/40" />
+    </span>
+  )}
+  {item.video_url && (
+    <span title="יש וידאו">
+      <Youtube size={14} className="text-red-600/40" />
+    </span>
+  )}
+</div>
               <h4 className="font-black text-xl mb-1 text-white">{item.question}</h4>
               <p className="text-slate-400 text-sm leading-relaxed line-clamp-2">{item.answer}</p>
             </div>
