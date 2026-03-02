@@ -1,4 +1,4 @@
-import { createGoogleGenerativeAI } from "@google/generative-ai-sdk"; // וודא שמותקן @ai-sdk/google
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { generateText } from "ai";
 import { createClient } from "@supabase/supabase-js";
 
