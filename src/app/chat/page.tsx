@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useRef, useEffect } from "react";
-import { ProductCard } from "@/components/chat/ProductCard";
+import { ProductCard } from "@/components/chat/product-card";
 import { Send, Loader2, Bot } from "lucide-react";
 
 export default function ChatPage() {
