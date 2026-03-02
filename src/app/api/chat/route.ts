@@ -1,4 +1,4 @@
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createGoogleGenerativeAI } from "@google/generative-ai-sdk"; // וודא שמותקן @ai-sdk/google
 import { generateText } from "ai";
 import { createClient } from "@supabase/supabase-js";
 
@@ -11,7 +11,7 @@ export async function POST(req: Request) {
     const messages = body.messages || [];
 
     if (messages.length === 0) {
-      return Response.json({ text: "שלום! סבן AI מוכן לעזור לך עם מוצרים וחישובים." });
+      return Response.json({ text: "שלום! סבן AI מוכן לעזור לך עם מוצרים, חישובים ומידע כללי." });
     }
 
     const lastMsgObj = messages[messages.length - 1];
@@ -22,43 +22,53 @@ export async function POST(req: Request) {
     const geminiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE;
+    const supabase = createClient(supabaseUrl!, supabaseKey!);
 
     let products = [];
-    if (lastMsg && supabaseUrl && supabaseKey) {
-      try {
-        const supabase = createClient(supabaseUrl, supabaseKey);
-        const { data } = await supabase
-          .from("inventory")
-          .select("*")
-          .or(`product_name.ilike.%${lastMsg}%,sku.ilike.%${lastMsg}%`)
-          .limit(2);
-        if (data) products = data;
-      } catch (e) {
-        console.error("DB Error:", e);
-      }
+    let businessInfo = [];
+
+    if (lastMsg) {
+      // 1. חיפוש מוצרים רלוונטיים (Inventory)
+      const { data: prodData } = await supabase
+        .from("inventory")
+        .select("*")
+        .or(`product_name.ilike.%${lastMsg}%,sku.ilike.%${lastMsg}%`)
+        .limit(3);
+      if (prodData) products = prodData;
+
+      // 2. חיפוש מידע עסקי רלוונטי (Business Info)
+      const { data: bizData } = await supabase
+        .from("business_info")
+        .select("question, answer")
+        .or(`question.ilike.%${lastMsg}%,category.ilike.%${lastMsg}%`)
+        .limit(3);
+      if (bizData) businessInfo = bizData;
     }
 
-    // רשימת מודלים מעודכנת לפי ה-Free Tier שלך
-    const modelsToTry = [
-      "gemini-2.0-flash", 
-      "gemini-1.5-flash-latest"
-    ];
-
+    // רשימת מודלים לניסוי
+    const modelsToTry = ["gemini-2.0-flash", "gemini-1.5-flash-latest"];
     if (!geminiKey) throw new Error("Missing Gemini API Key");
+    
     const googleAI = createGoogleGenerativeAI({ apiKey: geminiKey });
-
     let finalResponseText = "";
     
     for (const modelId of modelsToTry) {
       try {
         const { text } = await generateText({
           model: googleAI(modelId),
-          system: `אתה יועץ המכירות של ח. סבן חומרי בניין. ענה בעברית.
-          נתוני מלאי זמינים: ${JSON.stringify(products)}.
-          חוק חישוב כמויות:
-          - עבור דבקי אריחים (כמו סיקה 255): (שטח מ"ר * 4 ק"ג) / 25 ק"ג שק. עגל תמיד למעלה + 1 שק רזרבה.
-          - עבור איטום נוזלי: (שטח מ"ר * צריכה לקמ"ר מהמפרט) / משקל פח.
-          בסוף כל תשובה טכנית, תן "טיפ זהב" ליישום והצע להוסיף לסל.`,
+          system: `אתה יועץ המכירות והשירות של "ח. סבן חומרי בניין". 
+          
+          מידע עסקי זמין (שעות, סניפים, מדיניות): ${JSON.stringify(businessInfo)}
+          נתוני מלאי זמינים: ${JSON.stringify(products)}
+          
+          חוקי חישוב כמויות (לפי שטח במ"ר):
+          - דבקים (סיקה 255 וכו'): (שטח * 4 ק"ג) / 25 ק"ג שק. עגל למעלה + 1 שק רזרבה.
+          - איטום נוזלי: (שטח * צריכה מהמפרט) / משקל פח.
+          
+          הנחיות מענה:
+          1. אם השאלה כללית (שעות, מיקום), ענה לפי 'מידע עסקי'.
+          2. אם השאלה על מוצר, ענה לפי 'נתוני מלאי' ותן "טיפ זהב".
+          3. תמיד ענה בעברית אדיבה ומקצועית.`,
           messages,
           temperature: 0.4
         });
@@ -74,6 +84,7 @@ export async function POST(req: Request) {
     return Response.json({ 
       text: finalResponseText, 
       products, 
+      businessInfo, // הוספנו כדי שתוכל לראות בדיבאג מה נשלף
       activeModel: activeModelName 
     });
 
