@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { MessageList } from "@/components/chat/message-list";
 import { Composer } from "@/components/chat/composer";
-import { Sparkles, Trash2 } from "lucide-react";
+import { Sparkles, MessageSquareDashed } from "lucide-react";
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<any[]>([]);
@@ -27,37 +27,40 @@ export default function ChatPage() {
         role: 'assistant', 
         content: data.text, 
         products: data.products,
-        uiBlueprint: data.uiBlueprint // השורה הזו מחזירה את העיצוב למסך!
+        uiBlueprint: data.uiBlueprint // כאן העיצוב נכנס למערכת!
       }]);
     } catch (e) {
-      setMessages(p => [...p, { role: 'assistant', content: "תקלה בתקשורת." }]);
+      setMessages(p => [...p, { role: 'assistant', content: "שגיאת תקשורת." }]);
     } finally { setLoading(false); }
   };
 
   return (
-    <div className="relative h-screen w-full bg-[#fbfbfb] dark:bg-slate-950 overflow-hidden" dir="rtl">
-      {/* רקע יוקרתי */}
-      <div className="fixed inset-0 pointer-events-none opacity-50">
-        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[120px] animate-pulse" />
+    <div className="relative h-screen w-full bg-[#fbfbfb] overflow-hidden" dir="rtl">
+      {/* רקע נושם יוקרתי */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute -top-[10%] -left-[10%] w-[500px] h-[500px] bg-blue-500/5 rounded-full blur-[120px] animate-pulse" />
+        <div className="absolute -bottom-[10%] -right-[10%] w-[400px] h-[400px] bg-orange-500/5 rounded-full blur-[100px]" />
       </div>
 
-      <div className="relative z-10 h-full flex flex-col">
-        {/* Header */}
-        <div className="p-6 flex justify-between items-center border-b border-slate-100 bg-white/80 backdrop-blur-md">
+      <div className="relative z-10 h-full flex flex-col pt-20">
+        {/* Header צף */}
+        <div className="absolute top-0 left-0 w-full p-4 flex justify-between items-center z-30 backdrop-blur-md bg-white/60 border-b border-slate-100">
           <div className="flex items-center gap-2">
-            <Sparkles className="text-blue-600 w-5 h-5" />
-            <span className="font-black text-[#0B2C63] text-xl italic tracking-tighter">SABAN AI</span>
+            <div className="w-8 h-8 bg-[#0B2C63] rounded-xl flex items-center justify-center shadow-lg">
+              <Sparkles className="text-white w-4 h-4" />
+            </div>
+            <span className="font-black text-[#0B2C63] text-lg tracking-tighter italic">SABAN AI</span>
           </div>
-          <button onClick={() => setMessages([])} className="text-slate-300 hover:text-red-500 transition-colors">
-            <Trash2 size={20} />
+          <button onClick={() => setMessages([])} className="p-2 text-slate-400 hover:text-red-500 transition-all active:scale-90">
+            <MessageSquareDashed size={20} />
           </button>
         </div>
 
-        {/* Message List */}
+        {/* מפל הודעות מונפש */}
         <MessageList messages={messages} isStreaming={loading} />
 
-        {/* Input Area */}
-        <div className="p-6 bg-gradient-to-t from-[#fbfbfb] to-transparent">
+        {/* שורת כתיבה מותאמת מובייל */}
+        <div className="px-4 pb-8 bg-gradient-to-t from-[#fbfbfb] via-[#fbfbfb] to-transparent pt-10">
           <div className="max-w-4xl mx-auto">
             <Composer onSend={send} isStreaming={loading} />
           </div>
