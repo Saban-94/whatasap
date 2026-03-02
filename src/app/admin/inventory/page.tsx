@@ -1,175 +1,169 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { supabase } from "@/lib/supabase"
-import { Button } from "@/components/ui/button"
+import React, { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
 import { 
-  Loader2, 
-  RefreshCcw, 
-  Package, 
-  Tag, 
-  Factory, 
-  Search,
-  CheckCircle2,
-  Coins
-} from "lucide-react"
+  Search, Edit2, Save, X, Image as ImageIcon, 
+  Video, Loader2, Sparkles, Package, 
+  ShoppingCart, ExternalLink, ChevronRight
+} from "lucide-react";
+import { toast } from "sonner";
 
-export default function InventoryPage() {
-  const [items, setItems] = useState<any[]>([])
-  const [filteredItems, setFilteredItems] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState("")
+// הגדרת הקומפוננטה כייצוא ברירת מחדל
+export default function SabanInventoryPage() {
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editingSku, setEditingSku] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<any>({});
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isAutoFetching, setIsAutoFetching] = useState(false);
 
-  const fetchInventory = async () => {
-    setLoading(true)
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  async function fetchProducts() {
+    setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('inventory')
-        .select('*')
-        .order('product_name', { ascending: true })
-      
-      if (data) {
-        setItems(data)
-        setFilteredItems(data)
-      }
-      if (error) console.error("Supabase Error:", error)
+        .from("inventory")
+        .select("*")
+        .order("product_name", { ascending: true });
+      if (!error) setProducts(data || []);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
-  useEffect(() => {
-    fetchInventory()
-  }, [])
+  const startEdit = (product: any) => {
+    setEditingSku(product.sku);
+    setEditForm({ ...product });
+  };
 
-  useEffect(() => {
-    const filtered = items.filter(item => 
-      item.product_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.sku?.includes(searchQuery) ||
-      item.supplier_name?.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-    setFilteredItems(filtered)
-  }, [searchQuery, items])
+  const handleSave = async (sku: string) => {
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from("inventory")
+        .update({
+          image_url: editForm.image_url,
+          youtube_url: editForm.youtube_url,
+          description: editForm.description,
+          coverage: editForm.coverage,
+          price: editForm.price
+        })
+        .eq("sku", sku);
+
+      if (error) throw error;
+      toast.success("עודכן בהצלחה!");
+      setEditingSku(null);
+      fetchProducts();
+    } catch (e: any) {
+      toast.error("שגיאה בשמירה: " + e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filtered = products.filter(p => 
+    p.product_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    p.sku?.includes(searchTerm)
+  );
 
   return (
-    <div className="p-8 space-y-8 max-w-[1400px] mx-auto min-h-screen bg-[#F8FAFC]" dir="rtl">
-      
-      {/* Header & Search Bar */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center bg-white p-8 rounded-[32px] shadow-sm border border-slate-100 gap-6">
-        <div className="flex items-center gap-5">
-          <div className="bg-[#0B2C63] p-4 rounded-2xl text-white shadow-xl shadow-blue-900/10">
-            <Package size={32} />
-          </div>
-          <div>
-            <h1 className="text-3xl font-black text-[#0B2C63] tracking-tight">ניהול מלאי סבן</h1>
-            <div className="flex items-center gap-2 mt-1">
-               <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-               <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[2px]">Saban Cloud Live Sync</p>
+    <div className="min-h-screen bg-[#020617] text-slate-100 p-6 lg:p-12 font-sans" dir="rtl">
+      <header className="max-w-7xl mx-auto mb-10 flex flex-col md:flex-row justify-between items-end gap-6">
+        <div>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-blue-600 rounded-lg shadow-lg shadow-blue-600/20">
+              <Package size={24} className="text-white" />
             </div>
+            <h1 className="text-3xl font-black tracking-tighter italic uppercase">Saban Editor</h1>
           </div>
+          <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[4px]">ניהול מלאי ואוטומציה</p>
         </div>
-
-        <div className="flex flex-1 max-w-2xl w-full gap-4">
-          <div className="relative flex-1 group">
-            <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#0B2C63] transition-colors" size={20} />
-            <input 
-              type="text"
-              placeholder="חפש לפי שם מוצר, מקט או ספק..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pr-12 pl-6 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-blue-50 focus:bg-white transition-all font-bold text-slate-700 shadow-inner"
-            />
-          </div>
-          <Button onClick={fetchInventory} disabled={loading} variant="outline" className="h-[52px] px-6 rounded-2xl border-slate-200 hover:bg-slate-50 transition-all font-bold text-[#0B2C63]">
-            <RefreshCcw size={18} className={`${loading ? "animate-spin" : ""} ml-2`} />
-            רענן
-          </Button>
+        <div className="relative w-full md:w-96">
+          <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500" size={20} />
+          <input 
+            type="text"
+            placeholder="חפש מוצר או מק''ט..."
+            className="w-full bg-slate-900/50 border border-white/5 rounded-2xl py-4 pr-12 pl-4 outline-none focus:border-blue-500/50 transition-all font-bold text-sm"
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
-      </div>
+      </header>
 
-      {/* Table Section */}
-      <div className="bg-white rounded-[32px] shadow-2xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
-        {loading && items.length === 0 ? (
-          <div className="flex flex-col justify-center items-center p-32 gap-6">
-            <Loader2 className="animate-spin text-[#0B2C63]" size={60} />
-            <p className="text-slate-400 font-black text-xs uppercase tracking-[6px]">Loading Inventory Data...</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-right">
-              <thead>
-                <tr className="bg-slate-50/50 border-b border-slate-100">
-                  <th className="px-8 py-6 font-black text-[#0B2C63] text-sm uppercase">שם המוצר</th>
-                  <th className="px-8 py-6 font-black text-[#0B2C63] text-sm uppercase">מק"ט (SKU)</th>
-                  <th className="px-8 py-6 font-black text-[#0B2C63] text-sm uppercase">קטגוריה</th>
-                  <th className="px-8 py-6 font-black text-[#0B2C63] text-sm uppercase">ספק</th>
-                  <th className="px-8 py-6 font-black text-[#0B2C63] text-sm uppercase">מחיר</th>
-                  <th className="px-8 py-6 font-black text-[#0B2C63] text-sm uppercase text-center">סטטוס</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {filteredItems.length === 0 ? (
-                  <tr><td colSpan={6} className="py-32 text-center text-slate-300 font-bold italic">לא נמצאו מוצרים תואמים לחיפוש שלך</td></tr>
-                ) : (
-                  filteredItems.map((item, idx) => (
-                    <tr key={item.sku || idx} className="hover:bg-blue-50/30 transition-all duration-200 group">
-                      <td className="px-8 py-6">
-                        <div className="font-black text-slate-800 text-base leading-tight group-hover:text-[#0B2C63]">
-                          {item.product_name}
-                        </div>
-                        <div className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-tighter">
-                          Department: {item.department || 'General'}
-                        </div>
-                      </td>
-                      <td className="px-8 py-6">
-                        <span className="font-mono text-[12px] font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-lg border border-blue-100/50 shadow-sm">
-                          {item.sku}
-                        </span>
-                      </td>
-                      <td className="px-8 py-6">
-                        <span className="bg-slate-100 text-slate-600 px-4 py-1.5 rounded-full font-black text-[10px] uppercase flex items-center gap-2 w-fit border border-slate-200/50 shadow-sm">
-                          <Tag size={12} className="opacity-50" /> {item.category || 'כללי'}
-                        </span>
-                      </td>
-                      <td className="px-8 py-6">
-                        <div className="flex items-center gap-2.5 text-sm font-bold text-slate-500">
-                          <Factory size={16} className="text-slate-300" />
-                          <span className="max-w-[180px] truncate" title={item.supplier_name}>
-                            {item.supplier_name}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-8 py-6 font-black text-[#0B2C63] text-lg">
-                         <div className="flex items-center gap-1">
-                            <span className="text-xs font-bold opacity-50 italic">₪</span>
-                            {item.price || '0'}
-                         </div>
-                      </td>
-                      <td className="px-8 py-6">
-                        <div className="flex justify-center items-center">
-                           <div className="flex items-center gap-2 bg-green-50 text-green-700 px-4 py-1.5 rounded-xl border border-green-100 shadow-sm animate-in fade-in zoom-in duration-300">
-                              <CheckCircle2 size={14} className="text-green-500" />
-                              <span className="text-[10px] font-black uppercase tracking-wider">Synced</span>
-                           </div>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
+      <div className="max-w-7xl mx-auto bg-slate-900/30 rounded-[40px] border border-white/5 overflow-hidden backdrop-blur-xl shadow-2xl">
+        <table className="w-full text-right border-collapse">
+          <thead>
+            <tr className="bg-white/5 text-slate-500 text-[10px] font-black uppercase tracking-widest border-b border-white/5">
+              <th className="p-6">מוצר</th>
+              <th className="p-6">תיאור טכני</th>
+              <th className="p-6 text-center">מדיה ומפרט</th>
+              <th className="p-6 text-center">פעולות</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5">
+            {filtered.map((p) => (
+              <tr key={p.sku} className={`transition-all ${editingSku === p.sku ? 'bg-blue-600/5' : 'hover:bg-white/5'}`}>
+                <td className="p-6 align-top">
+                  <div className="font-black text-lg text-white">{p.product_name}</div>
+                  <div className="text-[10px] font-bold text-slate-500 mt-1">מק''ט: {p.sku}</div>
+                </td>
+                <td className="p-6 align-top max-w-sm">
+                  {editingSku === p.sku ? (
+                    <textarea 
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm outline-none focus:border-blue-500 h-28 leading-relaxed"
+                      value={editForm.description}
+                      onChange={e => setEditForm({...editForm, description: e.target.value})}
+                    />
+                  ) : (
+                    <div className="text-xs text-slate-400 leading-relaxed line-clamp-3">
+                      {p.description || "חסר תיאור מוצר..."}
+                    </div>
+                  )}
+                </td>
+                <td className="p-6 align-top min-w-[250px]">
+                  {editingSku === p.sku ? (
+                    <div className="space-y-3">
+                      <input className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-[10px] outline-none" placeholder="URL תמונה" value={editForm.image_url || ''} onChange={e => setEditForm({...editForm, image_url: e.target.value})}/>
+                      <input className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-[10px] outline-none" placeholder="קישור וידאו" value={editForm.youtube_url || ''} onChange={e => setEditForm({...editForm, youtube_url: e.target.value})}/>
+                      <input className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-[10px] outline-none" placeholder="כיסוי (מ''ר)" value={editForm.coverage || ''} onChange={e => setEditForm({...editForm, coverage: e.target.value})}/>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2">
+                       <div className="flex gap-2">
+                          <StatusIndicator active={!!p.image_url} icon={<ImageIcon size={14}/>} />
+                          <StatusIndicator active={!!p.youtube_url} icon={<Video size={14}/>} />
+                       </div>
+                       {p.image_url && <img src={p.image_url} className="w-12 h-12 rounded-lg object-cover" />}
+                    </div>
+                  )}
+                </td>
+                <td className="p-6 align-middle text-center">
+                  {editingSku === p.sku ? (
+                    <div className="flex gap-2 justify-center">
+                      <button onClick={() => handleSave(p.sku)} className="bg-emerald-600 p-3 rounded-2xl"><Save size={18}/></button>
+                      <button onClick={() => setEditingSku(null)} className="bg-slate-700 p-3 rounded-2xl"><X size={18}/></button>
+                    </div>
+                  ) : (
+                    <button onClick={() => startEdit(p)} className="bg-blue-600/10 text-blue-400 p-3 rounded-2xl hover:bg-blue-600 hover:text-white transition-all"><Edit2 size={18}/></button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
-
-      <div className="flex justify-between items-center px-4">
-        <p className="text-[10px] font-black text-slate-300 uppercase tracking-[6px] italic">
-          Saban Logistics Intelligence Layer v3.2
-        </p>
-        <p className="text-[10px] font-bold text-slate-400">
-          Showing {filteredItems.length} products
-        </p>
-      </div>
+      {loading && <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"><Loader2 className="animate-spin text-blue-500" size={48}/></div>}
     </div>
-  )
+  );
+}
+
+function StatusIndicator({ active, icon }: { active: boolean, icon: any }) {
+  return (
+    <div className={`p-2 rounded-lg border ${active ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500' : 'bg-slate-800 border-white/5 text-slate-700'}`}>
+      {icon}
+    </div>
+  );
 }
