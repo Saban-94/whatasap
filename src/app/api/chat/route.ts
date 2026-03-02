@@ -18,89 +18,49 @@ export async function POST(req: Request) {
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE;
 
     if (!geminiKey || !supabaseUrl || !supabaseKey) {
-      return Response.json({ text: "שגיאה: חסרים מפתחות API בשרת." }, { status: 500 });
+      return Response.json({ text: "שגיאה בתצורת השרת." }, { status: 500 });
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const lastMsgObj = messages[messages.length - 1];
-    const rawText = (lastMsgObj.content || "").toString().trim();
+    const lastMsg = (messages[messages.length - 1]?.content || "").toString().trim();
     
-    // ניקוי מילת מפתח לחיפוש חכם (לוקח מילה משמעותית מההודעה)
-    const searchKeyword = rawText.split(' ').filter((word: string) => word.length > 2)[0] || rawText;
-
+    // שליפה חכמה מהטבלאות
     let products: any[] = [];
     let businessInfo: any[] = [];
-
-    // שליפה חכמה וגמישה מ-Supabase
-    if (searchKeyword) {
+    
+    if (lastMsg) {
+      const searchWord = lastMsg.split(' ').filter((w: string) => w.length > 2)[0] || lastMsg;
       const [prodRes, bizRes] = await Promise.all([
-        supabase.from("inventory")
-          .select("*")
-          .or(`product_name.ilike.%${searchKeyword}%,sku.ilike.%${searchKeyword}%,description.ilike.%${searchKeyword}%`)
-          .limit(3),
-        supabase.from("business_info")
-          .select("question, answer")
-          .limit(10) // טוען את כל המידע העסקי הרלוונטי לזיכרון הקרוב
+        supabase.from("inventory").select("*").or(`product_name.ilike.%${searchWord}%,sku.ilike.%${searchWord}%`).limit(2),
+        supabase.from("business_info").select("*").limit(5)
       ]);
       products = prodRes.data || [];
       businessInfo = bizRes.data || [];
     }
 
     const googleAI = createGoogleGenerativeAI({ apiKey: geminiKey });
-
-    // רשימת מודלים לדילוג במקרה של שגיאה (Fallback)
-    const modelsToTry = [
-      "gemini-3.1-flash-image-preview", // Nano Banana 2
-      "gemini-3-flash-preview",         // Gemini 3 Flash
-      "gemini-3-flash",
-      "gemini-1.5-flash-latest"         // גיבוי אחרון
-    ];
-
-    let finalResponseText = "";
-
-    for (const modelId of modelsToTry) {
+    const models = ["gemini-3.1-flash-image-preview", "gemini-3-flash-preview", "gemini-1.5-flash-latest"];
+    
+    let finalResponse = "";
+    for (const modelId of models) {
       try {
         const { text } = await generateText({
           model: googleAI(modelId),
-// בתוך פונקציית ה-generateText, תחת system:
-system: `אתה מנהל המכירות של "ח. סבן חומרי בניין". 
-הנחיה קריטית: עליך לבסס את תשובתך אך ורק על הנתונים מהטבלאות המצורפות.
-
-סדר עדיפויות למתן תשובה:
-1. בדוק בנתוני המלאי (Inventory): ${JSON.stringify(products)}. 
-   אם המוצר קיים שם, השתמש במחיר, במק"ט ובשם המדויק מהטבלה. אל תמציא נתונים!
-2. בדוק במידע העסקי (Business Info): ${JSON.stringify(businessInfo)}.
-   השתמש במידע זה למענה על שעות פעילות, סניפים ומדיניות הובלות.
-
-עיצוב התשובה:
-- השתמש בתגיות <b> להדגשה עבה ומקצועית.
-- הצג "כרטיס מוצר" בולט הכולל: 📦 מוצר, 🔢 מק"ט, 💰 מחיר (מהטבלה בלבד), ✅ סטטוס.
-- בצע את חישוב הכמויות (שטח*4/25+1) רק לאחר הצגת נתוני המוצר מהטבלה.
-- אם המוצר לא נמצא בטבלה, ציין זאת במפורש והצע עזרה כללית.
-- אל תשתמש בסימני **.`,
+          system: `אתה מנהל המכירות של "ח. סבן חומרי בניין". 
+          עליך להשתמש במידע מהטבלאות: מלאי: ${JSON.stringify(products)}, מידע עסקי: ${JSON.stringify(businessInfo)}.
+          הנחיות:
+          1. השתמש בתגיות HTML כמו <b> ו-<u> להדגשה עבה. אל תשתמש ב-**.
+          2. אם נמצא מוצר, ציין שמוצג כרטיס מוצר מתחת לתשובה.
+          3. חוק סיקה: (שטח*4)/25 + 1 רזרבה. הצג את החישוב בבירור.`,
           messages,
-          temperature: 0.4,
+          temperature: 0.3,
         });
-
-        if (text) {
-          finalResponseText = text.trim();
-          break; 
-        }
-      } catch (err) {
-        console.warn(`מודל ${modelId} נכשל, מנסה את הבא...`);
-        continue;
-      }
+        if (text) { finalResponse = text.trim(); break; }
+      } catch (e) { continue; }
     }
 
-    if (!finalResponseText) throw new Error("כל המודלים נכשלו.");
-
-    return Response.json({ 
-      text: finalResponseText, 
-      products 
-    });
-
+    return Response.json({ text: finalResponse, products });
   } catch (error: any) {
-    console.error("Chat API Error:", error);
-    return Response.json({ text: "סליחה, המערכת בעומס זמני. נסה שוב בעוד רגע." }, { status: 500 });
+    return Response.json({ text: "שגיאה בחיבור.", error: error.message }, { status: 500 });
   }
 }
