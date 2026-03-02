@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 // שימוש בשמות קבצים מדויקים (PascalCase לרכיבים)
 import { MessageList } from "@/components/chat/message-list";
-import { Composer } from "@/components/chat/composer"; 
+import { Composer } from "@/components/chat/Composer"; 
 import { Sparkles, Trash2 } from "lucide-react";
 
 export default function ChatPage() {
