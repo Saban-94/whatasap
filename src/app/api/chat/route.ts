@@ -34,15 +34,16 @@ export async function POST(req: Request) {
     const googleAI = createGoogleGenerativeAI({ apiKey: geminiKey });
     
 // אפשרות 1: השם הכי סטנדרטי (הספרייה תוסיף models/ לבד)
+// התיקון המעודכן ביותר לפי מרץ 2026
 const { text } = await generateText({
-  model: googleAI("gemini-1.5-flash"), 
-  system: `אתה עוזר של ח. סבן...`,
+  model: googleAI("gemini-3.1-flash-image-preview"), // המודל החדש והמהיר ביותר
+  system: `אתה יועץ המכירות של "ח. סבן"...`,
   messages
 });
 
 // --- או אם זה עדיין נכשל, אפשרות 2 (השם המלא והעדכני): ---
 const { text } = await generateText({
-  model: googleAI("gemini-1.5-flash-latest"), 
+   model: googleAI("gemini-3.1-flash-image-preview"), 
   system: `אתה עוזר של ח. סבן...`,
   messages
 });
