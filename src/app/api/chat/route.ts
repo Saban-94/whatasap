@@ -22,13 +22,15 @@ export async function POST(req: Request) {
     const geminiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE;
+    
     const supabase = createClient(supabaseUrl!, supabaseKey!);
 
-    let products = [];
-    let businessInfo = [];
+    // התיקון הקריטי: הוספת טיפוס any[] למניעת שגיאת Build
+    let products: any[] = [];
+    let businessInfo: any[] = [];
 
     if (lastMsg) {
-      // 1. חיפוש מוצרים רלוונטיים (Inventory)
+      // 1. חיפוש מוצרים רלוונטיים
       const { data: prodData } = await supabase
         .from("inventory")
         .select("*")
@@ -36,7 +38,7 @@ export async function POST(req: Request) {
         .limit(3);
       if (prodData) products = prodData;
 
-      // 2. חיפוש מידע עסקי רלוונטי (Business Info)
+      // 2. חיפוש מידע עסקי (business_info)
       const { data: bizData } = await supabase
         .from("business_info")
         .select("question, answer")
@@ -45,8 +47,8 @@ export async function POST(req: Request) {
       if (bizData) businessInfo = bizData;
     }
 
-    // רשימת מודלים לניסוי
-    const modelsToTry = ["gemini-2.0-flash", "gemini-1.5-flash-latest"];
+    // רשימת מודלים
+    const modelsToTry = ["gemini-2.0-flash", "gemini-1.5-flash"];
     if (!geminiKey) throw new Error("Missing Gemini API Key");
     
     const googleAI = createGoogleGenerativeAI({ apiKey: geminiKey });
@@ -57,18 +59,9 @@ export async function POST(req: Request) {
         const { text } = await generateText({
           model: googleAI(modelId),
           system: `אתה יועץ המכירות והשירות של "ח. סבן חומרי בניין". 
-          
-          מידע עסקי זמין (שעות, סניפים, מדיניות): ${JSON.stringify(businessInfo)}
-          נתוני מלאי זמינים: ${JSON.stringify(products)}
-          
-          חוקי חישוב כמויות (לפי שטח במ"ר):
-          - דבקים (סיקה 255 וכו'): (שטח * 4 ק"ג) / 25 ק"ג שק. עגל למעלה + 1 שק רזרבה.
-          - איטום נוזלי: (שטח * צריכה מהמפרט) / משקל פח.
-          
-          הנחיות מענה:
-          1. אם השאלה כללית (שעות, מיקום), ענה לפי 'מידע עסקי'.
-          2. אם השאלה על מוצר, ענה לפי 'נתוני מלאי' ותן "טיפ זהב".
-          3. תמיד ענה בעברית אדיבה ומקצועית.`,
+          מידע עסקי: ${JSON.stringify(businessInfo)}
+          מלאי זמין: ${JSON.stringify(products)}
+          חוקי חישוב: דבקים (שטח*4)/25 + 1 רזרבה. ענה בעברית מקצועית ואדיבה.`,
           messages,
           temperature: 0.4
         });
@@ -84,13 +77,12 @@ export async function POST(req: Request) {
     return Response.json({ 
       text: finalResponseText, 
       products, 
-      businessInfo, // הוספנו כדי שתוכל לראות בדיבאג מה נשלף
       activeModel: activeModelName 
     });
 
   } catch (error: any) {
     return Response.json({ 
-      text: "חלה שגיאה בעיבוד. אנא וודא שמפתח ה-API תקין ב-Vercel.",
+      text: "חלה שגיאה בעיבוד.",
       debug: error.message
     });
   }
