@@ -1,21 +1,19 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { supabase } from "@/lib/supabase";
 
-export async function POST(req: NextRequest) {
-  try {
-    const { query, type } = await req.json();
-    const apiKey = (process.env.GOOGLE_API_KEYS || "").split(",")[0].trim();
-    const cx = process.env.GOOGLE_CX || "635bc3eeee0194b16";
-    const isVideo = type === "video";
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const q = searchParams.get("q");
 
-    const url = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${cx}&q=${encodeURIComponent(query + (isVideo ? " tutorial" : ""))}${!isVideo ? "&searchType=image" : ""}&num=1`;
-    
-    const res = await fetch(url);
-    const data = await res.json();
-    const link = data.items?.[0]?.link;
+  if (!q) return NextResponse.json([]);
 
-    return NextResponse.json(isVideo ? { videoUrl: link } : { imageUrl: link });
-  } catch (error) {
-    console.error("Search API Error:", error);
-    return NextResponse.json({ error: "Search failed" }, { status: 500 });
-  }
+  const { data, error } = await supabase
+    .from("inventory")
+    .select("*")
+    .or(`product_name.ilike.%${q}%,sku.ilike.%${q}%`)
+    .limit(8);
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  return NextResponse.json(data);
 }
