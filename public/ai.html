@@ -1,0 +1,68 @@
+/**
+ * SabanOS - Order Channel Dispatcher
+ * פונקציה לשליחת כרטיס הזמנה מעוצב לערוץ וואטסאפ
+ */
+
+const axios = require('axios');
+
+// הגדרות סביבה (יש להחליף בנתונים האמיתיים שלך)
+const WHATSAPP_API_URL = 'https://graph.facebook.com/v17.0/YOUR_PHONE_NUMBER_ID/messages';
+const ACCESS_TOKEN = 'YOUR_ACCESS_TOKEN';
+
+/**
+ * שולח כרטיס הזמנה מעוצב
+ * @param {Object} order - אובייקט ההזמנה (לקוח, מקור, סטטוס)
+ */
+async function sendOrderCard(order) {
+    const statusEmoji = order.status === 'פתוח' ? '⏳' : '✅';
+    
+    // עיצוב גוף ההודעה - נקי, ברור ומקצועי
+    const messageBody = `
+*📦 הזמנה חדשה במערכת*
+---------------------------
+👤 *לקוח:* ${order.customerName}
+🔗 *מקור:* ${order.source}
+🆔 *מספר הזמנה:* #ַ${order.orderId}
+${statusEmoji} *סטטוס:* ${order.status}
+
+📅 *דוח בוקר:* זמין כעת בערוץ.
+---------------------------
+_הודעה זו נוצרה אוטומטית ע"י SabanOS_
+    `;
+
+    try {
+        const response = await axios.post(
+            WHATSAPP_API_URL,
+            {
+                messaging_product: "whatsapp",
+                recipient_type: "individual",
+                to: "CHANNEL_ID_OR_PHONE_NUMBER", // מזהה הערוץ
+                type: "text",
+                text: {
+                    preview_url: true,
+                    body: messageBody
+                }
+            },
+            {
+                headers: {
+                    'Authorization': `Bearer ${ACCESS_TOKEN}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+
+        console.log('✅ הכרטיס נשלח בהצלחה:', response.data);
+    } catch (error) {
+        console.error('❌ שגיאה בשליחת הכרטיס:', error.response ? error.response.data : error.message);
+    }
+}
+
+// דוגמה להפעלה ברגע שמתקבלת הזמנה מזבולון-עדירן
+const newOrder = {
+    customerName: 'זבולון-עדירן',
+    source: 'קבוצת הזמנות',
+    orderId: '88293',
+    status: 'פתוח'
+};
+
+sendOrderCard(newOrder);
